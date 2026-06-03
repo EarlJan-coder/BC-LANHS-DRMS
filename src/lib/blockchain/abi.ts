@@ -1,0 +1,48 @@
+export const DOCUMENT_REQUEST_AUDIT_ABI = [
+  {
+    type: "function",
+    name: "addAuditRecord",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "referenceId", type: "string" },
+      { name: "action", type: "string" },
+      { name: "actorRole", type: "string" },
+      { name: "recordHash", type: "bytes32" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "getAuditCount",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "getAuditRecord",
+    stateMutability: "view",
+    inputs: [{ name: "index", type: "uint256" }],
+    outputs: [
+      { name: "referenceId", type: "string" },
+      { name: "action", type: "string" },
+      { name: "actorRole", type: "string" },
+      { name: "recordHash", type: "bytes32" },
+      { name: "timestamp", type: "uint256" },
+    ],
+  },
+  {
+    type: "event",
+    name: "AuditRecordAdded",
+    inputs: [
+      { name: "index", type: "uint256", indexed: true },
+      { name: "referenceId", type: "string", indexed: false },
+      { name: "action", type: "string", indexed: false },
+      { name: "actorRole", type: "string", indexed: false },
+      { name: "recordHash", type: "bytes32", indexed: false },
+      { name: "timestamp", type: "uint256", indexed: false },
+    ],
+    anonymous: false,
+  },
+] as const;
+

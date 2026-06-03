@@ -1,0 +1,10 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="160" height="160" rx="24" fill="#991B1B"/>
+  <circle cx="80" cy="68" r="42" fill="#FFFFFF"/>
+  <circle cx="80" cy="68" r="33" fill="#FFE4E6"/>
+  <path d="M80 31L90 57H118L95 73L104 100L80 84L56 100L65 73L42 57H70L80 31Z" fill="#991B1B"/>
+  <rect x="35" y="111" width="90" height="15" rx="7.5" fill="#FFFFFF"/>
+  <text x="80" y="123" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-weight="700" fill="#991B1B">LANHS</text>
+  <path d="M38 132H122" stroke="#FFE4E6" stroke-width="4" stroke-linecap="round"/>
+</svg>
+
