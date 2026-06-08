@@ -13,6 +13,10 @@ export function RequestForm() {
   const [trackingNumber, setTrackingNumber] = useState<string | null>(null);
 
   async function onSubmit(formData: FormData) {
+    if (!window.confirm("Submit this document request to the registrar?")) {
+      return;
+    }
+
     setLoading(true);
     setTrackingNumber(null);
 
@@ -22,6 +26,9 @@ export function RequestForm() {
       body: JSON.stringify({
         documentType: formData.get("documentType"),
         purpose: formData.get("purpose"),
+        schoolYearNeeded: formData.get("schoolYearNeeded"),
+        gradeLevelNeeded: formData.get("gradeLevelNeeded"),
+        remarks: formData.get("remarks"),
       }),
     });
 
@@ -68,6 +75,14 @@ export function RequestForm() {
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <div className="grid gap-2">
+              <Label htmlFor="schoolYearNeeded">School year needed</Label>
+              <Input id="schoolYearNeeded" name="schoolYearNeeded" required placeholder="2026-2027" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="gradeLevelNeeded">Grade level needed</Label>
+              <Input id="gradeLevelNeeded" name="gradeLevelNeeded" required placeholder="Grade 12" />
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="pickupMode">Preferred release mode</Label>
               <Input id="pickupMode" value="Registrar pickup" readOnly />
             </div>
@@ -75,6 +90,10 @@ export function RequestForm() {
               <Label htmlFor="processingNote">Processing note</Label>
               <Input id="processingNote" value="Subject to registrar validation" readOnly />
             </div>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="remarks">Additional remarks</Label>
+            <Textarea id="remarks" name="remarks" placeholder="Optional details for the registrar" />
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button type="submit" disabled={loading}>
@@ -92,4 +111,3 @@ export function RequestForm() {
     </Card>
   );
 }
-

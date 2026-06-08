@@ -73,13 +73,13 @@ export function GradeImportUploader() {
               <input
                 name="file"
                 type="file"
-                accept=".csv,.xlsx"
+                accept=".csv,.xls,.xlsx"
                 className="text-sm text-slate-600 file:mr-4 file:rounded-md file:border-0 file:bg-brand file:px-4 file:py-2 file:text-sm file:font-medium file:text-white"
               />
               <div className="flex flex-wrap gap-2">
                 <ButtonLink href="/api/grade-import/template" tone="secondary">
                   <Download className="h-4 w-4" aria-hidden />
-                  Template
+                  XLSX template
                 </ButtonLink>
                 <Button type="submit" disabled={loading}>
                   <UploadCloud className="h-4 w-4" aria-hidden />
@@ -118,6 +118,35 @@ export function GradeImportUploader() {
               </div>
             </div>
 
+            {validation.validRows.length > 0 ? (
+              <div className="mt-5 overflow-x-auto rounded-lg border border-border">
+                <table className="min-w-full divide-y divide-border text-sm">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-600">LRN</th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-600">Student</th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-600">Subject</th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-600">Final</th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-600">Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border bg-white">
+                    {validation.validRows.slice(0, 8).map((row, index) => (
+                      <tr key={`${row.lrn}-${row.subjectCode}-${index}`}>
+                        <td className="px-4 py-3">{row.lrn}</td>
+                        <td className="px-4 py-3">
+                          {[row.firstName, row.lastName].filter(Boolean).join(" ") || "Matched student"}
+                        </td>
+                        <td className="px-4 py-3">{row.subjectCode || row.subjectName}</td>
+                        <td className="px-4 py-3">{row.finalGrade ?? "Not set"}</td>
+                        <td className="px-4 py-3">{row.remarks || "None"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+
             {validation.errors.length > 0 ? (
               <div className="mt-5 overflow-x-auto rounded-lg border border-border">
                 <table className="min-w-full divide-y divide-border text-sm">
@@ -139,14 +168,14 @@ export function GradeImportUploader() {
                   </tbody>
                 </table>
               </div>
-            ) : (
-              <div className="mt-5 flex justify-end">
-                <Button type="button" onClick={commit} disabled={loading}>
-                  <CheckCircle2 className="h-4 w-4" aria-hidden />
-                  Save valid rows
-                </Button>
-              </div>
-            )}
+            ) : null}
+
+            <div className="mt-5 flex justify-end">
+              <Button type="button" onClick={commit} disabled={loading || validation.validRows.length === 0}>
+                <CheckCircle2 className="h-4 w-4" aria-hidden />
+                Save valid rows
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : null}

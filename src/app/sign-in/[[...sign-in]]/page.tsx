@@ -13,7 +13,18 @@ export default function SignInPage() {
           <AppLogo />
         </div>
         {hasClerk ? (
-          <SignIn />
+          <SignIn
+            forceRedirectUrl="/dashboard"
+            fallbackRedirectUrl="/dashboard"
+            appearance={{
+              elements: {
+                cardBox: "shadow-sm border border-border",
+                formButtonPrimary: "bg-brand hover:bg-brand-dark",
+                headerTitle: "text-slate-950",
+                headerSubtitle: "text-slate-500",
+              },
+            }}
+          />
         ) : (
           <Card className="p-6 text-center">
             <h1 className="text-xl font-semibold text-slate-950">Clerk is not configured</h1>
@@ -22,8 +33,8 @@ export default function SignInPage() {
               are not configured.
             </p>
             <div className="mt-5 flex justify-center gap-2">
-              <ButtonLink href="/student">Student</ButtonLink>
-              <ButtonLink href="/registrar" tone="secondary">
+              <ButtonLink href="/student/dashboard">Student</ButtonLink>
+              <ButtonLink href="/registrar/dashboard" tone="secondary">
                 Registrar
               </ButtonLink>
             </div>
@@ -33,4 +44,3 @@ export default function SignInPage() {
     </main>
   );
 }
-

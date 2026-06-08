@@ -1,11 +1,11 @@
-import { gradeImportTemplateCsv } from "@/lib/services/grade-import";
+import { gradeImportTemplateXlsx } from "@/lib/services/grade-import";
 
 export async function GET() {
-  return new Response(gradeImportTemplateCsv(), {
+  const bytes = gradeImportTemplateXlsx();
+  return new Response(new Uint8Array(bytes), {
     headers: {
-      "Content-Type": "text/csv",
-      "Content-Disposition": 'attachment; filename="lanhs-grade-import-template.csv"',
+      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": 'attachment; filename="lanhs-grade-import-template.xlsx"',
     },
   });
 }
-

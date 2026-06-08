@@ -50,7 +50,6 @@ export function StudentRecordForm({
       <CardContent>
         <form action={onSubmit} className="grid gap-4 md:grid-cols-2">
           <Field label="LRN" name="lrn" required />
-          <Field label="Student number" name="studentNumber" required />
           <Field label="First name" name="firstName" required />
           <Field label="Middle name" name="middleName" />
           <Field label="Last name" name="lastName" required />

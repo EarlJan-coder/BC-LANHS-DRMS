@@ -1,6 +1,6 @@
 import { DataTable } from "@/components/data-table";
 import { SectionHeading } from "@/components/section-heading";
-import { ButtonLink } from "@/components/ui/button";
+import { UserRoleActions } from "@/components/user-role-actions";
 import { listUserViews } from "@/lib/services/live-data";
 
 export default async function UserManagementPage() {
@@ -11,7 +11,6 @@ export default async function UserManagementPage() {
       <SectionHeading
         title="User management"
         description="Manage Clerk-linked application users and local role assignments."
-        actions={<ButtonLink href="/admin/roles" tone="secondary">Manage roles</ButtonLink>}
       />
       <DataTable
         rows={users}
@@ -21,6 +20,11 @@ export default async function UserManagementPage() {
           { key: "email", label: "Email", render: (row) => row.email },
           { key: "role", label: "Role", render: (row) => row.role },
           { key: "status", label: "Status", render: (row) => row.status },
+          {
+            key: "actions",
+            label: "Role / status",
+            render: (row) => <UserRoleActions userId={row.id} role={row.rawRole} status={row.rawStatus} />,
+          },
         ]}
       />
     </div>
