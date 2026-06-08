@@ -1,5 +1,6 @@
 import { BarChart3 } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
+import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getReportSummaryCards } from "@/lib/services/live-data";
 
@@ -8,7 +9,11 @@ export default async function ReportsPage() {
 
   return (
     <div>
-      <SectionHeading title="Reports" description="Registrar exports for school document and grade record workflows." />
+      <SectionHeading
+        title="Reports"
+        description="Registrar exports for school document, grade import, and certificate workflows."
+        actions={<ButtonLink href="/api/reports/summary" tone="secondary">Export CSV</ButtonLink>}
+      />
       <div className="grid gap-4 sm:grid-cols-2">
         {reports.map((report) => (
           <Card key={report.title} className="flex items-center gap-3 p-5">

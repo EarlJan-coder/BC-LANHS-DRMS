@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
+import { GenerateCertificateButton } from "@/components/generate-certificate-button";
 import { RequestStatusActions } from "@/components/request-status-actions";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBadge } from "@/components/status-badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getDocumentRequestView } from "@/lib/services/live-data";
+import { getDocumentRequestView, listRequestStatusHistoryViews } from "@/lib/services/live-data";
 
 export default async function RegistrarRequestDetailsPage({
   params,
@@ -17,6 +18,9 @@ export default async function RegistrarRequestDetailsPage({
   if (!request) {
     notFound();
   }
+
+  const timeline = await listRequestStatusHistoryViews(request.id);
+  const canGenerateCertificate = request.documentType.toLowerCase().includes("certificate of grades");
 
   return (
     <div>
@@ -34,12 +38,18 @@ export default async function RegistrarRequestDetailsPage({
           <CardContent className="grid gap-5">
             <div className="grid gap-3 sm:grid-cols-2">
               <Detail label="Student" value={request.studentName} />
+              <Detail label="LRN" value={request.lrn ?? "Not linked"} />
               <Detail label="Status" value={<StatusBadge status={request.status} />} />
+              <Detail label="School year needed" value={request.schoolYearNeeded} />
+              <Detail label="Grade level needed" value={request.gradeLevelNeeded} />
               <Detail label="Requested" value={request.requestedAt} />
               <Detail label="Updated" value={request.updatedAt} />
             </div>
             <Detail label="Purpose" value={request.purpose} />
+            <Detail label="Student remarks" value={request.remarks} />
+            <Detail label="Registrar remarks" value={request.registrarRemarks} />
             <RequestStatusActions requestId={request.id} />
+            {canGenerateCertificate ? <GenerateCertificateButton requestId={request.id} /> : null}
           </CardContent>
         </Card>
 
@@ -56,6 +66,29 @@ export default async function RegistrarRequestDetailsPage({
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Status timeline</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          {timeline.length === 0 ? (
+            <p className="text-sm text-slate-500">No status changes recorded yet.</p>
+          ) : (
+            timeline.map((item) => (
+              <div key={item.id} className="rounded-md border border-border p-4">
+                <p className="text-sm font-semibold text-slate-950">
+                  {String(item.oldStatus).replaceAll("_", " ")} {"->"} {String(item.newStatus).replaceAll("_", " ")}
+                </p>
+                <p className="mt-1 text-sm text-slate-600">{item.remarks}</p>
+                <p className="mt-2 text-xs text-slate-500">
+                  {item.createdAt} by {item.changedBy}
+                </p>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

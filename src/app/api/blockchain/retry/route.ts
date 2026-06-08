@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { readAuditCount } from "@/lib/blockchain/client";
+import { retryPendingBlockchainLogs } from "@/lib/services/audit-log";
 
 export async function POST() {
   try {
+    const retry = await retryPendingBlockchainLogs();
     const auditCount = await readAuditCount();
     return NextResponse.json({
-      message: "Retry worker scaffold is ready. Query pending blockchain_audit_logs and resubmit in a scheduled job.",
+      message: "Pending blockchain proofs processed.",
+      retry,
       auditCount,
     });
   } catch (error) {
@@ -15,4 +18,3 @@ export async function POST() {
     );
   }
 }
-

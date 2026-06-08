@@ -8,11 +8,11 @@ const { loadEnvConfig } = require("@next/env") as typeof import("@next/env");
 loadEnvConfig(process.cwd());
 
 async function main() {
-  const rpcUrl = process.env.BLOCKCHAIN_RPC_URL;
+  const rpcUrl = process.env.BLOCKCHAIN_RPC_URL ?? process.env.SEPOLIA_RPC_URL;
   const privateKey = process.env.BLOCKCHAIN_PRIVATE_KEY;
 
   if (!rpcUrl || !privateKey) {
-    throw new Error("Set BLOCKCHAIN_RPC_URL and BLOCKCHAIN_PRIVATE_KEY before deploying.");
+    throw new Error("Set BLOCKCHAIN_RPC_URL or SEPOLIA_RPC_URL plus BLOCKCHAIN_PRIVATE_KEY before deploying.");
   }
 
   const artifactPath = "artifacts/contracts/DocumentRequestAudit.sol/DocumentRequestAudit.json";

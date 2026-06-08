@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { DataTable } from "@/components/data-table";
 import { SectionHeading } from "@/components/section-heading";
 import { StudentRecordForm } from "@/components/student-record-form";
@@ -11,7 +12,7 @@ export default async function StudentRecordsPage() {
     <div>
       <SectionHeading
         title="Student records"
-        description="Search and validate student and alumni records by LRN or student number."
+        description="Search and validate student and alumni records by LRN."
         actions={<ButtonLink href="/registrar/reports" tone="secondary">Export report</ButtonLink>}
       />
       <div className="mb-6">
@@ -22,8 +23,15 @@ export default async function StudentRecordsPage() {
         emptyMessage="No student records found. Add records or import source data first."
         columns={[
           { key: "lrn", label: "LRN", render: (row) => row.lrn },
-          { key: "studentNumber", label: "Student no.", render: (row) => row.studentNumber },
-          { key: "name", label: "Name", render: (row) => row.name },
+          {
+            key: "name",
+            label: "Name",
+            render: (row) => (
+              <Link href={`/registrar/students/${row.id}`} prefetch={false} className="font-medium text-brand">
+                {row.name}
+              </Link>
+            ),
+          },
           { key: "grade", label: "Grade level", render: (row) => row.gradeLevel },
           { key: "section", label: "Section", render: (row) => row.section },
           { key: "status", label: "Status", render: (row) => row.status },

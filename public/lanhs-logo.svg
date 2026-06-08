@@ -1,10 +1,12 @@
-<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="160" height="160" rx="24" fill="#991B1B"/>
-  <circle cx="80" cy="68" r="42" fill="#FFFFFF"/>
-  <circle cx="80" cy="68" r="33" fill="#FFE4E6"/>
-  <path d="M80 31L90 57H118L95 73L104 100L80 84L56 100L65 73L42 57H70L80 31Z" fill="#991B1B"/>
-  <rect x="35" y="111" width="90" height="15" rx="7.5" fill="#FFFFFF"/>
-  <text x="80" y="123" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-weight="700" fill="#991B1B">LANHS</text>
-  <path d="M38 132H122" stroke="#FFE4E6" stroke-width="4" stroke-linecap="round"/>
+<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Luis Aguado National High School seal">
+  <circle cx="90" cy="90" r="85" fill="#FFFFFF" stroke="#B91C1C" stroke-width="5"/>
+  <circle cx="90" cy="90" r="68" fill="#FFFFFF" stroke="#B91C1C" stroke-width="3"/>
+  <path d="M31 87a59 59 0 0 1 118 0" stroke="#B91C1C" stroke-width="6" stroke-linecap="round" stroke-dasharray="3 8"/>
+  <path d="M45 124a58 58 0 0 0 90 0" stroke="#B91C1C" stroke-width="6" stroke-linecap="round"/>
+  <path d="M62 83c10-10 20-16 28-29 8 13 18 19 28 29-6 9-15 15-28 20-13-5-22-11-28-20Z" fill="#FEE2E2" stroke="#B91C1C" stroke-width="3"/>
+  <path d="M90 43c7 10 10 19 4 29 10-6 15-1 16 8 0 13-10 23-20 23S70 93 70 80c1-9 6-14 16-8-6-10-3-19 4-29Z" fill="#B91C1C"/>
+  <path d="M58 111c9 9 20 14 32 14s23-5 32-14" stroke="#B91C1C" stroke-width="5" stroke-linecap="round"/>
+  <text x="90" y="31" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#B91C1C">LUIS AGUADO</text>
+  <text x="90" y="151" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#B91C1C">NATIONAL HIGH SCHOOL</text>
+  <text x="90" y="165" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#B91C1C">2007</text>
 </svg>
-

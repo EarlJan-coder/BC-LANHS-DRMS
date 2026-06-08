@@ -1,7 +1,7 @@
 import { ShieldCheck } from "lucide-react";
 import { DataTable } from "@/components/data-table";
+import { RetryBlockchainButton } from "@/components/retry-blockchain-button";
 import { SectionHeading } from "@/components/section-heading";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { listAuditTrailViews } from "@/lib/services/live-data";
 
@@ -19,7 +19,7 @@ export default async function BlockchainAuditTrailPage() {
           <ShieldCheck className="h-5 w-5 text-brand" aria-hidden />
           <p className="text-sm text-slate-600">Only non-sensitive reference data and hashes are stored on-chain.</p>
         </div>
-        <Button type="button" tone="secondary">Retry pending proofs</Button>
+        <RetryBlockchainButton />
       </Card>
       <DataTable
         rows={auditTrail}

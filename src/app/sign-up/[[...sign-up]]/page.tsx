@@ -13,7 +13,18 @@ export default function SignUpPage() {
           <AppLogo />
         </div>
         {hasClerk ? (
-          <SignUp />
+          <SignUp
+            forceRedirectUrl="/dashboard"
+            fallbackRedirectUrl="/dashboard"
+            appearance={{
+              elements: {
+                cardBox: "shadow-sm border border-border",
+                formButtonPrimary: "bg-brand hover:bg-brand-dark",
+                headerTitle: "text-slate-950",
+                headerSubtitle: "text-slate-500",
+              },
+            }}
+          />
         ) : (
           <Card className="p-6 text-center">
             <h1 className="text-xl font-semibold text-slate-950">Registration needs Clerk keys</h1>
@@ -29,4 +40,3 @@ export default function SignUpPage() {
     </main>
   );
 }
-

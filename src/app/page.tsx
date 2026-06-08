@@ -1,20 +1,27 @@
-import { ArrowRight, Blocks, FileCheck2, ShieldCheck, UploadCloud } from "lucide-react";
+import { ArrowRight, Blocks, FileCheck2, ShieldCheck, UploadCloud, UsersRound } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { AppLogo } from "@/components/layout/app-logo";
+import { MotionReveal } from "@/components/motion-reveal";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SCHOOL_NAME } from "@/lib/constants";
 
-const workflows = [
+const features = [
   {
     icon: FileCheck2,
     title: "Online document requests",
-    copy: "Students and alumni submit requests, receive tracking numbers, and follow status updates.",
+    copy: "Students and alumni submit requests, receive tracking numbers, and monitor status updates.",
   },
   {
     icon: UploadCloud,
-    title: "Bulk grade import",
-    copy: "Registrar staff validate Excel or CSV grade files before records are saved.",
+    title: "XLSX grade import",
+    copy: "Registrar staff validate spreadsheet rows, review errors, and save only clean grade records.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Certificate verification",
+    copy: "Certificate of Grades PDFs include QR codes for public non-sensitive verification.",
   },
   {
     icon: Blocks,
@@ -41,67 +48,89 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8 lg:py-14">
-        <div className="flex flex-col justify-center">
-          <p className="text-sm font-semibold uppercase text-brand">{SCHOOL_NAME}</p>
-          <h1 className="mt-3 max-w-3xl text-4xl font-semibold text-slate-950 sm:text-5xl">
-            Student Records and Document Request Management System
-          </h1>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600">
-            A full-stack school registrar system for document requests, grade records, certificate preparation,
-            staff workflows, and privacy-preserving blockchain audit logs.
-          </p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <ButtonLink href="/student">
-              Student dashboard
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </ButtonLink>
-            <ButtonLink href="/registrar" tone="secondary">
-              Registrar workspace
-            </ButtonLink>
-            <ButtonLink href="/admin" tone="secondary">
-              Admin console
-            </ButtonLink>
-          </div>
-        </div>
-
-        <Card className="p-5">
-          <div className="rounded-lg bg-brand p-5 text-white">
-            <div className="flex items-center gap-3">
-              <ShieldCheck className="h-8 w-8" aria-hidden />
-              <div>
-                <p className="text-sm font-medium text-rose-100">Current workflow</p>
-                <p className="text-xl font-semibold">Request LANHS-20260603-A8K2Q</p>
+      <section className="relative overflow-hidden bg-brand text-white">
+        <Image
+          src="/lanhs-logo.svg"
+          alt=""
+          width={520}
+          height={520}
+          className="pointer-events-none absolute -right-20 top-4 hidden opacity-10 lg:block"
+          priority
+        />
+        <div className="mx-auto grid min-h-[580px] max-w-7xl content-center gap-8 px-4 py-16 sm:px-6 lg:px-8">
+          <MotionReveal>
+            <div className="max-w-4xl">
+              <p className="text-sm font-semibold uppercase text-rose-100">{SCHOOL_NAME}</p>
+              <h1 className="mt-4 text-4xl font-semibold leading-tight sm:text-5xl lg:text-6xl">
+                Student Records and Document Request Management System
+              </h1>
+              <p className="mt-5 max-w-2xl text-base leading-7 text-rose-50">
+                A secure registrar portal for online school document requests, grade records, Certificate of Grades
+                PDFs, email notifications, QR verification, and blockchain-backed audit proofs.
+              </p>
+              <div className="mt-7 flex flex-wrap gap-3">
+                <ButtonLink href="/sign-in" tone="secondary" className="bg-white text-brand hover:bg-rose-50">
+                  Login to portal
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </ButtonLink>
+                <ButtonLink href="/sign-up" className="bg-brand-dark hover:bg-red-950">
+                  Register account
+                </ButtonLink>
               </div>
             </div>
-            <div className="mt-6 grid gap-3">
-              {["Submitted", "Under Review", "Approved", "Ready for Pickup"].map((step, index) => (
-                <div key={step} className="flex items-center gap-3 rounded-md bg-white/10 px-3 py-3">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-sm font-semibold text-brand">
+          </MotionReveal>
+          <MotionReveal delay={0.12}>
+            <div className="grid max-w-4xl gap-3 sm:grid-cols-3">
+              {["Submit request", "Registrar validates", "PDF with QR proof"].map((step, index) => (
+                <div key={step} className="rounded-lg border border-white/20 bg-white/10 p-4 backdrop-blur">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm font-bold text-brand">
                     {index + 1}
                   </span>
-                  <span className="text-sm font-medium">{step}</span>
+                  <p className="mt-3 text-sm font-semibold">{step}</p>
                 </div>
               ))}
             </div>
-          </div>
-        </Card>
+          </MotionReveal>
+        </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-4 px-4 pb-12 sm:px-6 md:grid-cols-3 lg:px-8">
-        {workflows.map((item) => {
+      <section className="mx-auto grid max-w-7xl gap-4 px-4 py-10 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-8">
+        {features.map((item, index) => {
           const Icon = item.icon;
 
           return (
-            <Card key={item.title} className="p-5">
-              <Icon className="h-6 w-6 text-brand" aria-hidden />
-              <h2 className="mt-4 text-base font-semibold text-slate-950">{item.title}</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">{item.copy}</p>
-            </Card>
+            <MotionReveal key={item.title} delay={0.05 * index}>
+              <Card className="h-full p-5">
+                <Icon className="h-6 w-6 text-brand" aria-hidden />
+                <h2 className="mt-4 text-base font-semibold text-slate-950">{item.title}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-500">{item.copy}</p>
+              </Card>
+            </MotionReveal>
           );
         })}
+      </section>
+
+      <section className="border-y border-border bg-white">
+        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-10 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
+          <div>
+            <div className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-rose-50 text-brand">
+              <UsersRound className="h-5 w-5" aria-hidden />
+            </div>
+            <h2 className="mt-4 text-2xl font-semibold text-slate-950">Built around real registrar workflows</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              The portal separates student, registrar, and administrator responsibilities so each user sees the tools
+              they need and nothing noisy.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {["Student requests", "Grade import preview", "Certificate verification"].map((item) => (
+              <div key={item} className="rounded-lg border border-border bg-slate-50 p-4 text-sm font-medium text-slate-700">
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
     </main>
   );
 }
-

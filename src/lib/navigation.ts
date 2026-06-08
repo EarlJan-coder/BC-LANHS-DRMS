@@ -2,14 +2,14 @@ import type { DashboardRole } from "./types";
 
 export const navigationByRole: Record<DashboardRole, Array<{ label: string; href: string; icon: string }>> = {
   student: [
-    { label: "Dashboard", href: "/student", icon: "LayoutDashboard" },
+    { label: "Dashboard", href: "/student/dashboard", icon: "LayoutDashboard" },
     { label: "Submit request", href: "/student/requests/new", icon: "FilePlus" },
     { label: "My requests", href: "/student/requests", icon: "Files" },
-    { label: "Profile", href: "/student/profile", icon: "UserRound" },
     { label: "Notifications", href: "/student/notifications", icon: "Bell" },
+    { label: "Profile", href: "/student/profile", icon: "UserRound" },
   ],
   registrar: [
-    { label: "Dashboard", href: "/registrar", icon: "LayoutDashboard" },
+    { label: "Dashboard", href: "/registrar/dashboard", icon: "LayoutDashboard" },
     { label: "Requests", href: "/registrar/requests", icon: "Inbox" },
     { label: "Student records", href: "/registrar/students", icon: "GraduationCap" },
     { label: "Grade management", href: "/registrar/grades", icon: "BookOpenCheck" },
@@ -19,15 +19,14 @@ export const navigationByRole: Record<DashboardRole, Array<{ label: string; href
     { label: "Audit logs", href: "/registrar/audit-logs", icon: "ShieldCheck" },
   ],
   admin: [
-    { label: "Dashboard", href: "/admin", icon: "LayoutDashboard" },
+    { label: "Dashboard", href: "/admin/dashboard", icon: "LayoutDashboard" },
     { label: "Users", href: "/admin/users", icon: "Users" },
-    { label: "Roles", href: "/admin/roles", icon: "KeyRound" },
     { label: "Document types", href: "/admin/document-types", icon: "FileText" },
     { label: "School years", href: "/admin/school-years", icon: "CalendarDays" },
     { label: "Grade levels", href: "/admin/grade-levels", icon: "PanelsTopLeft" },
+    { label: "Sections", href: "/admin/sections", icon: "Blocks" },
     { label: "Subjects", href: "/admin/subjects", icon: "Library" },
     { label: "Blockchain trail", href: "/admin/blockchain", icon: "Blocks" },
     { label: "Settings", href: "/admin/settings", icon: "Settings" },
   ],
 };
-

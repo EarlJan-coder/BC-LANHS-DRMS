@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 contract DocumentRequestAudit {
     struct AuditRecord {
+        string referenceType;
         string referenceId;
         string action;
         string actorRole;
@@ -14,6 +15,7 @@ contract DocumentRequestAudit {
 
     event AuditRecordAdded(
         uint256 indexed index,
+        string referenceType,
         string referenceId,
         string action,
         string actorRole,
@@ -22,6 +24,7 @@ contract DocumentRequestAudit {
     );
 
     function addAuditRecord(
+        string calldata referenceType,
         string calldata referenceId,
         string calldata action,
         string calldata actorRole,
@@ -29,6 +32,7 @@ contract DocumentRequestAudit {
     ) external {
         auditRecords.push(
             AuditRecord({
+                referenceType: referenceType,
                 referenceId: referenceId,
                 action: action,
                 actorRole: actorRole,
@@ -37,7 +41,15 @@ contract DocumentRequestAudit {
             })
         );
 
-        emit AuditRecordAdded(auditRecords.length - 1, referenceId, action, actorRole, recordHash, block.timestamp);
+        emit AuditRecordAdded(
+            auditRecords.length - 1,
+            referenceType,
+            referenceId,
+            action,
+            actorRole,
+            recordHash,
+            block.timestamp
+        );
     }
 
     function getAuditCount() external view returns (uint256) {
@@ -45,6 +57,7 @@ contract DocumentRequestAudit {
     }
 
     function getAuditRecord(uint256 index) external view returns (
+        string memory referenceType,
         string memory referenceId,
         string memory action,
         string memory actorRole,
@@ -52,7 +65,13 @@ contract DocumentRequestAudit {
         uint256 timestamp
     ) {
         AuditRecord storage record = auditRecords[index];
-        return (record.referenceId, record.action, record.actorRole, record.recordHash, record.timestamp);
+        return (
+            record.referenceType,
+            record.referenceId,
+            record.action,
+            record.actorRole,
+            record.recordHash,
+            record.timestamp
+        );
     }
 }
-

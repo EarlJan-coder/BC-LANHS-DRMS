@@ -13,14 +13,19 @@ export type NavigationItem = {
   icon: string;
 };
 
-export type DashboardRole = UserRole;
+export type DashboardRole = "student" | "registrar" | "admin";
 
 export type DocumentRequestView = {
   id: string;
   trackingNumber: string;
+  lrn?: string;
   studentName: string;
   documentType: string;
   purpose: string;
+  schoolYearNeeded: string;
+  gradeLevelNeeded: string;
+  remarks: string;
+  registrarRemarks: string;
   status: RequestStatus;
   requestedAt: string;
   updatedAt: string;
@@ -41,7 +46,6 @@ export type AuditTrailView = {
 export type StudentView = {
   id: string;
   lrn: string;
-  studentNumber: string;
   name: string;
   gradeLevel: string;
   section: string;
@@ -53,7 +57,9 @@ export type UserView = {
   name: string;
   email: string;
   role: string;
+  rawRole: UserRole;
   status: string;
+  rawStatus: string;
 };
 
 export type DocumentTypeView = {
@@ -88,8 +94,14 @@ export type SubjectView = {
 
 export type GradeRecordView = {
   id: string;
+  studentId?: string;
   studentName: string;
   subject: string;
+  subjectCode?: string;
+  quarter1?: string;
+  quarter2?: string;
+  quarter3?: string;
+  quarter4?: string;
   finalGrade: string;
   remarks: string;
   schoolYear: string;
@@ -99,19 +111,21 @@ export type StudentProfileView = {
   name: string;
   email: string;
   lrn: string;
-  studentNumber: string;
   gradeAndSection: string;
   contactNumber: string;
   guardian: string;
+  address: string;
 };
 
 export type GradeImportRow = {
   lrn: string;
-  studentNumber: string;
+  firstName: string;
+  lastName: string;
   schoolYear: string;
   gradeLevel: string;
   section: string;
-  subject: string;
+  subjectCode: string;
+  subjectName: string;
   quarter1: number | null;
   quarter2: number | null;
   quarter3: number | null;
@@ -124,6 +138,7 @@ export type GradeImportError = {
   rowNumber: number;
   fieldName: string;
   message: string;
+  rawData?: Record<string, unknown>;
 };
 
 export type GradeImportValidation = {
@@ -131,4 +146,27 @@ export type GradeImportValidation = {
   validRows: GradeImportRow[];
   errors: GradeImportError[];
   duplicateKeys: string[];
+};
+
+export type CertificateView = {
+  id: string;
+  certificateNumber: string;
+  certificateType: string;
+  studentName: string;
+  schoolYear: string;
+  verificationCode: string;
+  verificationUrl: string;
+  blockchainStatus: string;
+  blockchainTxHash: string;
+  generatedAt: string;
+};
+
+export type CertificateVerificationView = {
+  valid: boolean;
+  certificateNumber?: string;
+  studentDisplayName?: string;
+  certificateType?: string;
+  issuedAt?: string;
+  issuingSchool?: string;
+  blockchainTxHash?: string;
 };

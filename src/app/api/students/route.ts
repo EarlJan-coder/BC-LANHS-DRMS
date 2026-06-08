@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { getDb } from "@/db";
 import { students } from "@/db/schema";
+import { clerkConfigured, getCurrentRole } from "@/lib/auth";
 import { listStudentViews } from "@/lib/services/live-data";
 import { studentRecordSchema } from "@/lib/validators";
 
@@ -11,6 +12,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const role = await getCurrentRole();
+    if (clerkConfigured() && role !== "registrar" && role !== "admin") {
+      return NextResponse.json({ error: "Registrar access is required." }, { status: 403 });
+    }
+
     const body = await request.json();
     const values = studentRecordSchema.parse(body);
     const db = getDb();
@@ -19,7 +25,6 @@ export async function POST(request: Request) {
       .insert(students)
       .values({
         lrn: values.lrn,
-        studentNumber: values.studentNumber,
         firstName: values.firstName,
         middleName: values.middleName || undefined,
         lastName: values.lastName,
@@ -46,4 +51,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

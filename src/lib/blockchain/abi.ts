@@ -4,6 +4,7 @@ export const DOCUMENT_REQUEST_AUDIT_ABI = [
     name: "addAuditRecord",
     stateMutability: "nonpayable",
     inputs: [
+      { name: "referenceType", type: "string" },
       { name: "referenceId", type: "string" },
       { name: "action", type: "string" },
       { name: "actorRole", type: "string" },
@@ -24,6 +25,7 @@ export const DOCUMENT_REQUEST_AUDIT_ABI = [
     stateMutability: "view",
     inputs: [{ name: "index", type: "uint256" }],
     outputs: [
+      { name: "referenceType", type: "string" },
       { name: "referenceId", type: "string" },
       { name: "action", type: "string" },
       { name: "actorRole", type: "string" },
@@ -36,6 +38,7 @@ export const DOCUMENT_REQUEST_AUDIT_ABI = [
     name: "AuditRecordAdded",
     inputs: [
       { name: "index", type: "uint256", indexed: true },
+      { name: "referenceType", type: "string", indexed: false },
       { name: "referenceId", type: "string", indexed: false },
       { name: "action", type: "string", indexed: false },
       { name: "actorRole", type: "string", indexed: false },
@@ -45,4 +48,3 @@ export const DOCUMENT_REQUEST_AUDIT_ABI = [
     anonymous: false,
   },
 ] as const;
-
