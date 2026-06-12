@@ -20,7 +20,6 @@ export default async function RegistrarRequestDetailsPage({
   }
 
   const timeline = await listRequestStatusHistoryViews(request.id);
-  const canGenerateCertificate = request.documentType.toLowerCase().includes("certificate of grades");
 
   return (
     <div>
@@ -49,7 +48,7 @@ export default async function RegistrarRequestDetailsPage({
             <Detail label="Student remarks" value={request.remarks} />
             <Detail label="Registrar remarks" value={request.registrarRemarks} />
             <RequestStatusActions requestId={request.id} />
-            {canGenerateCertificate ? <GenerateCertificateButton requestId={request.id} /> : null}
+            <GenerateCertificateButton requestId={request.id} documentType={request.documentType} />
           </CardContent>
         </Card>
 

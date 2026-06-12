@@ -721,7 +721,7 @@ export async function getReportSummaryCards() {
     { title: "Request summary", value: String(requestCount.value), helper: "Total document requests" },
     { title: "Claimed documents", value: String(claimedCount.value), helper: "Completed registrar releases" },
     { title: "Grade import batches", value: String(batchCount.value), helper: "Validated and saved imports" },
-    { title: "Generated certificates", value: String(certificateCount.value), helper: "Certificate of Grades PDFs" },
+    { title: "Generated certificates", value: String(certificateCount.value), helper: "School document PDFs" },
     { title: "Student records", value: String(studentCount.value), helper: "Students and alumni in database" },
   ];
 }
