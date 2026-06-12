@@ -1,4 +1,4 @@
-import { Bell, Download, FileText } from "lucide-react";
+import { Bell, Download, FileDown, FileText } from "lucide-react";
 import { DashboardCard } from "@/components/dashboard-card";
 import { DataTable } from "@/components/data-table";
 import { SectionHeading } from "@/components/section-heading";
@@ -38,6 +38,21 @@ export default async function StudentDashboardPage() {
             { key: "type", label: "Document", render: (row) => row.documentType },
             { key: "status", label: "Status", render: (row) => <StatusBadge status={row.status} /> },
             { key: "updated", label: "Updated", render: (row) => row.updatedAt },
+            {
+              key: "slip",
+              label: "Slip",
+              render: (row) => (
+                <ButtonLink
+                  href={`/api/document-requests/${row.id}/slip`}
+                  tone="secondary"
+                  size="icon"
+                  aria-label={`Download request slip for ${row.trackingNumber}`}
+                  download
+                >
+                  <FileDown className="h-4 w-4" aria-hidden />
+                </ButtonLink>
+              ),
+            },
           ]}
         />
 

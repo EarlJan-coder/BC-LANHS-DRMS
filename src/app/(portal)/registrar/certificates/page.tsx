@@ -12,7 +12,7 @@ export default async function CertificatesPage() {
     <div>
       <SectionHeading
         title="Certificates"
-        description="Generated Certificate of Grades PDFs, QR verification links, and blockchain proof status."
+        description="Generated school document PDFs, QR verification links, and blockchain proof status."
       />
       <DataTable
         rows={certificates}

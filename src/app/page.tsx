@@ -21,7 +21,7 @@ const features = [
   {
     icon: ShieldCheck,
     title: "Certificate verification",
-    copy: "Certificate of Grades PDFs include QR codes for public non-sensitive verification.",
+    copy: "Generated school document PDFs include QR codes for public non-sensitive verification.",
   },
   {
     icon: Blocks,
@@ -50,7 +50,7 @@ export default function Home() {
 
       <section className="relative overflow-hidden bg-brand text-white">
         <Image
-          src="/lanhs-logo.svg"
+          src="/lanhs-logo.png"
           alt=""
           width={520}
           height={520}
@@ -65,8 +65,8 @@ export default function Home() {
                 Student Records and Document Request Management System
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-rose-50">
-                A secure registrar portal for online school document requests, grade records, Certificate of Grades
-                PDFs, email notifications, QR verification, and blockchain-backed audit proofs.
+                A secure registrar portal for online school document requests, grade records, branded PDF generation,
+                email notifications, QR verification, and blockchain-backed audit proofs.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <ButtonLink href="/sign-in" tone="secondary" className="bg-white text-brand hover:bg-rose-50">

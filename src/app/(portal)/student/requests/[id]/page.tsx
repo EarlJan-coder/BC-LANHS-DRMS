@@ -1,3 +1,4 @@
+import { FileDown } from "lucide-react";
 import { notFound } from "next/navigation";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBadge } from "@/components/status-badge";
@@ -24,7 +25,15 @@ export default async function StudentRequestDetailsPage({
       <SectionHeading
         title="Request details"
         description={request.trackingNumber}
-        actions={<ButtonLink href="/student/requests" tone="secondary">Back to requests</ButtonLink>}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <ButtonLink href={`/api/document-requests/${request.id}/slip`} download>
+              <FileDown className="h-4 w-4" aria-hidden />
+              Download slip
+            </ButtonLink>
+            <ButtonLink href="/student/requests" tone="secondary">Back to requests</ButtonLink>
+          </div>
+        }
       />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">

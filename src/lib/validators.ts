@@ -59,7 +59,7 @@ export const certificateGenerateSchema = z.object({
   requestId: z.string().uuid().optional(),
   studentId: z.string().uuid().optional(),
   schoolYearId: z.string().uuid().optional(),
-  certificateType: z.string().min(2).default("Certificate of Grades"),
+  certificateType: z.string().min(2).optional(),
 });
 
 export const userRoleUpdateSchema = z.object({

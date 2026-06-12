@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { getDb } from "@/db";
@@ -11,6 +11,74 @@ const profileUpdateSchema = z.object({
   guardianName: z.string().trim().optional(),
   address: z.string().trim().optional(),
 });
+
+type ProfileValues = z.infer<typeof profileUpdateSchema>;
+type CurrentDbUser = NonNullable<Awaited<ReturnType<typeof ensureCurrentDbUser>>>;
+
+function isPostgresError(error: unknown, code: string, text?: string) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === code &&
+    (!text || String((error as { message?: unknown }).message ?? "").includes(text))
+  );
+}
+
+async function hasLegacyStudentNumberColumn(db: ReturnType<typeof getDb>) {
+  const rows = await db.execute<{ exists: boolean }>(sql`
+    select exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'students'
+        and column_name = 'student_number'
+    ) as "exists"
+  `);
+
+  return Boolean(rows[0]?.exists);
+}
+
+async function createStudentProfile(db: ReturnType<typeof getDb>, user: CurrentDbUser, values: ProfileValues) {
+  if (await hasLegacyStudentNumberColumn(db)) {
+    await db.execute(sql`
+      insert into students (
+        user_id,
+        lrn,
+        student_number,
+        first_name,
+        last_name,
+        email,
+        contact_number,
+        guardian_name,
+        address
+      )
+      values (
+        ${user.id},
+        ${values.lrn},
+        ${values.lrn},
+        ${user.firstName},
+        ${user.lastName},
+        ${user.email},
+        ${values.contactNumber ?? null},
+        ${values.guardianName ?? null},
+        ${values.address ?? null}
+      )
+    `);
+    return;
+  }
+
+  await db.insert(students).values({
+    userId: user.id,
+    lrn: values.lrn,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    contactNumber: values.contactNumber,
+    guardianName: values.guardianName,
+    address: values.address,
+  });
+}
 
 export async function PATCH(request: Request) {
   try {
@@ -62,22 +130,24 @@ export async function PATCH(request: Request) {
         })
         .where(eq(students.id, lrnOwner.id));
     } else {
-      await db.insert(students).values({
-        userId: user.id,
-        lrn: values.lrn,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        contactNumber: values.contactNumber,
-        guardianName: values.guardianName,
-        address: values.address,
-      });
+      await createStudentProfile(db, user, values);
     }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message ?? "Invalid profile data." }, { status: 400 });
+    }
+
+    if (isPostgresError(error, "23505", "students_lrn_idx")) {
+      return NextResponse.json({ error: "This LRN already belongs to another student record." }, { status: 409 });
+    }
+
+    if (isPostgresError(error, "23502", "student_number")) {
+      return NextResponse.json(
+        { error: "The database still has the old student number column. Run npm run db:migrate, then try again." },
+        { status: 409 },
+      );
     }
 
     return NextResponse.json(

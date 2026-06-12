@@ -6,12 +6,18 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
-export function GenerateCertificateButton({ requestId }: { requestId: string }) {
+export function GenerateCertificateButton({
+  requestId,
+  documentType,
+}: {
+  requestId: string;
+  documentType: string;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   async function generate() {
-    if (!window.confirm("Generate Certificate of Grades for this request?")) {
+    if (!window.confirm(`Generate a downloadable ${documentType} PDF for this request?`)) {
       return;
     }
 
@@ -19,7 +25,7 @@ export function GenerateCertificateButton({ requestId }: { requestId: string }) 
     const response = await fetch("/api/certificates", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ requestId, certificateType: "Certificate of Grades" }),
+      body: JSON.stringify({ requestId, certificateType: documentType }),
     });
     const data = await response.json();
     setLoading(false);
