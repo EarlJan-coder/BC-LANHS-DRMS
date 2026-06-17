@@ -46,8 +46,18 @@ export type AuditTrailView = {
 export type StudentView = {
   id: string;
   lrn: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  suffix: string;
   name: string;
+  contactNumber: string;
+  guardianName: string;
+  guardianContact: string;
+  address: string;
+  gradeLevelId: string;
   gradeLevel: string;
+  sectionId: string;
   section: string;
   status: string;
 };

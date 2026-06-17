@@ -11,6 +11,7 @@ import { Input, Label, Select, Textarea } from "@/components/ui/input";
 type Option = {
   id: string;
   name: string;
+  gradeLevelId?: string | null;
 };
 
 export function StudentRecordForm({
@@ -22,6 +23,11 @@ export function StudentRecordForm({
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [selectedGradeLevelId, setSelectedGradeLevelId] = useState("");
+  const [selectedSectionId, setSelectedSectionId] = useState("");
+  const filteredSections = selectedGradeLevelId
+    ? sections.filter((section) => !section.gradeLevelId || section.gradeLevelId === selectedGradeLevelId)
+    : [];
 
   async function onSubmit(formData: FormData) {
     setLoading(true);
@@ -56,7 +62,15 @@ export function StudentRecordForm({
           <Field label="Suffix" name="suffix" />
           <div className="grid gap-2">
             <Label htmlFor="gradeLevelId">Grade level</Label>
-            <Select id="gradeLevelId" name="gradeLevelId" defaultValue="">
+            <Select
+              id="gradeLevelId"
+              name="gradeLevelId"
+              value={selectedGradeLevelId}
+              onChange={(event) => {
+                setSelectedGradeLevelId(event.target.value);
+                setSelectedSectionId("");
+              }}
+            >
               <option value="">Not assigned</option>
               {gradeLevels.map((option) => (
                 <option key={option.id} value={option.id}>
@@ -67,9 +81,15 @@ export function StudentRecordForm({
           </div>
           <div className="grid gap-2">
             <Label htmlFor="sectionId">Section</Label>
-            <Select id="sectionId" name="sectionId" defaultValue="">
-              <option value="">Not assigned</option>
-              {sections.map((option) => (
+            <Select
+              id="sectionId"
+              name="sectionId"
+              value={selectedSectionId}
+              onChange={(event) => setSelectedSectionId(event.target.value)}
+              disabled={!selectedGradeLevelId}
+            >
+              <option value="">{selectedGradeLevelId ? "Not assigned" : "Select a grade level first"}</option>
+              {filteredSections.map((option) => (
                 <option key={option.id} value={option.id}>
                   {option.name}
                 </option>
@@ -85,6 +105,7 @@ export function StudentRecordForm({
               <option value="enrolled">Enrolled</option>
               <option value="alumni">Alumni</option>
               <option value="transferred">Transferred</option>
+              <option value="inactive">Inactive</option>
             </Select>
           </div>
           <div className="grid gap-2 md:col-span-2">

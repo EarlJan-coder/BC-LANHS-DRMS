@@ -14,6 +14,7 @@ export const navigationByRole: Record<DashboardRole, Array<{ label: string; href
     { label: "Student records", href: "/registrar/students", icon: "GraduationCap" },
     { label: "Grade management", href: "/registrar/grades", icon: "BookOpenCheck" },
     { label: "Bulk import", href: "/registrar/grades/import", icon: "UploadCloud" },
+    { label: "Academic setup", href: "/registrar/academic-setup", icon: "Library" },
     { label: "Certificates", href: "/registrar/certificates", icon: "FileBadge" },
     { label: "Reports", href: "/registrar/reports", icon: "BarChart3" },
     { label: "Audit logs", href: "/registrar/audit-logs", icon: "ShieldCheck" },
