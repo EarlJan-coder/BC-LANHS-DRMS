@@ -2,7 +2,7 @@ import { count, eq, sql } from "drizzle-orm";
 import type { z } from "zod";
 import { getDb } from "@/db";
 import { certificates, documentRequests, gradeLevels, sections, studentGrades, students } from "@/db/schema";
-import { clerkConfigured, getCurrentRole } from "@/lib/auth";
+import { getCurrentRole } from "@/lib/auth";
 import { studentRecordSchema } from "@/lib/validators";
 
 export class StudentRecordError extends Error {
@@ -53,7 +53,7 @@ export function isPostgresError(error: unknown, code: string, text?: string) {
 export async function assertStudentRecordAccess() {
   const role = await getCurrentRole();
 
-  if (clerkConfigured() && role !== "registrar" && role !== "admin") {
+  if (role !== "registrar" && role !== "admin") {
     throw new StudentRecordError("Registrar access is required.", 403);
   }
 
@@ -180,6 +180,12 @@ export async function createStudentRecord(values: StudentRecordValues) {
 
 export async function updateStudentRecord(id: string, values: StudentRecordValues) {
   const db = getDb();
+  const [existing] = await db.select({ id: students.id }).from(students).where(eq(students.id, id)).limit(1);
+
+  if (!existing) {
+    throw new StudentRecordError("Student record not found.", 404);
+  }
+
   await ensureStudentRecordReferences(values, id);
 
   if (await hasLegacyStudentNumberColumn(db)) {

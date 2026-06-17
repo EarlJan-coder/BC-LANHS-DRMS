@@ -155,11 +155,28 @@ export function StudentRecordActions({
 
             <form action={onSubmit}>
               <div className="grid max-h-[calc(100vh-14rem)] gap-4 overflow-y-auto px-5 py-5 md:grid-cols-2">
-                <Field label="LRN" name="lrn" defaultValue={student.lrn} required />
-                <Field label="First name" name="firstName" defaultValue={student.firstName} required />
-                <Field label="Middle name" name="middleName" defaultValue={student.middleName} />
-                <Field label="Last name" name="lastName" defaultValue={student.lastName} required />
-                <Field label="Suffix" name="suffix" defaultValue={student.suffix} />
+                <Field id={`edit-lrn-${student.id}`} label="LRN" name="lrn" defaultValue={student.lrn} required />
+                <Field
+                  id={`edit-firstName-${student.id}`}
+                  label="First name"
+                  name="firstName"
+                  defaultValue={student.firstName}
+                  required
+                />
+                <Field
+                  id={`edit-middleName-${student.id}`}
+                  label="Middle name"
+                  name="middleName"
+                  defaultValue={student.middleName}
+                />
+                <Field
+                  id={`edit-lastName-${student.id}`}
+                  label="Last name"
+                  name="lastName"
+                  defaultValue={student.lastName}
+                  required
+                />
+                <Field id={`edit-suffix-${student.id}`} label="Suffix" name="suffix" defaultValue={student.suffix} />
                 <div className="grid gap-2">
                   <Label htmlFor={`edit-gradeLevelId-${student.id}`}>Grade level</Label>
                   <Select
@@ -196,9 +213,24 @@ export function StudentRecordActions({
                     ))}
                   </Select>
                 </div>
-                <Field label="Contact number" name="contactNumber" defaultValue={student.contactNumber} />
-                <Field label="Guardian name" name="guardianName" defaultValue={student.guardianName} />
-                <Field label="Guardian contact" name="guardianContact" defaultValue={student.guardianContact} />
+                <Field
+                  id={`edit-contactNumber-${student.id}`}
+                  label="Contact number"
+                  name="contactNumber"
+                  defaultValue={student.contactNumber}
+                />
+                <Field
+                  id={`edit-guardianName-${student.id}`}
+                  label="Guardian name"
+                  name="guardianName"
+                  defaultValue={student.guardianName}
+                />
+                <Field
+                  id={`edit-guardianContact-${student.id}`}
+                  label="Guardian contact"
+                  name="guardianContact"
+                  defaultValue={student.guardianContact}
+                />
                 <div className="grid gap-2">
                   <Label htmlFor={`edit-enrollmentStatus-${student.id}`}>Status</Label>
                   <Select id={`edit-enrollmentStatus-${student.id}`} name="enrollmentStatus" defaultValue={student.status}>
@@ -233,11 +265,13 @@ export function StudentRecordActions({
 }
 
 function Field({
+  id,
   label,
   name,
   defaultValue,
   required = false,
 }: {
+  id: string;
   label: string;
   name: string;
   defaultValue: string;
@@ -245,8 +279,8 @@ function Field({
 }) {
   return (
     <div className="grid gap-2">
-      <Label htmlFor={name}>{label}</Label>
-      <Input id={name} name={name} defaultValue={defaultValue} required={required} />
+      <Label htmlFor={id}>{label}</Label>
+      <Input id={id} name={name} defaultValue={defaultValue} required={required} />
     </div>
   );
 }

@@ -31,21 +31,27 @@ export function StudentRecordForm({
 
   async function onSubmit(formData: FormData) {
     setLoading(true);
-    const response = await fetch("/api/students", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(Object.fromEntries(formData)),
-    });
-    const data = await response.json();
-    setLoading(false);
 
-    if (!response.ok) {
-      toast.error(data.error ?? "Unable to save student record.");
-      return;
+    try {
+      const response = await fetch("/api/students", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(Object.fromEntries(formData)),
+      });
+      const data = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        toast.error(data.error ?? "Unable to save student record.");
+        return;
+      }
+
+      toast.success("Student record saved.");
+      router.refresh();
+    } catch {
+      toast.error("Unable to save student record.");
+    } finally {
+      setLoading(false);
     }
-
-    toast.success("Student record saved.");
-    router.refresh();
   }
 
   return (

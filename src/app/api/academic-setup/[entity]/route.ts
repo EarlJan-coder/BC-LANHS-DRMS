@@ -26,7 +26,7 @@ function handleError(error: unknown) {
   }
 
   return NextResponse.json(
-    { error: error instanceof Error ? error.message : "Unable to save academic setup." },
+    { error: "Unable to save academic setup." },
     { status: 500 },
   );
 }
@@ -63,7 +63,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   try {
     await assertAcademicSetupAccess();
     const { entity } = await params;
-    const body = await request.json();
+    let body: unknown;
+
+    try {
+      body = await request.json();
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        return NextResponse.json({ error: "Malformed JSON request body." }, { status: 400 });
+      }
+
+      throw error;
+    }
 
     if (entity === "school-years") {
       const data = await createSchoolYear(schoolYearMutationSchema.parse(body));
