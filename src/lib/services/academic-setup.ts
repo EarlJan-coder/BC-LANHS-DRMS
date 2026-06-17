@@ -87,6 +87,19 @@ function parseOptionalDate(value: string) {
     throw new AcademicSetupError("Use a valid school year date.");
   }
 
+  const [year, month, day] = value.split("-").map(Number);
+
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day) ||
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() + 1 !== month ||
+    date.getUTCDate() !== day
+  ) {
+    throw new AcademicSetupError("Use a valid school year date.");
+  }
+
   return date;
 }
 
@@ -288,24 +301,26 @@ export async function createSchoolYear(values: SchoolYearMutation) {
   assertDateOrder(startsOn, endsOn);
   await ensureUniqueSchoolYearName(values.name);
 
-  if (values.isActive) {
-    await db
-      .update(schoolYears)
-      .set({ isActive: false, updatedAt: new Date() })
-      .where(eq(schoolYears.isActive, true));
-  }
+  return db.transaction(async (tx) => {
+    if (values.isActive) {
+      await tx
+        .update(schoolYears)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(schoolYears.isActive, true));
+    }
 
-  const [created] = await db
-    .insert(schoolYears)
-    .values({
-      name: values.name,
-      startsOn,
-      endsOn,
-      isActive: values.isActive,
-    })
-    .returning();
+    const [created] = await tx
+      .insert(schoolYears)
+      .values({
+        name: values.name,
+        startsOn,
+        endsOn,
+        isActive: values.isActive,
+      })
+      .returning();
 
-  return created;
+    return created;
+  });
 }
 
 export async function updateSchoolYear(id: string, values: SchoolYearMutation) {
@@ -316,30 +331,38 @@ export async function updateSchoolYear(id: string, values: SchoolYearMutation) {
   assertDateOrder(startsOn, endsOn);
   await ensureUniqueSchoolYearName(values.name, id);
 
-  if (values.isActive) {
-    await db
+  return db.transaction(async (tx) => {
+    const [existing] = await tx.select({ id: schoolYears.id }).from(schoolYears).where(eq(schoolYears.id, id)).limit(1);
+
+    if (!existing) {
+      throw new AcademicSetupError("School year not found.", 404);
+    }
+
+    if (values.isActive) {
+      await tx
+        .update(schoolYears)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(ne(schoolYears.id, id));
+    }
+
+    const [updated] = await tx
       .update(schoolYears)
-      .set({ isActive: false, updatedAt: new Date() })
-      .where(ne(schoolYears.id, id));
-  }
+      .set({
+        name: values.name,
+        startsOn,
+        endsOn,
+        isActive: values.isActive,
+        updatedAt: new Date(),
+      })
+      .where(eq(schoolYears.id, id))
+      .returning();
 
-  const [updated] = await db
-    .update(schoolYears)
-    .set({
-      name: values.name,
-      startsOn,
-      endsOn,
-      isActive: values.isActive,
-      updatedAt: new Date(),
-    })
-    .where(eq(schoolYears.id, id))
-    .returning();
+    if (!updated) {
+      throw new AcademicSetupError("School year not found.", 404);
+    }
 
-  if (!updated) {
-    throw new AcademicSetupError("School year not found.", 404);
-  }
-
-  return updated;
+    return updated;
+  });
 }
 
 export async function createGradeLevel(values: GradeLevelMutation) {

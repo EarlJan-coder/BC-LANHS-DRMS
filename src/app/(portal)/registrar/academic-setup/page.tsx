@@ -1,8 +1,9 @@
 import { AcademicSetupManager } from "@/components/academic-setup-manager";
 import { SectionHeading } from "@/components/section-heading";
-import { getAcademicSetupData } from "@/lib/services/academic-setup";
+import { assertAcademicSetupAccess, getAcademicSetupData } from "@/lib/services/academic-setup";
 
 export default async function RegistrarAcademicSetupPage() {
+  await assertAcademicSetupAccess();
   const data = await getAcademicSetupData();
 
   return (
