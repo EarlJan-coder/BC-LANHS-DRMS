@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DataTable } from "@/components/data-table";
 import { SectionHeading } from "@/components/section-heading";
+import { StudentRecordActions } from "@/components/student-record-actions";
 import { StudentRecordForm } from "@/components/student-record-form";
 import { ButtonLink } from "@/components/ui/button";
 import { getStudentRecordFormOptions, listStudentViews } from "@/lib/services/live-data";
@@ -35,6 +36,13 @@ export default async function StudentRecordsPage() {
           { key: "grade", label: "Grade level", render: (row) => row.gradeLevel },
           { key: "section", label: "Section", render: (row) => row.section },
           { key: "status", label: "Status", render: (row) => row.status },
+          {
+            key: "actions",
+            label: "Actions",
+            render: (row) => (
+              <StudentRecordActions student={row} gradeLevels={options.gradeLevels} sections={options.sections} />
+            ),
+          },
         ]}
       />
     </div>

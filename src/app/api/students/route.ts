@@ -1,10 +1,46 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { getDb } from "@/db";
-import { students } from "@/db/schema";
-import { clerkConfigured, getCurrentRole } from "@/lib/auth";
+import {
+  assertStudentRecordAccess,
+  createStudentRecord,
+  isPostgresError,
+  StudentRecordError,
+} from "@/lib/services/student-records";
 import { listStudentViews } from "@/lib/services/live-data";
 import { studentRecordSchema } from "@/lib/validators";
+
+function handleStudentRecordError(error: unknown) {
+  if (error instanceof ZodError) {
+    return NextResponse.json({ error: error.issues[0]?.message ?? "Invalid student record." }, { status: 400 });
+  }
+
+  if (error instanceof StudentRecordError) {
+    return NextResponse.json({ error: error.message }, { status: error.status });
+  }
+
+  if (isPostgresError(error, "23505", "students_lrn_idx")) {
+    return NextResponse.json({ error: "This LRN already belongs to another student record." }, { status: 409 });
+  }
+
+  if (isPostgresError(error, "23502", "student_number")) {
+    return NextResponse.json(
+      { error: "The database still has the old student number column. Run npm run db:migrate, then try again." },
+      { status: 409 },
+    );
+  }
+
+  if (isPostgresError(error, "23503")) {
+    return NextResponse.json(
+      { error: "The selected grade level or section no longer exists. Refresh the page and try again." },
+      { status: 409 },
+    );
+  }
+
+  return NextResponse.json(
+    { error: "Unable to save student record." },
+    { status: 500 },
+  );
+}
 
 export async function GET() {
   return NextResponse.json({ data: await listStudentViews() });
@@ -12,42 +48,13 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const role = await getCurrentRole();
-    if (clerkConfigured() && role !== "registrar" && role !== "admin") {
-      return NextResponse.json({ error: "Registrar access is required." }, { status: 403 });
-    }
-
+    await assertStudentRecordAccess();
     const body = await request.json();
     const values = studentRecordSchema.parse(body);
-    const db = getDb();
-
-    const [created] = await db
-      .insert(students)
-      .values({
-        lrn: values.lrn,
-        firstName: values.firstName,
-        middleName: values.middleName || undefined,
-        lastName: values.lastName,
-        suffix: values.suffix || undefined,
-        contactNumber: values.contactNumber || undefined,
-        guardianName: values.guardianName || undefined,
-        guardianContact: values.guardianContact || undefined,
-        address: values.address || undefined,
-        gradeLevelId: values.gradeLevelId || undefined,
-        sectionId: values.sectionId || undefined,
-        enrollmentStatus: values.enrollmentStatus,
-      })
-      .returning();
+    const created = await createStudentRecord(values);
 
     return NextResponse.json({ id: created.id }, { status: 201 });
   } catch (error) {
-    if (error instanceof ZodError) {
-      return NextResponse.json({ error: error.issues[0]?.message ?? "Invalid student record." }, { status: 400 });
-    }
-
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to save student record." },
-      { status: 500 },
-    );
+    return handleStudentRecordError(error);
   }
 }
