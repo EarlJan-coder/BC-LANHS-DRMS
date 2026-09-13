@@ -136,7 +136,6 @@ export async function listDocumentRequestViews(options: { currentUserOnly?: bool
       ? await db
           .select({
             referenceId: blockchainAuditLogs.referenceId,
-            status: blockchainAuditLogs.status,
             blockchainStatus: blockchainAuditLogs.blockchainStatus,
             createdAt: blockchainAuditLogs.createdAt,
           })
@@ -147,7 +146,7 @@ export async function listDocumentRequestViews(options: { currentUserOnly?: bool
 
   const latestBlockchainStatus = new Map<string, DocumentRequestView["blockchainStatus"]>();
   for (const row of blockchainRows) {
-    const status = row.blockchainStatus ?? row.status;
+    const status = row.blockchainStatus;
     if (!latestBlockchainStatus.has(row.referenceId) && status !== "not_required") {
       latestBlockchainStatus.set(row.referenceId, status);
     }
@@ -181,7 +180,6 @@ export async function listRequestStatusHistoryViews(requestId: string) {
   const rows = await db
     .select({
       id: requestStatusHistory.id,
-      oldStatus: requestStatusHistory.oldStatus,
       newStatus: requestStatusHistory.newStatus,
       fromStatus: requestStatusHistory.fromStatus,
       toStatus: requestStatusHistory.toStatus,
@@ -191,14 +189,14 @@ export async function listRequestStatusHistoryViews(requestId: string) {
       lastName: users.lastName,
     })
     .from(requestStatusHistory)
-    .leftJoin(users, eq(requestStatusHistory.changedBy, users.id))
+    .leftJoin(users, eq(requestStatusHistory.actorUserId, users.id))
     .where(eq(requestStatusHistory.requestId, requestId))
     .orderBy(desc(requestStatusHistory.createdAt));
 
   return rows.map((row) => ({
     id: row.id,
-    oldStatus: row.oldStatus ?? row.fromStatus ?? "new",
-    newStatus: row.newStatus ?? row.toStatus ?? "pending",
+    oldStatus: row.fromStatus ?? "new",
+    newStatus: row.toStatus ?? "pending",
     remarks: row.remarks ?? "No remarks",
     changedBy: [row.firstName, row.lastName].filter(Boolean).join(" ") || "System",
     createdAt: formatDateTime(row.createdAt),

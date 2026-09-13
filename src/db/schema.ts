@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -200,11 +201,9 @@ export const requestStatusHistory = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     requestId: uuid("request_id").notNull().references(() => documentRequests.id),
-    oldStatus: requestStatusEnum("old_status"),
     newStatus: requestStatusEnum("new_status").notNull(),
     fromStatus: requestStatusEnum("from_status"),
     toStatus: requestStatusEnum("to_status"),
-    changedBy: uuid("changed_by").references(() => users.id),
     actorUserId: uuid("actor_user_id").references(() => users.id),
     remarks: text("remarks"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -237,7 +236,6 @@ export const gradeImportBatches = pgTable(
     fileName: varchar("file_name", { length: 255 }).notNull(),
     schoolYearId: uuid("school_year_id").references(() => schoolYears.id),
     importedByUserId: uuid("imported_by_user_id").references(() => users.id),
-    uploadedBy: uuid("uploaded_by").references(() => users.id),
     totalRows: integer("total_rows").notNull().default(0),
     validRows: integer("valid_rows").notNull().default(0),
     invalidRows: integer("invalid_rows").notNull().default(0),
@@ -252,7 +250,6 @@ export const gradeImportBatches = pgTable(
   (table) => [
     uniqueIndex("grade_import_batches_number_idx").on(table.batchNumber),
     index("grade_import_batches_imported_by_idx").on(table.importedByUserId),
-    index("grade_import_batches_uploaded_by_idx").on(table.uploadedBy),
   ],
 );
 
@@ -313,6 +310,8 @@ export const certificates = pgTable(
     generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
     blockchainTxHash: varchar("blockchain_tx_hash", { length: 90 }),
     recordHash: varchar("record_hash", { length: 66 }),
+    blockNumber: bigint("block_number", { mode: "number" }),
+    network: varchar("network", { length: 40 }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -342,7 +341,6 @@ export const auditLogs = pgTable(
   "audit_logs",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    actorId: uuid("actor_id").references(() => users.id),
     actorUserId: uuid("actor_user_id").references(() => users.id),
     actorRole: userRoleEnum("actor_role").notNull(),
     action: varchar("action", { length: 120 }).notNull(),
@@ -356,7 +354,7 @@ export const auditLogs = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    index("audit_logs_actor_id_idx").on(table.actorId),
+    index("audit_logs_actor_id_idx").on(table.actorUserId),
     index("audit_logs_entity_idx").on(table.entityType, table.entityId),
     index("audit_logs_action_idx").on(table.action),
   ],
@@ -370,15 +368,17 @@ export const blockchainAuditLogs = pgTable(
     referenceType: varchar("reference_type", { length: 80 }).notNull().default("system"),
     referenceId: varchar("reference_id", { length: 120 }).notNull(),
     action: varchar("action", { length: 120 }).notNull(),
-    actorId: uuid("actor_id").references(() => users.id),
     actorRole: userRoleEnum("actor_role").notNull(),
     recordHash: varchar("record_hash", { length: 66 }).notNull(),
     blockchainTxHash: varchar("blockchain_tx_hash", { length: 90 }),
     contractAddress: varchar("contract_address", { length: 60 }),
     blockchainStatus: blockchainStatusEnum("blockchain_status").notNull().default("pending"),
-    status: blockchainStatusEnum("status").notNull().default("pending"),
+    blockNumber: bigint("block_number", { mode: "number" }),
+    network: varchar("network", { length: 40 }),
     errorMessage: text("error_message"),
     retryCount: integer("retry_count").notNull().default(0),
+    lastRetryAt: timestamp("last_retry_at", { withTimezone: true }),
+    nextRetryAt: timestamp("next_retry_at", { withTimezone: true }),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     verifiedAt: timestamp("verified_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

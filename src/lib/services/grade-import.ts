@@ -277,7 +277,6 @@ export async function commitGradeImport(input: unknown) {
       fileName: values.fileName,
       schoolYearId: firstSchoolYear?.id,
       importedByUserId: actor?.id,
-      uploadedBy: actor?.id,
       totalRows: values.rows.length,
       validRows: values.rows.length,
       invalidRows: 0,

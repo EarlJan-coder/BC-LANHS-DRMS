@@ -12,6 +12,7 @@ contract DocumentRequestAudit {
     }
 
     AuditRecord[] private auditRecords;
+    mapping(string => mapping(string => uint256[])) private indexByRef;
 
     event AuditRecordAdded(
         uint256 indexed index,
@@ -30,6 +31,7 @@ contract DocumentRequestAudit {
         string calldata actorRole,
         bytes32 recordHash
     ) external {
+        uint256 index = auditRecords.length;
         auditRecords.push(
             AuditRecord({
                 referenceType: referenceType,
@@ -40,9 +42,10 @@ contract DocumentRequestAudit {
                 timestamp: block.timestamp
             })
         );
+        indexByRef[referenceType][referenceId].push(index);
 
         emit AuditRecordAdded(
-            auditRecords.length - 1,
+            index,
             referenceType,
             referenceId,
             action,
@@ -73,5 +76,25 @@ contract DocumentRequestAudit {
             record.recordHash,
             record.timestamp
         );
+    }
+
+    function getRecordIndices(string calldata referenceType, string calldata referenceId)
+        external view returns (uint256[] memory) {
+        return indexByRef[referenceType][referenceId];
+    }
+
+    function getLatestAuditRecord(string calldata referenceType, string calldata referenceId)
+        external view returns (
+        string memory,
+        string memory,
+        string memory,
+        string memory,
+        bytes32,
+        uint256
+    ) {
+        uint256[] memory indices = indexByRef[referenceType][referenceId];
+        if (indices.length == 0) revert("Not found");
+        AuditRecord storage r = auditRecords[indices[indices.length - 1]];
+        return (r.referenceType, r.referenceId, r.action, r.actorRole, r.recordHash, r.timestamp);
     }
 }
