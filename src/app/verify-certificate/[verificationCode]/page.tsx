@@ -1,7 +1,12 @@
 import { CheckCircle2, ShieldCheck, XCircle } from "lucide-react";
 import { AppLogo } from "@/components/layout/app-logo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BlockchainVerificationBadge } from "@/components/BlockchainVerificationBadge";
 import { verifyCertificate } from "@/lib/services/certificates";
+import { verifyCertificateOnChain } from "@/lib/services/blockchain-verification";
+import { getDb } from "@/db";
+import { certificates } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import type { CertificateVerificationView } from "@/lib/types";
 
 export default async function VerifyCertificatePage({
@@ -11,6 +16,19 @@ export default async function VerifyCertificatePage({
 }) {
   const { verificationCode } = await params;
   const result: CertificateVerificationView = await verifyCertificate(verificationCode).catch(() => ({ valid: false }));
+
+  let blockchainResult;
+  if (result.valid && result.certificateNumber) {
+    const db = getDb();
+    if (db) {
+      const cert = await db.query.certificates.findFirst({
+        where: eq(certificates.certificateNumber, result.certificateNumber),
+      });
+      if (cert) {
+        blockchainResult = await verifyCertificateOnChain(cert.id);
+      }
+    }
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10">
@@ -55,6 +73,8 @@ export default async function VerifyCertificatePage({
                 <Detail label="Blockchain tx" value={result.blockchainTxHash ?? "Pending"} />
               </div>
             ) : null}
+
+            {blockchainResult && <BlockchainVerificationBadge result={blockchainResult} />}
 
             <div className="flex gap-3 rounded-md bg-rose-50 p-4 text-sm text-brand">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />

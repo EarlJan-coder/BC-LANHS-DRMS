@@ -319,6 +319,8 @@ export async function generateCertificate(input: unknown) {
     .set({
       blockchainTxHash: audit.blockchainTransactionHash ?? undefined,
       recordHash: audit.recordHash,
+      blockNumber: audit.blockNumber ?? undefined,
+      network: audit.network ?? undefined,
       updatedAt: new Date(),
     })
     .where(eq(certificates.id, created.id));

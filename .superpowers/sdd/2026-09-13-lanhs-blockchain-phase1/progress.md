@@ -1,0 +1,1 @@
+# SDD ledger — plan: C:\Users\Earl\Documents\blockchain-lanhs\docs\superpowers\plans\2026-09-13-lanhs-blockchain-phase1.md

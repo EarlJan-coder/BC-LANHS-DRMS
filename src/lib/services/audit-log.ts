@@ -1,7 +1,13 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, lte, or } from "drizzle-orm";
 import { auditLogs, blockchainAuditLogs, type UserRole } from "@/db/schema";
 import { db } from "@/db";
-import { createRecordHash } from "@/lib/audit/hash";
+import { createRecordHashFromCanonical } from "@/lib/audit/hash";
+import {
+  buildCanonicalCertificate,
+  buildCanonicalDocumentRequest,
+  buildCanonicalGradeBatch,
+  buildCanonicalStatusChange,
+} from "@/lib/audit/canonical";
 import { submitAuditToChain } from "@/lib/blockchain/client";
 
 export type AuditedActionInput = {
@@ -19,13 +25,32 @@ export type AuditedActionInput = {
 
 export async function recordAuditedAction(input: AuditedActionInput) {
   const timestamp = new Date().toISOString();
-  const recordHash = createRecordHash({
-    referenceId: input.referenceId,
-    action: input.action,
-    actorRole: input.actorRole,
-    timestamp,
-    metadata: input.hashMetadata,
-  });
+
+  let canonical;
+  switch (input.referenceType) {
+    case "certificate":
+      canonical = buildCanonicalCertificate(input.hashMetadata as Parameters<typeof buildCanonicalCertificate>[0]);
+      break;
+    case "document_request":
+      canonical = buildCanonicalDocumentRequest(input.hashMetadata as Parameters<typeof buildCanonicalDocumentRequest>[0]);
+      break;
+    case "grade_import_batch":
+      canonical = buildCanonicalGradeBatch(input.hashMetadata as Parameters<typeof buildCanonicalGradeBatch>[0]);
+      break;
+    case "status_change":
+      canonical = buildCanonicalStatusChange(input.hashMetadata as Parameters<typeof buildCanonicalStatusChange>[0]);
+      break;
+    default:
+      canonical = {
+        referenceId: input.referenceId,
+        action: input.action,
+        actorRole: input.actorRole,
+        timestamp,
+        metadata: input.hashMetadata,
+      };
+  }
+
+  const recordHash = createRecordHashFromCanonical(canonical);
 
   const referenceType = input.referenceType ?? input.entityType;
   let blockchainLogId: string | undefined;
@@ -34,7 +59,6 @@ export async function recordAuditedAction(input: AuditedActionInput) {
     const [auditLog] = await db
       .insert(auditLogs)
       .values({
-        actorId: input.actorUserId,
         actorUserId: input.actorUserId,
         actorRole: input.actorRole,
         action: input.action,
@@ -51,11 +75,9 @@ export async function recordAuditedAction(input: AuditedActionInput) {
       referenceType,
       referenceId: input.referenceId,
       action: input.action,
-      actorId: input.actorUserId,
       actorRole: input.actorRole,
       recordHash,
       blockchainStatus: "pending",
-      status: "pending",
     }).returning();
     blockchainLogId = blockchainLog.id;
   }
@@ -75,7 +97,8 @@ export async function recordAuditedAction(input: AuditedActionInput) {
         blockchainTxHash: chainResult.ok ? chainResult.transactionHash : undefined,
         contractAddress: chainResult.contractAddress,
         blockchainStatus: chainResult.ok ? "submitted" : "pending",
-        status: chainResult.ok ? "submitted" : "pending",
+        blockNumber: chainResult.ok ? chainResult.blockNumber : undefined,
+        network: chainResult.ok ? (process.env.BLOCKCHAIN_NETWORK ?? "unknown") : undefined,
         errorMessage: chainResult.ok ? undefined : chainResult.error,
         submittedAt: chainResult.ok ? new Date() : undefined,
         updatedAt: new Date(),
@@ -88,6 +111,8 @@ export async function recordAuditedAction(input: AuditedActionInput) {
     blockchainStatus: chainResult.ok ? "submitted" : "blockchain_pending",
     blockchainTransactionHash: chainResult.ok ? chainResult.transactionHash : null,
     blockchainError: chainResult.ok ? null : chainResult.error,
+    blockNumber: chainResult.ok ? chainResult.blockNumber : null,
+    network: chainResult.ok ? (process.env.BLOCKCHAIN_NETWORK ?? "unknown") : null,
   };
 }
 
@@ -96,8 +121,15 @@ export async function retryPendingBlockchainLogs(limit = 25) {
     return { attempted: 0, submitted: 0, failed: 0 };
   }
 
+  const now = new Date();
   const pending = await db.query.blockchainAuditLogs.findMany({
-    where: eq(blockchainAuditLogs.blockchainStatus, "pending"),
+    where: and(
+      eq(blockchainAuditLogs.blockchainStatus, "pending"),
+      or(
+        isNull(blockchainAuditLogs.nextRetryAt),
+        lte(blockchainAuditLogs.nextRetryAt, now)
+      )
+    ),
     limit,
   });
 
@@ -105,6 +137,7 @@ export async function retryPendingBlockchainLogs(limit = 25) {
   let failed = 0;
 
   for (const item of pending) {
+    const retryCount = item.retryCount ?? 0;
     const result = await submitAuditToChain({
       referenceType: item.referenceType,
       referenceId: item.referenceId,
@@ -112,6 +145,12 @@ export async function retryPendingBlockchainLogs(limit = 25) {
       actorRole: item.actorRole,
       recordHash: item.recordHash,
     });
+
+    const nextRetryDelay = Math.min(
+      1000 * 60 * Math.pow(2, retryCount),
+      1000 * 60 * 60 * 24
+    );
+    const nextRetryAt = result.ok ? null : new Date(now.getTime() + nextRetryDelay);
 
     if (result.ok) {
       submitted += 1;
@@ -125,11 +164,14 @@ export async function retryPendingBlockchainLogs(limit = 25) {
         blockchainTxHash: result.ok ? result.transactionHash : item.blockchainTxHash,
         contractAddress: result.contractAddress ?? item.contractAddress,
         blockchainStatus: result.ok ? "submitted" : "pending",
-        status: result.ok ? "submitted" : "pending",
+        blockNumber: result.ok ? result.blockNumber : item.blockNumber,
+        network: result.ok ? (process.env.BLOCKCHAIN_NETWORK ?? item.network) : item.network,
         errorMessage: result.ok ? undefined : result.error,
-        retryCount: item.retryCount + 1,
-        submittedAt: result.ok ? new Date() : item.submittedAt,
-        updatedAt: new Date(),
+        retryCount: retryCount + 1,
+        lastRetryAt: now,
+        nextRetryAt,
+        submittedAt: result.ok ? now : item.submittedAt,
+        updatedAt: now,
       })
       .where(eq(blockchainAuditLogs.id, item.id));
   }

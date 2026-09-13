@@ -63,7 +63,6 @@ export async function createDocumentRequest(input: unknown) {
       newStatus: "pending",
       toStatus: "pending",
       actorUserId: user?.id,
-      changedBy: user?.id,
       remarks: "Request submitted online.",
     });
 
@@ -231,11 +230,9 @@ export async function updateDocumentRequestStatus(requestId: string, input: unkn
 
     await db.insert(requestStatusHistory).values({
       requestId,
-      oldStatus: previousStatus,
       newStatus: values.status,
       fromStatus: previousStatus,
       toStatus: values.status,
-      changedBy: actor?.id,
       actorUserId: actor?.id,
       remarks: values.remarks,
     });

@@ -10,7 +10,7 @@ export type ChainAuditPayload = {
 };
 
 export type ChainAuditResult =
-  | { ok: true; transactionHash: string; contractAddress: string }
+  | { ok: true; transactionHash: string; contractAddress: string; blockNumber: number }
   | { ok: false; error: string; contractAddress?: string };
 
 export function getAuditContract() {
@@ -52,6 +52,7 @@ export async function submitAuditToChain(payload: ChainAuditPayload): Promise<Ch
       ok: true,
       transactionHash: receipt.hash,
       contractAddress: await contract.getAddress(),
+      blockNumber: Number(receipt.blockNumber),
     };
   } catch (error) {
     return {
@@ -70,4 +71,34 @@ export async function readAuditCount() {
 
   const count = await contract.getAuditCount();
   return Number(count);
+}
+
+export async function getRecordIndices(referenceType: string, referenceId: string): Promise<number[]> {
+  const contract = getAuditContract();
+  if (!contract) return [];
+  try {
+    const indices = await contract.getRecordIndices(referenceType, referenceId);
+    return indices.map((i: bigint) => Number(i));
+  } catch {
+    return [];
+  }
+}
+
+export async function getLatestAuditRecord(referenceType: string, referenceId: string) {
+  const contract = getAuditContract();
+  if (!contract) return null;
+  try {
+    const [refType, refId, action, actorRole, recordHash, timestamp] =
+      await contract.getLatestAuditRecord(referenceType, referenceId);
+    return {
+      referenceType: refType as string,
+      referenceId: refId as string,
+      action: action as string,
+      actorRole: actorRole as string,
+      recordHash: recordHash as string,
+      timestamp: Number(timestamp),
+    };
+  } catch {
+    return null;
+  }
 }
