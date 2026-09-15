@@ -14,6 +14,20 @@ export const DOCUMENT_REQUEST_AUDIT_ABI = [
   },
   {
     type: "function",
+    name: "recordCertificateEvent",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "eventType", type: "string" },
+      { name: "referenceId", type: "string" },
+      { name: "action", type: "string" },
+      { name: "actorRole", type: "string" },
+      { name: "recordHash", type: "bytes32" },
+      { name: "previousRecordHash", type: "bytes32" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
     name: "getAuditCount",
     stateMutability: "view",
     inputs: [],
@@ -34,6 +48,80 @@ export const DOCUMENT_REQUEST_AUDIT_ABI = [
     ],
   },
   {
+    type: "function",
+    name: "getAuditRecordFull",
+    stateMutability: "view",
+    inputs: [{ name: "index", type: "uint256" }],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        components: [
+          { name: "referenceType", type: "string" },
+          { name: "referenceId", type: "string" },
+          { name: "action", type: "string" },
+          { name: "actorRole", type: "string" },
+          { name: "recordHash", type: "bytes32" },
+          { name: "timestamp", type: "uint256" },
+          { name: "eventType", type: "string" },
+          { name: "previousRecordHash", type: "bytes32" },
+        ],
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "getRecordIndices",
+    stateMutability: "view",
+    inputs: [
+      { name: "referenceType", type: "string" },
+      { name: "referenceId", type: "string" },
+    ],
+    outputs: [{ name: "", type: "uint256[]" }],
+  },
+  {
+    type: "function",
+    name: "getLatestAuditRecord",
+    stateMutability: "view",
+    inputs: [
+      { name: "referenceType", type: "string" },
+      { name: "referenceId", type: "string" },
+    ],
+    outputs: [
+      { name: "", type: "string" },
+      { name: "", type: "string" },
+      { name: "", type: "string" },
+      { name: "", type: "string" },
+      { name: "", type: "bytes32" },
+      { name: "", type: "uint256" },
+    ],
+  },
+  {
+    type: "function",
+    name: "getLatestAuditRecordFull",
+    stateMutability: "view",
+    inputs: [
+      { name: "referenceType", type: "string" },
+      { name: "referenceId", type: "string" },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        components: [
+          { name: "referenceType", type: "string" },
+          { name: "referenceId", type: "string" },
+          { name: "action", type: "string" },
+          { name: "actorRole", type: "string" },
+          { name: "recordHash", type: "bytes32" },
+          { name: "timestamp", type: "uint256" },
+          { name: "eventType", type: "string" },
+          { name: "previousRecordHash", type: "bytes32" },
+        ],
+      },
+    ],
+  },
+  {
     type: "event",
     name: "AuditRecordAdded",
     inputs: [
@@ -44,6 +132,8 @@ export const DOCUMENT_REQUEST_AUDIT_ABI = [
       { name: "actorRole", type: "string", indexed: false },
       { name: "recordHash", type: "bytes32", indexed: false },
       { name: "timestamp", type: "uint256", indexed: false },
+      { name: "eventType", type: "string", indexed: true },
+      { name: "previousRecordHash", type: "bytes32", indexed: false },
     ],
     anonymous: false,
   },

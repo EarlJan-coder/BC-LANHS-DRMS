@@ -9,9 +9,29 @@ export type ChainAuditPayload = {
   recordHash: string;
 };
 
+export type ChainLifecycleEventPayload = {
+  eventType: string;
+  referenceId: string;
+  action: string;
+  actorRole: string;
+  recordHash: string;
+  previousRecordHash: string;
+};
+
 export type ChainAuditResult =
   | { ok: true; transactionHash: string; contractAddress: string; blockNumber: number }
   | { ok: false; error: string; contractAddress?: string };
+
+export type OnChainAuditRecord = {
+  referenceType: string;
+  referenceId: string;
+  action: string;
+  actorRole: string;
+  recordHash: string;
+  timestamp: number;
+  eventType: string;
+  previousRecordHash: string;
+};
 
 export function getAuditContract() {
   const rpcUrl = process.env.BLOCKCHAIN_RPC_URL ?? process.env.SEPOLIA_RPC_URL;
@@ -45,6 +65,43 @@ export async function submitAuditToChain(payload: ChainAuditPayload): Promise<Ch
       payload.action,
       payload.actorRole,
       payload.recordHash,
+    );
+    const receipt = await tx.wait();
+
+    return {
+      ok: true,
+      transactionHash: receipt.hash,
+      contractAddress: await contract.getAddress(),
+      blockNumber: Number(receipt.blockNumber),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Unknown blockchain submission error.",
+      contractAddress: await contract.getAddress(),
+    };
+  }
+}
+
+export async function submitLifecycleEventToChain(payload: ChainLifecycleEventPayload): Promise<ChainAuditResult> {
+  const contract = getAuditContract();
+
+  if (!contract) {
+    return {
+      ok: false,
+      error: "Blockchain environment is not configured.",
+      contractAddress: process.env.CONTRACT_ADDRESS ?? process.env.DOCUMENT_AUDIT_CONTRACT_ADDRESS,
+    };
+  }
+
+  try {
+    const tx = await contract.recordCertificateEvent(
+      payload.eventType,
+      payload.referenceId,
+      payload.action,
+      payload.actorRole,
+      payload.recordHash,
+      payload.previousRecordHash,
     );
     const receipt = await tx.wait();
 
@@ -97,6 +154,46 @@ export async function getLatestAuditRecord(referenceType: string, referenceId: s
       actorRole: actorRole as string,
       recordHash: recordHash as string,
       timestamp: Number(timestamp),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function getAuditRecordFull(index: number): Promise<OnChainAuditRecord | null> {
+  const contract = getAuditContract();
+  if (!contract) return null;
+  try {
+    const record = await contract.getAuditRecordFull(index);
+    return {
+      referenceType: record.referenceType as string,
+      referenceId: record.referenceId as string,
+      action: record.action as string,
+      actorRole: record.actorRole as string,
+      recordHash: record.recordHash as string,
+      timestamp: Number(record.timestamp),
+      eventType: record.eventType as string,
+      previousRecordHash: record.previousRecordHash as string,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function getLatestAuditRecordFull(referenceType: string, referenceId: string): Promise<OnChainAuditRecord | null> {
+  const contract = getAuditContract();
+  if (!contract) return null;
+  try {
+    const record = await contract.getLatestAuditRecordFull(referenceType, referenceId);
+    return {
+      referenceType: record.referenceType as string,
+      referenceId: record.referenceId as string,
+      action: record.action as string,
+      actorRole: record.actorRole as string,
+      recordHash: record.recordHash as string,
+      timestamp: Number(record.timestamp),
+      eventType: record.eventType as string,
+      previousRecordHash: record.previousRecordHash as string,
     };
   } catch {
     return null;

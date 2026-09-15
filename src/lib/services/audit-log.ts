@@ -8,7 +8,7 @@ import {
   buildCanonicalGradeBatch,
   buildCanonicalStatusChange,
 } from "@/lib/audit/canonical";
-import { submitAuditToChain } from "@/lib/blockchain/client";
+import { submitAuditToChain, submitLifecycleEventToChain } from "@/lib/blockchain/client";
 
 export type AuditedActionInput = {
   referenceType?: string;
@@ -21,6 +21,8 @@ export type AuditedActionInput = {
   description?: string;
   metadata?: Record<string, unknown>;
   hashMetadata?: Record<string, unknown>;
+  eventType?: string;
+  previousRecordHash?: string;
 };
 
 export async function recordAuditedAction(input: AuditedActionInput) {
@@ -82,13 +84,25 @@ export async function recordAuditedAction(input: AuditedActionInput) {
     blockchainLogId = blockchainLog.id;
   }
 
-  const chainResult = await submitAuditToChain({
-    referenceType,
-    referenceId: input.referenceId,
-    action: input.action,
-    actorRole: input.actorRole,
-    recordHash,
-  });
+  let chainResult;
+  if (input.eventType) {
+    chainResult = await submitLifecycleEventToChain({
+      eventType: input.eventType,
+      referenceId: input.referenceId,
+      action: input.action,
+      actorRole: input.actorRole,
+      recordHash,
+      previousRecordHash: input.previousRecordHash ?? "0x0000000000000000000000000000000000000000000000000000000000000000",
+    });
+  } else {
+    chainResult = await submitAuditToChain({
+      referenceType,
+      referenceId: input.referenceId,
+      action: input.action,
+      actorRole: input.actorRole,
+      recordHash,
+    });
+  }
 
   if (db && blockchainLogId) {
     await db
