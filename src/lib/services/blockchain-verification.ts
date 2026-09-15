@@ -3,7 +3,17 @@ import { certificates, studentGrades, schoolYears } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { buildCanonicalCertificate } from "@/lib/audit/canonical";
 import { createRecordHashFromCanonical } from "@/lib/audit/hash";
-import { getRecordIndices, getLatestAuditRecord } from "@/lib/blockchain/client";
+import { getRecordIndices, getAuditRecordFull, getLatestAuditRecord } from "@/lib/blockchain/client";
+import type { OnChainAuditRecord } from "@/lib/blockchain/client";
+
+export interface LifecycleEvent {
+  eventType: string;
+  action: string;
+  recordHash: string;
+  previousRecordHash: string;
+  timestamp: number;
+  recordedAt: string;
+}
 
 export interface VerificationResult {
   valid: boolean;
@@ -15,6 +25,7 @@ export interface VerificationResult {
   blockNumber?: number;
   network?: string;
   contractAddress?: string;
+  eventTimeline?: LifecycleEvent[];
 }
 
 export async function verifyCertificateOnChain(certificateId: string): Promise<VerificationResult> {
@@ -74,6 +85,27 @@ export async function verifyCertificateOnChain(certificateId: string): Promise<V
   const matches = computedHash.toLowerCase() === latest.recordHash.toLowerCase();
   const network = process.env.BLOCKCHAIN_NETWORK ?? "unknown";
 
+  // Build event timeline from all on-chain records
+  const eventTimeline: LifecycleEvent[] = [];
+  const ZERO_HASH = "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+  for (const idx of indices) {
+    const record: OnChainAuditRecord | null = await getAuditRecordFull(idx);
+    if (record && record.eventType) {
+      eventTimeline.push({
+        eventType: record.eventType,
+        action: record.action,
+        recordHash: record.recordHash,
+        previousRecordHash: record.previousRecordHash === ZERO_HASH ? "" : record.previousRecordHash,
+        timestamp: record.timestamp,
+        recordedAt: new Date(record.timestamp * 1000).toISOString(),
+      });
+    }
+  }
+
+  // Sort by timestamp ascending for chronological order
+  eventTimeline.sort((a, b) => a.timestamp - b.timestamp);
+
   return {
     valid: matches,
     blockchainVerified: true,
@@ -83,5 +115,6 @@ export async function verifyCertificateOnChain(certificateId: string): Promise<V
     reason: matches ? undefined : "Record hash does not match blockchain proof",
     network,
     contractAddress: process.env.CONTRACT_ADDRESS ?? process.env.DOCUMENT_AUDIT_CONTRACT_ADDRESS,
+    eventTimeline: eventTimeline.length > 0 ? eventTimeline : undefined,
   };
 }

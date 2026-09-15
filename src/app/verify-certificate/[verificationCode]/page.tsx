@@ -8,6 +8,21 @@ import { getDb } from "@/db";
 import { certificates } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import type { CertificateVerificationView } from "@/lib/types";
+import type { LifecycleEvent } from "@/lib/services/blockchain-verification";
+
+const EVENT_LABELS: Record<string, string> = {
+  CERTIFICATE_ISSUED: "Issued",
+  CERTIFICATE_REISSUED: "Reissued",
+  CERTIFICATE_VOIDED: "Voided",
+  CERTIFICATE_VERIFIED: "Verified",
+};
+
+const EVENT_COLORS: Record<string, string> = {
+  CERTIFICATE_ISSUED: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  CERTIFICATE_REISSUED: "bg-blue-100 text-blue-800 border-blue-200",
+  CERTIFICATE_VOIDED: "bg-red-100 text-red-800 border-red-200",
+  CERTIFICATE_VERIFIED: "bg-amber-100 text-amber-800 border-amber-200",
+};
 
 export default async function VerifyCertificatePage({
   params,
@@ -29,6 +44,8 @@ export default async function VerifyCertificatePage({
       }
     }
   }
+
+  const eventTimeline = blockchainResult?.eventTimeline;
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10">
@@ -76,6 +93,17 @@ export default async function VerifyCertificatePage({
 
             {blockchainResult && <BlockchainVerificationBadge result={blockchainResult} />}
 
+            {eventTimeline && eventTimeline.length > 0 && (
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+                <p className="mb-3 text-sm font-semibold text-slate-900">Blockchain Event Timeline</p>
+                <div className="space-y-3">
+                  {eventTimeline.map((event: LifecycleEvent, index: number) => (
+                    <EventTimelineItem key={index} event={event} isLast={index === eventTimeline.length - 1} />
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3 rounded-md bg-rose-50 p-4 text-sm text-brand">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
               <p>Public verification does not expose full grades or private student information.</p>
@@ -84,6 +112,33 @@ export default async function VerifyCertificatePage({
         </Card>
       </div>
     </main>
+  );
+}
+
+function EventTimelineItem({ event, isLast }: { event: LifecycleEvent; isLast: boolean }) {
+  const label = EVENT_LABELS[event.eventType] ?? event.eventType;
+  const colorClass = EVENT_COLORS[event.eventType] ?? "bg-slate-100 text-slate-800 border-slate-200";
+
+  return (
+    <div className="flex gap-3">
+      <div className="flex flex-col items-center">
+        <div className={`h-3 w-3 rounded-full border-2 ${colorClass.split(" ")[0]} shrink-0`} />
+        {!isLast && <div className="mt-1 w-px flex-1 bg-slate-300" />}
+      </div>
+      <div className="flex-1 pb-2">
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${colorClass}`}>
+            {label}
+          </span>
+          <span className="text-xs text-slate-500">
+            {new Date(event.recordedAt).toLocaleString()}
+          </span>
+        </div>
+        <p className="mt-1 break-all text-xs text-slate-600">
+          Hash: <code className="rounded bg-slate-100 px-1">{event.recordHash.slice(0, 18)}...</code>
+        </p>
+      </div>
+    </div>
   );
 }
 

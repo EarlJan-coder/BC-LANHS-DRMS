@@ -312,6 +312,8 @@ export async function generateCertificate(input: unknown) {
       certificateType,
       schoolYear: schoolYear?.name,
     },
+    eventType: "CERTIFICATE_ISSUED",
+    previousRecordHash: "0x0000000000000000000000000000000000000000000000000000000000000000",
   });
 
   await db
@@ -635,4 +637,124 @@ export async function generateCertificatePdf(certificateId: string) {
   await drawCertificateFooter(pdf, page, certificate.qrCodeData, regular, bold);
 
   return Buffer.from(await pdf.save());
+}
+
+export async function reissueCertificate(certificateId: string, reason?: string) {
+  const db = getDb();
+  const actor = await ensureCurrentDbUser();
+
+  const existing = await db.query.certificates.findFirst({
+    where: eq(certificates.id, certificateId),
+  });
+
+  if (!existing) {
+    throw new Error("Certificate not found.");
+  }
+
+  const previousHash = existing.recordHash ?? "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+  const schoolYear = existing.schoolYearId
+    ? await db.query.schoolYears.findFirst({ where: eq(schoolYears.id, existing.schoolYearId) })
+    : undefined;
+
+  const grades = existing.studentId
+    ? await db.query.studentGrades.findMany({ where: eq(studentGrades.studentId, existing.studentId) })
+    : [];
+
+  const audit = await recordAuditedAction({
+    referenceType: "certificate",
+    referenceId: existing.certificateNumber,
+    action: "Certificate reissued",
+    actorRole: actor?.role ?? "registrar",
+    actorUserId: actor?.id,
+    entityType: "certificate",
+    entityId: existing.id,
+    metadata: {
+      reason: reason ?? "Reissued by registrar",
+      previousHash,
+    },
+    hashMetadata: {
+      certificateNumber: existing.certificateNumber,
+      certificateType: existing.certificateType,
+      schoolYear: schoolYear?.name ?? "",
+      studentId: existing.studentId ?? "",
+      grades: grades.map((g) => ({
+        subjectCode: g.subjectId ?? "",
+        quarter1: g.quarter1,
+        quarter2: g.quarter2,
+        quarter3: g.quarter3,
+        quarter4: g.quarter4,
+        finalGrade: g.finalGrade,
+        remarks: g.remarks,
+      })),
+    },
+    eventType: "CERTIFICATE_REISSUED",
+    previousRecordHash: previousHash,
+  });
+
+  await db
+    .update(certificates)
+    .set({
+      blockchainTxHash: audit.blockchainTransactionHash ?? existing.blockchainTxHash,
+      recordHash: audit.recordHash,
+      blockNumber: audit.blockNumber ?? existing.blockNumber,
+      network: audit.network ?? existing.network,
+      updatedAt: new Date(),
+    })
+    .where(eq(certificates.id, existing.id));
+
+  return {
+    id: existing.id,
+    certificateNumber: existing.certificateNumber,
+    ...audit,
+  };
+}
+
+export async function voidCertificate(certificateId: string, reason: string) {
+  const db = getDb();
+  const actor = await ensureCurrentDbUser();
+
+  const existing = await db.query.certificates.findFirst({
+    where: eq(certificates.id, certificateId),
+  });
+
+  if (!existing) {
+    throw new Error("Certificate not found.");
+  }
+
+  const previousHash = existing.recordHash ?? "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+  const audit = await recordAuditedAction({
+    referenceType: "certificate",
+    referenceId: existing.certificateNumber,
+    action: "Certificate voided",
+    actorRole: actor?.role ?? "admin",
+    actorUserId: actor?.id,
+    entityType: "certificate",
+    entityId: existing.id,
+    metadata: {
+      reason,
+      previousHash,
+    },
+    hashMetadata: {
+      certificateNumber: existing.certificateNumber,
+      voidReason: reason,
+    },
+    eventType: "CERTIFICATE_VOIDED",
+    previousRecordHash: previousHash,
+  });
+
+  await db
+    .update(certificates)
+    .set({
+      recordHash: audit.recordHash,
+      updatedAt: new Date(),
+    })
+    .where(eq(certificates.id, existing.id));
+
+  return {
+    id: existing.id,
+    certificateNumber: existing.certificateNumber,
+    ...audit,
+  };
 }

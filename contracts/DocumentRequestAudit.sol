@@ -9,6 +9,8 @@ contract DocumentRequestAudit {
         string actorRole;
         bytes32 recordHash;
         uint256 timestamp;
+        string eventType;
+        bytes32 previousRecordHash;
     }
 
     AuditRecord[] private auditRecords;
@@ -21,7 +23,9 @@ contract DocumentRequestAudit {
         string action,
         string actorRole,
         bytes32 recordHash,
-        uint256 timestamp
+        uint256 timestamp,
+        string indexed eventType,
+        bytes32 previousRecordHash
     );
 
     function addAuditRecord(
@@ -39,7 +43,9 @@ contract DocumentRequestAudit {
                 action: action,
                 actorRole: actorRole,
                 recordHash: recordHash,
-                timestamp: block.timestamp
+                timestamp: block.timestamp,
+                eventType: "",
+                previousRecordHash: bytes32(0)
             })
         );
         indexByRef[referenceType][referenceId].push(index);
@@ -51,7 +57,46 @@ contract DocumentRequestAudit {
             action,
             actorRole,
             recordHash,
-            block.timestamp
+            block.timestamp,
+            "",
+            bytes32(0)
+        );
+    }
+
+    function recordCertificateEvent(
+        string calldata eventType,
+        string calldata referenceId,
+        string calldata action,
+        string calldata actorRole,
+        bytes32 recordHash,
+        bytes32 previousRecordHash
+    ) external {
+        string memory referenceType = "certificate";
+        uint256 index = auditRecords.length;
+        auditRecords.push(
+            AuditRecord({
+                referenceType: referenceType,
+                referenceId: referenceId,
+                action: action,
+                actorRole: actorRole,
+                recordHash: recordHash,
+                timestamp: block.timestamp,
+                eventType: eventType,
+                previousRecordHash: previousRecordHash
+            })
+        );
+        indexByRef[referenceType][referenceId].push(index);
+
+        emit AuditRecordAdded(
+            index,
+            referenceType,
+            referenceId,
+            action,
+            actorRole,
+            recordHash,
+            block.timestamp,
+            eventType,
+            previousRecordHash
         );
     }
 
@@ -78,6 +123,10 @@ contract DocumentRequestAudit {
         );
     }
 
+    function getAuditRecordFull(uint256 index) external view returns (AuditRecord memory) {
+        return auditRecords[index];
+    }
+
     function getRecordIndices(string calldata referenceType, string calldata referenceId)
         external view returns (uint256[] memory) {
         return indexByRef[referenceType][referenceId];
@@ -96,5 +145,12 @@ contract DocumentRequestAudit {
         if (indices.length == 0) revert("Not found");
         AuditRecord storage r = auditRecords[indices[indices.length - 1]];
         return (r.referenceType, r.referenceId, r.action, r.actorRole, r.recordHash, r.timestamp);
+    }
+
+    function getLatestAuditRecordFull(string calldata referenceType, string calldata referenceId)
+        external view returns (AuditRecord memory) {
+        uint256[] memory indices = indexByRef[referenceType][referenceId];
+        if (indices.length == 0) revert("Not found");
+        return auditRecords[indices[indices.length - 1]];
     }
 }
