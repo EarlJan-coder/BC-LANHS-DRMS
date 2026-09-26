@@ -54,7 +54,7 @@ A4 page (595.28 × 841.89) via shared tokens. Top to bottom:
 
 ### 3. Data flow
 
-Unchanged: `GET /api/document-requests/[id]/slip` → `generateRequestSlipPdf(id)` → `getDocumentRequestView(id, true)` → PDF bytes. Only rendering internals change.
+Unchanged externally: `GET /api/document-requests/[id]/slip` → `generateRequestSlipPdf(id)` → `getDocumentRequestView(id, true)` → PDF bytes. Only rendering internals change. Internally, rendering is split into `renderRequestSlipPdf(request)` (pure, no DB/auth) and `generateRequestSlipPdf(requestId)` (fetch + delegate), so the layout can be exercised independently of a session.
 
 ### 4. Edge cases
 
