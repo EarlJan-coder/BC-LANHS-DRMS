@@ -77,11 +77,11 @@ export default async function RegistrarRequestDetailsPage({
             timeline.map((item) => (
               <div key={item.id} className="rounded-md border border-border p-4">
                 <p className="text-sm font-semibold text-slate-950">
-                  {String(item.oldStatus).replaceAll("_", " ")} {"->"} {String(item.newStatus).replaceAll("_", " ")}
+                  {String(item.fromStatus).replaceAll("_", " ")} {"->"} {String(item.toStatus).replaceAll("_", " ")}
                 </p>
                 <p className="mt-1 text-sm text-slate-600">{item.remarks}</p>
                 <p className="mt-2 text-xs text-slate-500">
-                  {item.createdAt} by {item.changedBy}
+                  {item.createdAt} by {item.actorUserName}
                 </p>
               </div>
             ))

@@ -48,24 +48,4 @@ export const GRADE_IMPORT_COLUMNS = [
   "Remarks",
 ];
 
-export const BLOCKCHAIN_ACTIONS = [
-  "Document request submitted",
-  "Request approved",
-  "Request rejected",
-  "Request status updated",
-  "Grades imported",
-  "Certificate generated",
-  "Document claimed",
-];
-
 export const SCHOOL_ADDRESS = "Luis Aguado National High School, Philippines";
-
-export const EMAIL_EVENTS = {
-  request_submitted: "Request submitted",
-  request_approved: "Request approved",
-  request_rejected: "Request rejected",
-  request_status_updated: "Request status updated",
-  certificate_generated: "Certificate generated",
-  ready_for_pickup: "Document ready for pickup",
-  document_claimed: "Document claimed",
-} as const;

@@ -5,6 +5,7 @@ import { buildCanonicalCertificate } from "@/lib/audit/canonical";
 import { createRecordHashFromCanonical } from "@/lib/audit/hash";
 import { getRecordIndices, getAuditRecordFull, getLatestAuditRecord } from "@/lib/blockchain/client";
 import type { OnChainAuditRecord } from "@/lib/blockchain/client";
+import { ZERO_HASH } from "@/lib/utils";
 
 export interface LifecycleEvent {
   eventType: string;
@@ -87,7 +88,6 @@ export async function verifyCertificateOnChain(certificateId: string): Promise<V
 
   // Build event timeline from all on-chain records
   const eventTimeline: LifecycleEvent[] = [];
-  const ZERO_HASH = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
   for (const idx of indices) {
     const record: OnChainAuditRecord | null = await getAuditRecordFull(idx);

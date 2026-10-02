@@ -17,6 +17,7 @@ import { ensureCurrentDbUser } from "@/lib/auth";
 import { GRADE_IMPORT_COLUMNS } from "@/lib/constants";
 import { sendWorkflowEmail } from "@/lib/email";
 import type { GradeImportError, GradeImportRow, GradeImportValidation } from "@/lib/types";
+import { generatePrefixedId } from "@/lib/utils";
 import { gradeImportCommitSchema } from "@/lib/validators";
 import { recordAuditedAction } from "./audit-log";
 
@@ -45,10 +46,7 @@ function readColumn(row: RawRow, label: string) {
 }
 
 function batchNumber() {
-  return `BATCH-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${Math.random()
-    .toString(36)
-    .slice(2, 7)
-    .toUpperCase()}`;
+  return generatePrefixedId("BATCH");
 }
 
 export function gradeImportTemplateCsv() {

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "dev:all": "tsx scripts/dev-all.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -25,7 +26,6 @@
     "date-fns": "^4.4.0",
     "drizzle-orm": "^0.45.2",
     "ethers": "^6.16.0",
-    "exceljs": "^4.4.0",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.17.0",
     "next": "16.2.7",

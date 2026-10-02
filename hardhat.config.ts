@@ -1,6 +1,6 @@
 import { defineConfig } from "hardhat/config";
 import { createRequire } from "node:module";
-import "@nomicfoundation/hardhat-ethers";
+import hardhatEthers from "@nomicfoundation/hardhat-ethers";
 
 const require = createRequire(import.meta.url);
 const { loadEnvConfig } = require("@next/env") as typeof import("@next/env");
@@ -25,6 +25,7 @@ const networks = {
 } as const;
 
 export default defineConfig({
+  plugins: [hardhatEthers],
   solidity: {
     version: "0.8.28",
     settings: {

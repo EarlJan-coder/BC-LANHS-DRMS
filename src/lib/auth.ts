@@ -121,12 +121,6 @@ export async function ensureCurrentDbUser() {
   return created;
 }
 
-export function assertRole(role: UserRole, allowed: UserRole[]) {
-  if (!allowed.includes(role)) {
-    throw new Error("You do not have permission to perform this action.");
-  }
-}
-
 export function dashboardPathForRole(role: UserRole) {
   if (role === "admin") {
     return "/admin/dashboard";

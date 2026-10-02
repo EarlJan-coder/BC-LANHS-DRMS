@@ -201,9 +201,8 @@ export const requestStatusHistory = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     requestId: uuid("request_id").notNull().references(() => documentRequests.id),
-    newStatus: requestStatusEnum("new_status").notNull(),
     fromStatus: requestStatusEnum("from_status"),
-    toStatus: requestStatusEnum("to_status"),
+    toStatus: requestStatusEnum("to_status").notNull(),
     actorUserId: uuid("actor_user_id").references(() => users.id),
     remarks: text("remarks"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

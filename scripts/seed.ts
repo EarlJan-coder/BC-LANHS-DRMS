@@ -176,14 +176,12 @@ async function main() {
         await db.insert(requestStatusHistory).values([
           {
             requestId: sampleRequest.id,
-            newStatus: "pending",
             toStatus: "pending",
             actorUserId: studentUser.id,
             remarks: "Request submitted online.",
           },
           {
             requestId: sampleRequest.id,
-            newStatus: "under_review",
             fromStatus: "pending",
             toStatus: "under_review",
             actorUserId: registrar?.id,

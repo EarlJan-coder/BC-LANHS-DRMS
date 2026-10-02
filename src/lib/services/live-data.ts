@@ -28,19 +28,13 @@ import type {
   GradeRecordView,
   SchoolYearView,
   StatCard,
+  StudentGradeSummaryView,
   StudentProfileView,
   StudentView,
   SubjectView,
   UserView,
 } from "@/lib/types";
-
-function formatDate(date: Date | null | undefined) {
-  return date ? date.toISOString().slice(0, 10) : "Not set";
-}
-
-function formatDateTime(date: Date | null | undefined) {
-  return date ? date.toISOString().slice(0, 16).replace("T", " ") : "Not set";
-}
+import { formatDate, formatDateTime } from "@/lib/utils";
 
 function studentName(row: {
   studentFirstName: string | null;
@@ -180,7 +174,6 @@ export async function listRequestStatusHistoryViews(requestId: string) {
   const rows = await db
     .select({
       id: requestStatusHistory.id,
-      newStatus: requestStatusHistory.newStatus,
       fromStatus: requestStatusHistory.fromStatus,
       toStatus: requestStatusHistory.toStatus,
       remarks: requestStatusHistory.remarks,
@@ -195,10 +188,10 @@ export async function listRequestStatusHistoryViews(requestId: string) {
 
   return rows.map((row) => ({
     id: row.id,
-    oldStatus: row.fromStatus ?? "new",
-    newStatus: row.toStatus ?? "pending",
+    fromStatus: row.fromStatus ?? "new",
+    toStatus: row.toStatus ?? "pending",
     remarks: row.remarks ?? "No remarks",
-    changedBy: [row.firstName, row.lastName].filter(Boolean).join(" ") || "System",
+    actorUserName: [row.firstName, row.lastName].filter(Boolean).join(" ") || "System",
     createdAt: formatDateTime(row.createdAt),
   }));
 }
@@ -665,6 +658,78 @@ export async function listGradeRecordViews(limit = 50) {
   }));
 }
 
+export async function listStudentGradeSummaryViews(limit = 100) {
+  const db = getDb();
+  const studentsRows = await db
+    .select({
+      id: students.id,
+      lrn: students.lrn,
+      firstName: students.firstName,
+      middleName: students.middleName,
+      lastName: students.lastName,
+      suffix: students.suffix,
+      gradeLevel: gradeLevels.name,
+      section: sections.name,
+      enrollmentStatus: students.enrollmentStatus,
+    })
+    .from(students)
+    .leftJoin(gradeLevels, eq(students.gradeLevelId, gradeLevels.id))
+    .leftJoin(sections, eq(students.sectionId, sections.id))
+    .orderBy(desc(students.createdAt))
+    .limit(limit);
+
+  const studentIds = studentsRows.map((s) => s.id);
+
+  const gradeRows = studentIds.length > 0
+    ? await db
+        .select({
+          studentId: studentGrades.studentId,
+          finalGrade: studentGrades.finalGrade,
+          schoolYear: schoolYears.name,
+          subject: subjects.name,
+        })
+        .from(studentGrades)
+        .leftJoin(subjects, eq(studentGrades.subjectId, subjects.id))
+        .leftJoin(schoolYears, eq(studentGrades.schoolYearId, schoolYears.id))
+        .where(inArray(studentGrades.studentId, studentIds))
+    : [];
+
+  const gradesByStudent = new Map<string, typeof gradeRows>();
+  for (const grade of gradeRows) {
+    if (!grade.studentId) continue;
+    if (!gradesByStudent.has(grade.studentId)) {
+      gradesByStudent.set(grade.studentId, []);
+    }
+    gradesByStudent.get(grade.studentId)!.push(grade);
+  }
+
+  return studentsRows.map<StudentGradeSummaryView>((student) => {
+    const grades = gradesByStudent.get(student.id) ?? [];
+    const subjectCount = grades.length;
+    const numericGrades = grades
+      .map((g) => Number(g.finalGrade))
+      .filter((n) => !Number.isNaN(n));
+    const averageFinalGrade =
+      numericGrades.length > 0
+        ? (numericGrades.reduce((sum, n) => sum + n, 0) / numericGrades.length).toFixed(2)
+        : "N/A";
+    const schoolYears = [...new Set(grades.map((g) => g.schoolYear).filter(Boolean))].sort().reverse();
+    const latestSchoolYear = schoolYears[0] ?? "N/A";
+
+    return {
+      id: student.id,
+      lrn: student.lrn,
+      name: [student.firstName, student.middleName, student.lastName, student.suffix].filter(Boolean).join(" ") || "Unknown",
+      gradeLevel: student.gradeLevel ?? "Not assigned",
+      section: student.section ?? "Not assigned",
+      status: student.enrollmentStatus,
+      subjectCount,
+      averageFinalGrade,
+      latestSchoolYear,
+    };
+  });
+}
+
 export async function listAuditTrailViews(limit = 50) {
   const db = getDb();
   const rows = await db
@@ -766,4 +831,28 @@ export async function listRecentGradeImportBatches(limit = 10) {
     .from(gradeImportBatches)
     .orderBy(desc(gradeImportBatches.createdAt))
     .limit(limit);
+}
+
+export async function getBlockchainAuditStats() {
+  const db = getDb();
+  const rows = await db
+    .select({ status: blockchainAuditLogs.blockchainStatus, value: count() })
+    .from(blockchainAuditLogs)
+    .groupBy(blockchainAuditLogs.blockchainStatus);
+
+  const stats = rows.reduce(
+    (acc, row) => {
+      acc[row.status] = Number(row.value);
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+
+  return {
+    total: Object.values(stats).reduce((sum, v) => sum + v, 0),
+    pending: stats.pending ?? 0,
+    submitted: stats.submitted ?? 0,
+    failed: stats.failed ?? 0,
+    verified: stats.verified ?? 0,
+  };
 }
