@@ -67,7 +67,7 @@ export default async function StudentRequestDetailsPage({
               timeline.map((item) => (
                 <div key={item.id} className="rounded-md border border-border px-3 py-2 text-sm text-slate-600">
                   <p className="font-medium text-slate-900">
-                    {String(item.oldStatus).replaceAll("_", " ")} {"->"} {String(item.newStatus).replaceAll("_", " ")}
+                    {String(item.fromStatus).replaceAll("_", " ")} {"->"} {String(item.toStatus).replaceAll("_", " ")}
                   </p>
                   <p className="mt-1">{item.remarks}</p>
                   <p className="mt-1 text-xs text-slate-500">{item.createdAt}</p>

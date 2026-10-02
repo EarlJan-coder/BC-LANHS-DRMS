@@ -9,6 +9,7 @@ import {
   buildCanonicalStatusChange,
 } from "@/lib/audit/canonical";
 import { submitAuditToChain, submitLifecycleEventToChain } from "@/lib/blockchain/client";
+import { ZERO_HASH } from "@/lib/utils";
 
 export type AuditedActionInput = {
   referenceType?: string;
@@ -92,7 +93,7 @@ export async function recordAuditedAction(input: AuditedActionInput) {
       action: input.action,
       actorRole: input.actorRole,
       recordHash,
-      previousRecordHash: input.previousRecordHash ?? "0x0000000000000000000000000000000000000000000000000000000000000000",
+      previousRecordHash: input.previousRecordHash ?? ZERO_HASH,
     });
   } else {
     chainResult = await submitAuditToChain({

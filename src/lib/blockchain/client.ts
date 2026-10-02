@@ -33,6 +33,9 @@ export type OnChainAuditRecord = {
   previousRecordHash: string;
 };
 
+let cachedContract: Contract | null = null;
+let cachedContractKey = "";
+
 export function getAuditContract() {
   const rpcUrl = process.env.BLOCKCHAIN_RPC_URL ?? process.env.SEPOLIA_RPC_URL;
   const privateKey = process.env.BLOCKCHAIN_PRIVATE_KEY;
@@ -42,89 +45,72 @@ export function getAuditContract() {
     return null;
   }
 
+  const key = `${rpcUrl}|${privateKey}|${contractAddress}`;
+  if (cachedContract && cachedContractKey === key) {
+    return cachedContract;
+  }
+
   const provider = new JsonRpcProvider(rpcUrl);
   const wallet = new Wallet(privateKey, provider);
-  return new Contract(contractAddress, DOCUMENT_REQUEST_AUDIT_ABI, wallet);
+  cachedContract = new Contract(contractAddress, DOCUMENT_REQUEST_AUDIT_ABI, wallet);
+  cachedContractKey = key;
+  return cachedContract;
+}
+
+function notConfiguredResult(): ChainAuditResult {
+  return {
+    ok: false,
+    error: "Blockchain environment is not configured.",
+    contractAddress: process.env.CONTRACT_ADDRESS ?? process.env.DOCUMENT_AUDIT_CONTRACT_ADDRESS,
+  };
+}
+
+async function submitToChain(method: string, args: unknown[]): Promise<ChainAuditResult> {
+  const contract = getAuditContract();
+  if (!contract) return notConfiguredResult();
+
+  try {
+    const tx = await contract[method](...args);
+    const receipt = await tx.wait();
+    return {
+      ok: true,
+      transactionHash: receipt.hash,
+      contractAddress: await contract.getAddress(),
+      blockNumber: Number(receipt.blockNumber),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Unknown blockchain submission error.",
+      contractAddress: await contract.getAddress(),
+    };
+  }
 }
 
 export async function submitAuditToChain(payload: ChainAuditPayload): Promise<ChainAuditResult> {
-  const contract = getAuditContract();
-
-  if (!contract) {
-    return {
-      ok: false,
-      error: "Blockchain environment is not configured.",
-      contractAddress: process.env.CONTRACT_ADDRESS ?? process.env.DOCUMENT_AUDIT_CONTRACT_ADDRESS,
-    };
-  }
-
-  try {
-    const tx = await contract.addAuditRecord(
-      payload.referenceType,
-      payload.referenceId,
-      payload.action,
-      payload.actorRole,
-      payload.recordHash,
-    );
-    const receipt = await tx.wait();
-
-    return {
-      ok: true,
-      transactionHash: receipt.hash,
-      contractAddress: await contract.getAddress(),
-      blockNumber: Number(receipt.blockNumber),
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Unknown blockchain submission error.",
-      contractAddress: await contract.getAddress(),
-    };
-  }
+  return submitToChain("addAuditRecord", [
+    payload.referenceType,
+    payload.referenceId,
+    payload.action,
+    payload.actorRole,
+    payload.recordHash,
+  ]);
 }
 
 export async function submitLifecycleEventToChain(payload: ChainLifecycleEventPayload): Promise<ChainAuditResult> {
-  const contract = getAuditContract();
-
-  if (!contract) {
-    return {
-      ok: false,
-      error: "Blockchain environment is not configured.",
-      contractAddress: process.env.CONTRACT_ADDRESS ?? process.env.DOCUMENT_AUDIT_CONTRACT_ADDRESS,
-    };
-  }
-
-  try {
-    const tx = await contract.recordCertificateEvent(
-      payload.eventType,
-      payload.referenceId,
-      payload.action,
-      payload.actorRole,
-      payload.recordHash,
-      payload.previousRecordHash,
-    );
-    const receipt = await tx.wait();
-
-    return {
-      ok: true,
-      transactionHash: receipt.hash,
-      contractAddress: await contract.getAddress(),
-      blockNumber: Number(receipt.blockNumber),
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Unknown blockchain submission error.",
-      contractAddress: await contract.getAddress(),
-    };
-  }
+  return submitToChain("recordCertificateEvent", [
+    payload.eventType,
+    payload.referenceId,
+    payload.action,
+    payload.actorRole,
+    payload.recordHash,
+    payload.previousRecordHash,
+  ]);
 }
 
 export async function readAuditCount() {
   const contract = getAuditContract();
-  if (!contract) {
-    return 0;
-  }
+  if (!contract) return 0;
 
   const count = await contract.getAuditCount();
   return Number(count);
@@ -160,11 +146,11 @@ export async function getLatestAuditRecord(referenceType: string, referenceId: s
   }
 }
 
-export async function getAuditRecordFull(index: number): Promise<OnChainAuditRecord | null> {
+async function getAuditRecordByMethod(method: string, args: unknown[]): Promise<OnChainAuditRecord | null> {
   const contract = getAuditContract();
   if (!contract) return null;
   try {
-    const record = await contract.getAuditRecordFull(index);
+    const record = await contract[method](...args);
     return {
       referenceType: record.referenceType as string,
       referenceId: record.referenceId as string,
@@ -180,22 +166,10 @@ export async function getAuditRecordFull(index: number): Promise<OnChainAuditRec
   }
 }
 
+export async function getAuditRecordFull(index: number): Promise<OnChainAuditRecord | null> {
+  return getAuditRecordByMethod("getAuditRecordFull", [index]);
+}
+
 export async function getLatestAuditRecordFull(referenceType: string, referenceId: string): Promise<OnChainAuditRecord | null> {
-  const contract = getAuditContract();
-  if (!contract) return null;
-  try {
-    const record = await contract.getLatestAuditRecordFull(referenceType, referenceId);
-    return {
-      referenceType: record.referenceType as string,
-      referenceId: record.referenceId as string,
-      action: record.action as string,
-      actorRole: record.actorRole as string,
-      recordHash: record.recordHash as string,
-      timestamp: Number(record.timestamp),
-      eventType: record.eventType as string,
-      previousRecordHash: record.previousRecordHash as string,
-    };
-  } catch {
-    return null;
-  }
+  return getAuditRecordByMethod("getLatestAuditRecordFull", [referenceType, referenceId]);
 }

@@ -7,12 +7,6 @@ export type StatCard = {
   tone: "red" | "rose" | "slate" | "emerald" | "amber" | "sky";
 };
 
-export type NavigationItem = {
-  label: string;
-  href: string;
-  icon: string;
-};
-
 export type DashboardRole = "student" | "registrar" | "admin";
 
 export type DocumentRequestView = {
@@ -115,6 +109,18 @@ export type GradeRecordView = {
   finalGrade: string;
   remarks: string;
   schoolYear: string;
+};
+
+export type StudentGradeSummaryView = {
+  id: string;
+  lrn: string;
+  name: string;
+  gradeLevel: string;
+  section: string;
+  status: string;
+  subjectCount: number;
+  averageFinalGrade: string;
+  latestSchoolYear: string;
 };
 
 export type StudentProfileView = {

@@ -4,7 +4,7 @@ import { APP_NAME, SCHOOL_NAME } from "@/lib/constants";
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const fromEmail = process.env.RESEND_FROM_EMAIL ?? "LANHS DRMS <no-reply@example.com>";
 
-export async function sendRequestNotificationEmail(input: {
+async function sendRequestNotificationEmail(input: {
   to: string;
   subject: string;
   message: string;

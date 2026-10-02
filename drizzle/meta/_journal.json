@@ -22,6 +22,27 @@
       "when": 1780901394616,
       "tag": "0002_lonely_flatman",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790427899203,
+      "tag": "0003_cleanup_redundant_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790427899204,
+      "tag": "0004_add_blockchain_metadata",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790427899205,
+      "tag": "0005_add_retry_scheduling",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, CalendarDays, CheckCircle2, Layers3, PanelsTopLeft, Plus, Save } from "lucide-react";
+import { BookOpen, CalendarDays, CheckCircle2, FileText, Layers3, PanelsTopLeft, Plus, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type RefObject, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -10,7 +10,7 @@ import { Input, Label, Select } from "@/components/ui/input";
 import type { AcademicSetupData } from "@/lib/services/academic-setup";
 import { cn } from "@/lib/utils";
 
-type Entity = "school-years" | "grade-levels" | "sections" | "subjects";
+type Entity = "school-years" | "grade-levels" | "sections" | "subjects" | "document-types";
 type Panel = Entity;
 
 const panelOptions: Array<{
@@ -22,6 +22,7 @@ const panelOptions: Array<{
   { value: "grade-levels", label: "Grade levels", icon: Layers3 },
   { value: "sections", label: "Sections", icon: PanelsTopLeft },
   { value: "subjects", label: "Subjects", icon: BookOpen },
+  { value: "document-types", label: "Document types", icon: FileText },
 ];
 
 function textValue(formData: FormData, key: string) {
@@ -68,6 +69,21 @@ function sectionPayload(formData: FormData) {
   };
 }
 
+function documentTypePayload(formData: FormData) {
+  return {
+    name: textValue(formData, "name"),
+    code: textValue(formData, "code"),
+    description: textValue(formData, "description"),
+    requirements: textValue(formData, "requirements")
+      .split("\n")
+      .map((r) => r.trim())
+      .filter((r) => r.length > 0),
+    processingDays: textValue(formData, "processingDays"),
+    fee: textValue(formData, "fee"),
+    isActive: checkboxValue(formData, "isActive"),
+  };
+}
+
 export function AcademicSetupManager({ data }: { data: AcademicSetupData }) {
   const router = useRouter();
   const [activePanel, setActivePanel] = useState<Panel>("school-years");
@@ -76,6 +92,7 @@ export function AcademicSetupManager({ data }: { data: AcademicSetupData }) {
   const gradeLevelFormRef = useRef<HTMLFormElement>(null);
   const sectionFormRef = useRef<HTMLFormElement>(null);
   const subjectFormRef = useRef<HTMLFormElement>(null);
+  const documentTypeFormRef = useRef<HTMLFormElement>(null);
 
   async function save({
     entity,
@@ -86,7 +103,7 @@ export function AcademicSetupManager({ data }: { data: AcademicSetupData }) {
   }: {
     entity: Entity;
     id?: string;
-    payload: Record<string, string | boolean>;
+    payload: Record<string, string | number | boolean | string[]>;
     success: string;
     resetRef?: RefObject<HTMLFormElement | null>;
   }) {
@@ -194,6 +211,15 @@ export function AcademicSetupManager({ data }: { data: AcademicSetupData }) {
           gradeLevels={data.gradeLevels}
           schoolYears={data.schoolYears}
           formRef={sectionFormRef}
+          isSubmitting={isSubmitting}
+          save={save}
+        />
+      ) : null}
+
+      {activePanel === "document-types" ? (
+        <DocumentTypesPanel
+          rows={data.documentTypes}
+          formRef={documentTypeFormRef}
           isSubmitting={isSubmitting}
           save={save}
         />
@@ -534,6 +560,115 @@ function SubjectsPanel({
               <div className="grid gap-3">
                 <StatusPill active={row.isActive} activeLabel="Active" inactiveLabel="Inactive" />
                 <CheckboxField id={`subject-active-${row.id}`} name="isActive" label="Active" defaultChecked={row.isActive} />
+              </div>
+              <Button type="submit" tone="secondary" disabled={isSubmitting}>
+                <Save className="h-4 w-4" aria-hidden />
+                Save
+              </Button>
+            </form>
+          ))
+        )
+      }
+    />
+  );
+}
+
+function DocumentTypesPanel({
+  rows,
+  formRef,
+  isSubmitting,
+  save,
+}: {
+  rows: AcademicSetupData["documentTypes"];
+  formRef: RefObject<HTMLFormElement | null>;
+  isSubmitting: boolean;
+  save: (input: {
+    entity: Entity;
+    id?: string;
+    payload: Record<string, string | boolean | string[] | number>;
+    success: string;
+    resetRef?: RefObject<HTMLFormElement | null>;
+  }) => Promise<void>;
+}) {
+  return (
+    <PanelLayout
+      title="Document types"
+      form={
+        <form
+          ref={formRef}
+          action={(formData) =>
+            save({
+              entity: "document-types",
+              payload: documentTypePayload(formData),
+              success: "Document type added.",
+              resetRef: formRef,
+            })
+          }
+          className="grid gap-4"
+        >
+          <Field id="new-document-type-name" label="Document type name" name="name" placeholder="Transcript of Records" required />
+          <Field id="new-document-type-code" label="Code" name="code" placeholder="TOR" required />
+          <Field
+            id="new-document-type-description"
+            label="Description"
+            name="description"
+            placeholder="Official transcript of academic records"
+          />
+          <div className="grid gap-2">
+            <Label htmlFor="new-document-type-requirements">Requirements (one per line)</Label>
+            <textarea
+              id="new-document-type-requirements"
+              name="requirements"
+              rows={3}
+              className="flex h-24 min-h-[80px] w-full rounded-md border border-border bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+              placeholder="Valid ID&#10;Request form&#10;Payment receipt"
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field id="new-document-type-processing-days" label="Processing days" name="processingDays" type="number" min="0" max="365" defaultValue="3" />
+            <Field id="new-document-type-fee" label="Fee" name="fee" type="number" min="0" step="0.01" defaultValue="0" />
+          </div>
+          <CheckboxField id="new-document-type-active" name="isActive" label="Active" defaultChecked />
+          <Button type="submit" disabled={isSubmitting}>
+            <Plus className="h-4 w-4" aria-hidden />
+            Add document type
+          </Button>
+        </form>
+      }
+      rows={
+        rows.length === 0 ? (
+          <EmptyRows message="No document types configured yet." />
+        ) : (
+          rows.map((row) => (
+            <form
+              key={row.id}
+              action={(formData) =>
+                save({
+                  entity: "document-types",
+                  id: row.id,
+                  payload: documentTypePayload(formData),
+                  success: "Document type updated.",
+                })
+              }
+              className="grid gap-3 px-5 py-4 2xl:grid-cols-[1.2fr_130px_1fr_120px_120px_auto] 2xl:items-end"
+            >
+              <Field id={`document-type-name-${row.id}`} label="Name" name="name" defaultValue={row.name} required />
+              <Field id={`document-type-code-${row.id}`} label="Code" name="code" defaultValue={row.code} required />
+              <div className="grid gap-2">
+                <Label htmlFor={`document-type-description-${row.id}`}>Description</Label>
+                <textarea
+                  id={`document-type-description-${row.id}`}
+                  name="description"
+                  rows={1}
+                  defaultValue={row.description}
+                  className="flex min-h-10 w-full rounded-md border border-border bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+                />
+              </div>
+              <Field id={`document-type-processing-days-${row.id}`} label="Processing days" name="processingDays" type="number" min="0" max="365" defaultValue={String(row.processingDays)} />
+              <Field id={`document-type-fee-${row.id}`} label="Fee" name="fee" type="number" min="0" step="0.01" defaultValue={row.fee} />
+              <div className="grid gap-3">
+                <StatusPill active={row.isActive} activeLabel="Active" inactiveLabel="Inactive" />
+                <CheckboxField id={`document-type-active-${row.id}`} name="isActive" label="Active" defaultChecked={row.isActive} />
               </div>
               <Button type="submit" tone="secondary" disabled={isSubmitting}>
                 <Save className="h-4 w-4" aria-hidden />

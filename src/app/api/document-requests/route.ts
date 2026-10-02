@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { clerkConfigured, getCurrentRole } from "@/lib/auth";
+import { AppError } from "@/lib/utils";
 import { createDocumentRequest } from "@/lib/services/document-requests";
 import { listDocumentRequestViews } from "@/lib/services/live-data";
 
@@ -25,6 +26,10 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message ?? "Invalid request." }, { status: 400 });
+    }
+
+    if (error instanceof AppError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
     }
 
     return NextResponse.json(

@@ -3,15 +3,13 @@ import type { z } from "zod";
 import { getDb } from "@/db";
 import { certificates, documentRequests, gradeLevels, sections, studentGrades, students } from "@/db/schema";
 import { getCurrentRole } from "@/lib/auth";
+import { AppError } from "@/lib/utils";
 import { studentRecordSchema } from "@/lib/validators";
 
-export class StudentRecordError extends Error {
-  status: number;
-
+export class StudentRecordError extends AppError {
   constructor(message: string, status = 400) {
-    super(message);
+    super(message, status);
     this.name = "StudentRecordError";
-    this.status = status;
   }
 }
 

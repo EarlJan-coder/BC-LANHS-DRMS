@@ -75,7 +75,8 @@ The app also accepts the legacy aliases `BLOCKCHAIN_RPC_URL` and `DOCUMENT_AUDIT
 npm install
 npm run db:migrate
 npm run db:seed
-npm run dev
+npm run dev:all    # starts Hardhat node, compiles & deploys contract, and boots Next.js in 1 command
+# OR: npm run dev  # for standalone Next.js
 ```
 
 Open `http://localhost:3000`.

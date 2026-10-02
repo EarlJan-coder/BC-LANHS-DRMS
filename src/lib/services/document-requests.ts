@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, type RGB } from "pdf-lib";
 import { db } from "@/db";
 import {
   documentRequests,
@@ -11,12 +11,70 @@ import {
   type RequestStatus,
   type UserRole,
 } from "@/db/schema";
-import { ensureCurrentDbUser, getCurrentProfile } from "@/lib/auth";
+import { ensureCurrentDbUser, getCurrentProfile, getCurrentRole } from "@/lib/auth";
+import { REQUEST_STATUSES } from "@/lib/constants";
+import { AppError } from "@/lib/utils";
 import { sendWorkflowEmail } from "@/lib/email";
 import { generateTrackingNumber } from "@/lib/utils";
 import { documentRequestSchema, updateRequestStatusSchema } from "@/lib/validators";
 import { getDocumentRequestView } from "@/lib/services/live-data";
+import type { DocumentRequestView } from "@/lib/types";
 import { recordAuditedAction } from "./audit-log";
+import {
+  appUrl,
+  BRAND_RED,
+  DARK_TEXT,
+  drawCenteredText,
+  drawDocumentHeader,
+  drawSignatureLine,
+  embedQrCode,
+  embedSchoolLogo,
+  LIGHT_BORDER,
+  MUTED_TEXT,
+  PAGE_HEIGHT,
+  PAGE_WIDTH,
+  wrapText,
+} from "./pdf-brand";
+
+export type EligibilityReason = "no_record" | "no_lrn";
+
+export interface RequestEligibility {
+  eligible: boolean;
+  reason: EligibilityReason | null;
+}
+
+export async function getRequestEligibility(
+  user?: Awaited<ReturnType<typeof ensureCurrentDbUser>>
+): Promise<RequestEligibility> {
+  if (!db) {
+    return { eligible: true, reason: null };
+  }
+
+  const resolvedUser = user ?? (await ensureCurrentDbUser());
+  const role = resolvedUser?.role ?? (await getCurrentRole());
+
+  if (role !== "student") {
+    return { eligible: true, reason: null };
+  }
+
+  if (!resolvedUser) {
+    return { eligible: false, reason: "no_record" };
+  }
+
+  const student = await db.query.students.findFirst({
+    where: eq(students.userId, resolvedUser.id),
+  });
+
+  if (!student) {
+    return { eligible: false, reason: "no_record" };
+  }
+
+  if (!student.lrn || student.lrn.trim() === "") {
+    return { eligible: false, reason: "no_lrn" };
+  }
+
+  return { eligible: true, reason: null };
+}
 
 export async function createDocumentRequest(input: unknown) {
   const values = documentRequestSchema.parse(input);
@@ -34,6 +92,15 @@ export async function createDocumentRequest(input: unknown) {
           where: eq(students.userId, user.id),
         })
       : undefined;
+
+    const eligibility = await getRequestEligibility(user);
+    if (!eligibility.eligible) {
+      const message =
+        eligibility.reason === "no_record"
+          ? "We couldn't find a student record for your account. Set up your profile and add your LRN before submitting a document request."
+          : "Your student profile has no LRN yet. Add your Learner Reference Number on your profile page before submitting a document request.";
+      throw new AppError(message, 403);
+    }
 
     const [documentType] = await db
       .select()
@@ -60,7 +127,6 @@ export async function createDocumentRequest(input: unknown) {
 
     await db.insert(requestStatusHistory).values({
       requestId: request.id,
-      newStatus: "pending",
       toStatus: "pending",
       actorUserId: user?.id,
       remarks: "Request submitted online.",
@@ -116,53 +182,194 @@ export async function createDocumentRequest(input: unknown) {
   };
 }
 
+const STATUS_BADGE_COLORS: Record<string, RGB> = {
+  pending: rgb(0.631, 0.384, 0.027),
+  under_review: rgb(0.012, 0.412, 0.631),
+  approved: rgb(0.016, 0.471, 0.341),
+  rejected: rgb(0.725, 0.109, 0.109),
+  processing: rgb(0.427, 0.157, 0.851),
+  ready_for_pickup: rgb(0.059, 0.463, 0.431),
+  claimed: rgb(0.2, 0.255, 0.333),
+  cancelled: rgb(0.247, 0.247, 0.275),
+};
+
+export async function renderRequestSlipPdf(request: DocumentRequestView) {
+  const pdfDoc = await PDFDocument.create();
+  const [regular, bold] = await Promise.all([
+    pdfDoc.embedFont(StandardFonts.Helvetica),
+    pdfDoc.embedFont(StandardFonts.HelveticaBold),
+  ]);
+  const logo = await embedSchoolLogo(pdfDoc);
+
+  const page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  drawDocumentHeader(page, logo, regular, bold);
+
+  drawCenteredText(page, "Document Request Slip", 684, bold, 18, BRAND_RED);
+  drawCenteredText(page, "Official receipt of document request", 666, regular, 9, MUTED_TEXT);
+
+  const metaY = 644;
+  const trackingLabel = "Tracking No.: ";
+  page.drawText(trackingLabel, { x: 50, y: metaY, size: 9, font: regular, color: MUTED_TEXT });
+  page.drawText(request.trackingNumber, {
+    x: 50 + regular.widthOfTextAtSize(trackingLabel, 9),
+    y: metaY,
+    size: 10,
+    font: bold,
+    color: DARK_TEXT,
+  });
+
+  const requestedLabel = "Requested: ";
+  const requestedLabelWidth = regular.widthOfTextAtSize(requestedLabel, 9);
+  const requestedValueWidth = regular.widthOfTextAtSize(request.requestedAt, 9);
+  const requestedX = 545 - requestedLabelWidth - requestedValueWidth;
+  page.drawText(requestedLabel, { x: requestedX, y: metaY, size: 9, font: regular, color: MUTED_TEXT });
+  page.drawText(request.requestedAt, {
+    x: requestedX + requestedLabelWidth,
+    y: metaY,
+    size: 9,
+    font: regular,
+    color: DARK_TEXT,
+  });
+
+  page.drawRectangle({ x: 50, y: 560, width: 495, height: 72, color: rgb(1, 1, 1), borderColor: LIGHT_BORDER, borderWidth: 0.8 });
+
+  const infoFields = [
+    { x: 62, labelY: 614, valueY: 600, label: "Student Name", value: request.studentName, valueFont: bold },
+    { x: 310, labelY: 614, valueY: 600, label: "LRN", value: request.lrn ?? "Not set", valueFont: regular },
+    { x: 62, labelY: 578, valueY: 566, label: "Grade Level Needed", value: request.gradeLevelNeeded, valueFont: regular },
+    { x: 310, labelY: 578, valueY: 566, label: "School Year Needed", value: request.schoolYearNeeded, valueFont: regular },
+  ];
+  for (const field of infoFields) {
+    page.drawText(field.label, { x: field.x, y: field.labelY, size: 8, font: regular, color: MUTED_TEXT });
+    page.drawText(field.value, { x: field.x, y: field.valueY, size: 10, font: field.valueFont, color: DARK_TEXT });
+  }
+
+  const panelTop = 548;
+  const contentX = 62;
+  const valueWidth = 470;
+  const lineStep = 14;
+  const blockGap = 20;
+  const purposeLines = wrapText(regular, 10, valueWidth, request.purpose ?? "");
+  const remarksLines = wrapText(regular, 10, valueWidth, request.remarks ?? "");
+
+  let panelY = panelTop - 18;
+  panelY -= lineStep + blockGap;
+  if (purposeLines.length > 0) {
+    panelY -= lineStep * purposeLines.length + blockGap;
+  }
+  if (remarksLines.length > 0) {
+    panelY -= lineStep * remarksLines.length;
+  }
+  const panelBottom = panelY - 16;
+  page.drawRectangle({
+    x: 50,
+    y: panelBottom,
+    width: 495,
+    height: panelTop - panelBottom,
+    color: rgb(1, 1, 1),
+    borderColor: LIGHT_BORDER,
+    borderWidth: 0.8,
+  });
+
+  const badgeLabel =
+    REQUEST_STATUSES.find((status) => status.value === request.status)?.label ??
+    request.status.replaceAll("_", " ");
+  const badgeWidth = bold.widthOfTextAtSize(badgeLabel, 9) + 16;
+  const badgeHeight = 16;
+  const badgeX = 533 - badgeWidth;
+  const badgeY = panelTop - 8 - badgeHeight;
+  page.drawRectangle({
+    x: badgeX,
+    y: badgeY,
+    width: badgeWidth,
+    height: badgeHeight,
+    color: STATUS_BADGE_COLORS[request.status] ?? MUTED_TEXT,
+  });
+  page.drawText(badgeLabel, { x: badgeX + 8, y: badgeY + 5, size: 9, font: bold, color: rgb(1, 1, 1) });
+  const statusWord = "Status";
+  page.drawText(statusWord, {
+    x: badgeX - 8 - regular.widthOfTextAtSize(statusWord, 8),
+    y: badgeY + 5,
+    size: 8,
+    font: regular,
+    color: MUTED_TEXT,
+  });
+
+  let y = panelTop - 18;
+  page.drawText("Document Type", { x: contentX, y, size: 8, font: regular, color: MUTED_TEXT });
+  y -= lineStep;
+  page.drawText(request.documentType, { x: contentX, y, size: 10, font: bold, color: DARK_TEXT });
+  y -= blockGap;
+
+  if (purposeLines.length > 0) {
+    page.drawText("Purpose", { x: contentX, y, size: 8, font: regular, color: MUTED_TEXT });
+    purposeLines.forEach((line, index) => {
+      page.drawText(line, { x: contentX, y: y - lineStep * (index + 1), size: 10, font: regular, color: DARK_TEXT });
+    });
+    y -= lineStep * purposeLines.length + blockGap;
+  }
+
+  if (remarksLines.length > 0) {
+    page.drawText("Remarks", { x: contentX, y, size: 8, font: regular, color: MUTED_TEXT });
+    remarksLines.forEach((line, index) => {
+      page.drawText(line, { x: contentX, y: y - lineStep * (index + 1), size: 10, font: regular, color: DARK_TEXT });
+    });
+  }
+
+  const requestedByLabel = "Requested by";
+  const registrarLabel = "Registrar";
+  drawSignatureLine(
+    page,
+    70,
+    215,
+    requestedByLabel,
+    70 + (145 - regular.widthOfTextAtSize(requestedByLabel, 9)) / 2,
+    regular,
+  );
+  drawSignatureLine(
+    page,
+    300,
+    465,
+    registrarLabel,
+    300 + (165 - regular.widthOfTextAtSize(registrarLabel, 9)) / 2,
+    regular,
+  );
+
+  const qrUrl = `${appUrl()}/student/requests/${request.id}`;
+  const qrImage = await embedQrCode(pdfDoc, qrUrl);
+  page.drawImage(qrImage, { x: 465, y: 132, width: 68, height: 68 });
+  const qrCaption = "Scan to track request";
+  page.drawText(qrCaption, {
+    x: 545 - bold.widthOfTextAtSize(qrCaption, 8),
+    y: 120,
+    size: 8,
+    font: bold,
+    color: BRAND_RED,
+  });
+
+  page.drawText(
+    "Generated by LANHS DRMS · This slip is system-generated and does not require a signature to be valid.",
+    { x: 50, y: 62, size: 8, font: regular, color: MUTED_TEXT },
+  );
+  page.drawText(qrUrl, { x: 50, y: 46, size: 7, font: regular, color: MUTED_TEXT });
+  page.drawText("This QR code opens the request status page.", {
+    x: 50,
+    y: 32,
+    size: 8,
+    font: regular,
+    color: MUTED_TEXT,
+  });
+
+  return pdfDoc.save();
+}
+
 export async function generateRequestSlipPdf(requestId: string) {
   const request = await getDocumentRequestView(requestId, true);
   if (!request) {
     throw new Error("Document request not found.");
   }
 
-  const pdfDoc = await PDFDocument.create();
-  const [font, boldFont] = await Promise.all([
-    pdfDoc.embedFont(StandardFonts.Helvetica),
-    pdfDoc.embedFont(StandardFonts.HelveticaBold),
-  ]);
-
-  const page = pdfDoc.addPage([612, 792]);
-  const left = 50;
-  let y = 740;
-
-  page.drawText("LANHS Document Request Slip", {
-    x: left,
-    y,
-    size: 20,
-    font: boldFont,
-    color: rgb(0, 0, 0),
-  });
-
-  y -= 36;
-  page.drawText(`Tracking Number: ${request.trackingNumber}`, { x: left, y, size: 12, font, color: rgb(0, 0, 0) });
-  y -= 18;
-  page.drawText(`Student: ${request.studentName}`, { x: left, y, size: 12, font, color: rgb(0, 0, 0) });
-  y -= 18;
-  page.drawText(`Document Type: ${request.documentType}`, { x: left, y, size: 12, font, color: rgb(0, 0, 0) });
-  y -= 18;
-  page.drawText(`Purpose: ${request.purpose}`, { x: left, y, size: 12, font, color: rgb(0, 0, 0) });
-  y -= 18;
-  page.drawText(`Requested: ${request.requestedAt}`, { x: left, y, size: 12, font, color: rgb(0, 0, 0) });
-  y -= 18;
-  page.drawText(`Status: ${request.status.replaceAll("_", " ")}`, { x: left, y, size: 12, font, color: rgb(0, 0, 0) });
-  y -= 18;
-  page.drawText(`School Year Needed: ${request.schoolYearNeeded}`, { x: left, y, size: 12, font, color: rgb(0, 0, 0) });
-  y -= 18;
-  page.drawText(`Grade Level Needed: ${request.gradeLevelNeeded}`, { x: left, y, size: 12, font, color: rgb(0, 0, 0) });
-  y -= 18;
-  page.drawText(`Remarks: ${request.remarks}`, { x: left, y, size: 12, font, color: rgb(0, 0, 0) });
-
-  y -= 40;
-  page.drawText("Generated by LANHS DRMS", { x: left, y, size: 10, font, color: rgb(0.4, 0.4, 0.4) });
-
-  return pdfDoc.save();
+  return renderRequestSlipPdf(request);
 }
 
 export async function updateDocumentRequestStatus(requestId: string, input: unknown, actorRole: UserRole = "registrar") {
@@ -230,7 +437,6 @@ export async function updateDocumentRequestStatus(requestId: string, input: unkn
 
     await db.insert(requestStatusHistory).values({
       requestId,
-      newStatus: values.status,
       fromStatus: previousStatus,
       toStatus: values.status,
       actorUserId: actor?.id,

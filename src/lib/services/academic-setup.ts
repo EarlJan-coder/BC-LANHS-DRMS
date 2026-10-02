@@ -1,22 +1,21 @@
 import { and, count, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import type { z } from "zod";
 import { getDb } from "@/db";
-import { gradeLevels, schoolYears, sections, subjects } from "@/db/schema";
+import { documentTypes, gradeLevels, schoolYears, sections, subjects } from "@/db/schema";
 import { clerkConfigured, getCurrentRole } from "@/lib/auth";
+import { AppError, formatDate } from "@/lib/utils";
 import {
+  documentTypeMutationSchema,
   gradeLevelMutationSchema,
   schoolYearMutationSchema,
   sectionMutationSchema,
   subjectMutationSchema,
 } from "@/lib/validators";
 
-export class AcademicSetupError extends Error {
-  status: number;
-
+export class AcademicSetupError extends AppError {
   constructor(message: string, status = 400) {
-    super(message);
+    super(message, status);
     this.name = "AcademicSetupError";
-    this.status = status;
   }
 }
 
@@ -48,6 +47,18 @@ export type AcademicSubject = {
   status: string;
 };
 
+export type AcademicDocumentType = {
+  id: string;
+  name: string;
+  code: string;
+  description: string;
+  requirements: string[];
+  processingDays: number;
+  fee: string;
+  isActive: boolean;
+  status: string;
+};
+
 export type AcademicSection = {
   id: string;
   name: string;
@@ -65,15 +76,17 @@ export type AcademicSetupData = {
   gradeLevels: AcademicGradeLevel[];
   sections: AcademicSection[];
   subjects: AcademicSubject[];
+  documentTypes: AcademicDocumentType[];
 };
 
 type SchoolYearMutation = z.infer<typeof schoolYearMutationSchema>;
 type GradeLevelMutation = z.infer<typeof gradeLevelMutationSchema>;
 type SectionMutation = z.infer<typeof sectionMutationSchema>;
 type SubjectMutation = z.infer<typeof subjectMutationSchema>;
+type DocumentTypeMutation = z.infer<typeof documentTypeMutationSchema>;
 
 function formatDateInput(date: Date | null | undefined) {
-  return date ? date.toISOString().slice(0, 10) : "";
+  return formatDate(date, "");
 }
 
 function parseOptionalDate(value: string) {
@@ -121,7 +134,7 @@ export async function assertAcademicSetupAccess() {
 
 export async function getAcademicSetupData(): Promise<AcademicSetupData> {
   const db = getDb();
-  const [schoolYearRows, gradeLevelRows, sectionRows, subjectRows] = await Promise.all([
+  const [schoolYearRows, gradeLevelRows, sectionRows, subjectRows, documentTypeRows] = await Promise.all([
     db.select().from(schoolYears).orderBy(desc(schoolYears.createdAt)),
     db
       .select({
@@ -162,6 +175,19 @@ export async function getAcademicSetupData(): Promise<AcademicSetupData> {
       .from(subjects)
       .leftJoin(gradeLevels, eq(subjects.gradeLevelId, gradeLevels.id))
       .orderBy(subjects.code, subjects.name),
+    db
+      .select({
+        id: documentTypes.id,
+        name: documentTypes.name,
+        code: documentTypes.code,
+        description: documentTypes.description,
+        requirements: documentTypes.requirements,
+        processingDays: documentTypes.processingDays,
+        fee: documentTypes.fee,
+        isActive: documentTypes.isActive,
+      })
+      .from(documentTypes)
+      .orderBy(documentTypes.name),
   ]);
 
   return {
@@ -198,6 +224,17 @@ export async function getAcademicSetupData(): Promise<AcademicSetupData> {
       name: row.name,
       gradeLevelId: row.gradeLevelId,
       gradeLevel: row.gradeLevel ?? "Not assigned",
+      isActive: row.isActive,
+      status: row.isActive ? "Active" : "Inactive",
+    })),
+    documentTypes: documentTypeRows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      code: row.code,
+      description: row.description ?? "",
+      requirements: row.requirements ?? [],
+      processingDays: row.processingDays ?? 3,
+      fee: String(row.fee ?? "0"),
       isActive: row.isActive,
       status: row.isActive ? "Active" : "Inactive",
     })),
@@ -290,6 +327,28 @@ async function ensureUniqueSectionName(
 
   if (existing[0] && existing[0].id !== currentId) {
     throw new AcademicSetupError("A section with this name already exists for this grade level and school year.");
+  }
+}
+
+async function ensureUniqueDocumentTypeCode(code: string, currentId?: string) {
+  const db = getDb();
+  const existing = await db.query.documentTypes.findFirst({
+    where: eq(documentTypes.code, code),
+  });
+
+  if (existing && existing.id !== currentId) {
+    throw new AcademicSetupError("A document type with this code already exists.");
+  }
+}
+
+async function ensureUniqueDocumentTypeName(name: string, currentId?: string) {
+  const db = getDb();
+  const existing = await db.query.documentTypes.findFirst({
+    where: eq(documentTypes.name, name),
+  });
+
+  if (existing && existing.id !== currentId) {
+    throw new AcademicSetupError("A document type with this name already exists.");
   }
 }
 
@@ -496,6 +555,54 @@ export async function updateSubject(id: string, values: SubjectMutation) {
 
   if (!updated) {
     throw new AcademicSetupError("Subject not found.", 404);
+  }
+
+  return updated;
+}
+
+export async function createDocumentType(values: DocumentTypeMutation) {
+  const db = getDb();
+
+  await Promise.all([ensureUniqueDocumentTypeCode(values.code), ensureUniqueDocumentTypeName(values.name)]);
+
+  const [created] = await db
+    .insert(documentTypes)
+    .values({
+      name: values.name,
+      code: values.code,
+      description: values.description,
+      requirements: values.requirements,
+      processingDays: values.processingDays,
+      fee: values.fee.toFixed(2),
+      isActive: values.isActive,
+    })
+    .returning();
+
+  return created;
+}
+
+export async function updateDocumentType(id: string, values: DocumentTypeMutation) {
+  const db = getDb();
+
+  await Promise.all([ensureUniqueDocumentTypeCode(values.code, id), ensureUniqueDocumentTypeName(values.name, id)]);
+
+  const [updated] = await db
+    .update(documentTypes)
+    .set({
+      name: values.name,
+      code: values.code,
+      description: values.description,
+      requirements: values.requirements,
+      processingDays: values.processingDays,
+      fee: values.fee.toFixed(2),
+      isActive: values.isActive,
+      updatedAt: new Date(),
+    })
+    .where(eq(documentTypes.id, id))
+    .returning();
+
+  if (!updated) {
+    throw new AcademicSetupError("Document type not found.", 404);
   }
 
   return updated;

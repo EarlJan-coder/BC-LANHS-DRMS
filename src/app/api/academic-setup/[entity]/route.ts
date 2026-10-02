@@ -3,6 +3,7 @@ import { ZodError } from "zod";
 import {
   AcademicSetupError,
   assertAcademicSetupAccess,
+  createDocumentType,
   createGradeLevel,
   createSchoolYear,
   createSection,
@@ -10,6 +11,7 @@ import {
   getAcademicSetupData,
 } from "@/lib/services/academic-setup";
 import {
+  documentTypeMutationSchema,
   gradeLevelMutationSchema,
   schoolYearMutationSchema,
   sectionMutationSchema,
@@ -53,6 +55,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ent
       return NextResponse.json({ data: data.subjects });
     }
 
+    if (entity === "document-types") {
+      return NextResponse.json({ data: data.documentTypes });
+    }
+
     throw new AcademicSetupError("Academic setup entity not found.", 404);
   } catch (error) {
     return handleError(error);
@@ -92,6 +98,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
 
     if (entity === "subjects") {
       const data = await createSubject(subjectMutationSchema.parse(body));
+      return NextResponse.json({ data }, { status: 201 });
+    }
+
+    if (entity === "document-types") {
+      const data = await createDocumentType(documentTypeMutationSchema.parse(body));
       return NextResponse.json({ data }, { status: 201 });
     }
 

@@ -23,13 +23,11 @@ export function stableJson(value: unknown): string {
   return JSON.stringify(value);
 }
 
-export function createRecordHash(payload: AuditHashPayload) {
+export function createRecordHash(payload: unknown) {
   return `0x${createHash("sha256").update(stableJson(payload)).digest("hex")}`;
 }
 
-export function createRecordHashFromCanonical(canonical: unknown) {
-  return `0x${createHash("sha256").update(stableJson(canonical)).digest("hex")}`;
-}
+export const createRecordHashFromCanonical = createRecordHash;
 
 export function verifyRecordHash(payload: AuditHashPayload, expectedHash: string) {
   return createRecordHash(payload).toLowerCase() === expectedHash.toLowerCase();

@@ -3,12 +3,14 @@ import { ZodError } from "zod";
 import {
   AcademicSetupError,
   assertAcademicSetupAccess,
+  updateDocumentType,
   updateGradeLevel,
   updateSchoolYear,
   updateSection,
   updateSubject,
 } from "@/lib/services/academic-setup";
 import {
+  documentTypeMutationSchema,
   gradeLevelMutationSchema,
   schoolYearMutationSchema,
   sectionMutationSchema,
@@ -56,6 +58,11 @@ export async function PATCH(
 
     if (entity === "subjects") {
       const data = await updateSubject(id, subjectMutationSchema.parse(body));
+      return NextResponse.json({ data });
+    }
+
+    if (entity === "document-types") {
+      const data = await updateDocumentType(id, documentTypeMutationSchema.parse(body));
       return NextResponse.json({ data });
     }
 

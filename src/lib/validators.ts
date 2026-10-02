@@ -104,3 +104,13 @@ export const sectionMutationSchema = z.object({
   adviserName: z.string().trim().max(150, "Adviser name must be 150 characters or less.").optional().default(""),
   isActive: checkboxBoolean,
 });
+
+export const documentTypeMutationSchema = z.object({
+  name: z.string().trim().min(2, "Document type name is required.").max(120, "Document type name must be 120 characters or less."),
+  code: z.string().trim().min(2, "Document type code is required.").max(40, "Document type code must be 40 characters or less.").transform((value) => value.toUpperCase()),
+  description: z.string().trim().max(500, "Description must be 500 characters or less.").optional().default(""),
+  requirements: z.array(z.string()).optional().default([]),
+  processingDays: z.coerce.number().int("Processing days must be a whole number.").min(0).max(365).default(3),
+  fee: z.coerce.number().min(0, "Fee must be a positive number.").max(999999.99).default(0),
+  isActive: checkboxBoolean,
+});

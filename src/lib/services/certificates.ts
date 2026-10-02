@@ -1,10 +1,7 @@
 import { randomBytes } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { eq, desc } from "drizzle-orm";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import type { PDFFont, PDFImage, PDFPage } from "pdf-lib";
-import QRCode from "qrcode";
+import type { PDFFont, PDFPage } from "pdf-lib";
 import { getDb } from "@/db";
 import {
   certificates,
@@ -20,19 +17,27 @@ import {
   users,
 } from "@/db/schema";
 import { ensureCurrentDbUser } from "@/lib/auth";
-import { SCHOOL_ADDRESS, SCHOOL_NAME } from "@/lib/constants";
+import { SCHOOL_NAME } from "@/lib/constants";
 import { sendWorkflowEmail } from "@/lib/email";
 import type { CertificateVerificationView, CertificateView, GradeRecordView } from "@/lib/types";
+import { formatDate, generatePrefixedId, studentFullName, ZERO_HASH } from "@/lib/utils";
 import { certificateGenerateSchema } from "@/lib/validators";
 import { recordAuditedAction } from "./audit-log";
-
-const LOGO_PATH = join(process.cwd(), "public", "lanhs-logo.png");
-const PAGE_WIDTH = 595.28;
-const PAGE_HEIGHT = 841.89;
-const BRAND_RED = rgb(0.725, 0.109, 0.109);
-const DARK_TEXT = rgb(0.067, 0.094, 0.153);
-const MUTED_TEXT = rgb(0.42, 0.45, 0.5);
-const LIGHT_BORDER = rgb(0.9, 0.9, 0.9);
+import {
+  appUrl,
+  BRAND_RED,
+  DARK_TEXT,
+  drawCenteredText,
+  drawDocumentHeader,
+  drawSignatureLine,
+  drawWrappedText,
+  embedQrCode,
+  embedSchoolLogo,
+  LIGHT_BORDER,
+  MUTED_TEXT,
+  PAGE_HEIGHT,
+  PAGE_WIDTH,
+} from "./pdf-brand";
 
 function certificateNumber(type = "Certificate") {
   const prefix =
@@ -45,105 +50,18 @@ function certificateNumber(type = "Certificate") {
       .join("")
       .slice(0, 6) || "CERT";
 
-  return `${prefix}-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${Math.random()
-    .toString(36)
-    .slice(2, 7)
-    .toUpperCase()}`;
+  return generatePrefixedId(prefix);
 }
 
 function verificationCode() {
   return randomBytes(16).toString("hex");
 }
 
-function appUrl() {
-  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-}
-
-function formatDate(date: Date | null | undefined) {
-  return date ? date.toISOString().slice(0, 10) : "Not set";
-}
-
-async function embedSchoolLogo(pdf: PDFDocument) {
-  try {
-    return await pdf.embedPng(await readFile(LOGO_PATH));
-  } catch {
-    return null;
-  }
-}
-
-function drawCenteredText(page: PDFPage, text: string, y: number, font: PDFFont, size: number, color = DARK_TEXT) {
-  const width = font.widthOfTextAtSize(text, size);
-  page.drawText(text, {
-    x: Math.max(50, (PAGE_WIDTH - width) / 2),
-    y,
-    size,
-    font,
-    color,
-  });
-}
-
-function drawWrappedText(
-  page: PDFPage,
-  text: string,
-  x: number,
-  y: number,
-  maxWidth: number,
-  font: PDFFont,
-  size: number,
-  color = DARK_TEXT,
-  lineHeight = 16,
-) {
-  const words = text.split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let line = "";
-
-  for (const word of words) {
-    const candidate = line ? `${line} ${word}` : word;
-    if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
-      line = candidate;
-    } else {
-      if (line) {
-        lines.push(line);
-      }
-      line = word;
-    }
-  }
-
-  if (line) {
-    lines.push(line);
-  }
-
-  for (const currentLine of lines) {
-    page.drawText(currentLine, { x, y, size, font, color });
-    y -= lineHeight;
-  }
-
-  return y;
-}
-
-function drawCertificateHeader(page: PDFPage, logo: PDFImage | null, regular: PDFFont, bold: PDFFont) {
-  if (logo) {
-    page.drawImage(logo, { x: 58, y: 742, width: 72, height: 72 });
-  } else {
-    page.drawCircle({ x: 94, y: 778, size: 34, color: rgb(1, 1, 1), borderColor: BRAND_RED, borderWidth: 3 });
-    page.drawText("LANHS", { x: 68, y: 773, size: 13, font: bold, color: BRAND_RED });
-  }
-
-  page.drawText("Republic of the Philippines", { x: 150, y: 792, size: 10, font: regular, color: MUTED_TEXT });
-  page.drawText("Department of Education", { x: 150, y: 777, size: 11, font: bold, color: DARK_TEXT });
-  page.drawText(SCHOOL_NAME, { x: 150, y: 759, size: 15, font: bold, color: BRAND_RED });
-  page.drawText(SCHOOL_ADDRESS, { x: 150, y: 742, size: 9, font: regular, color: MUTED_TEXT });
-  page.drawLine({ start: { x: 50, y: 720 }, end: { x: 545, y: 720 }, thickness: 1.5, color: BRAND_RED });
-}
-
 async function drawCertificateFooter(pdf: PDFDocument, page: PDFPage, qrCodeData: string, regular: PDFFont, bold: PDFFont) {
-  page.drawLine({ start: { x: 70, y: 102 }, end: { x: 215, y: 102 }, thickness: 0.8, color: DARK_TEXT });
-  page.drawText("Registrar", { x: 112, y: 88, size: 9, font: regular, color: MUTED_TEXT });
-  page.drawLine({ start: { x: 300, y: 102 }, end: { x: 465, y: 102 }, thickness: 0.8, color: DARK_TEXT });
-  page.drawText("School Head / Principal", { x: 338, y: 88, size: 9, font: regular, color: MUTED_TEXT });
+  drawSignatureLine(page, 70, 215, "Registrar", 112, regular);
+  drawSignatureLine(page, 300, 465, "School Head / Principal", 338, regular);
 
-  const qrDataUrl = await QRCode.toDataURL(qrCodeData, { margin: 1, width: 110 });
-  const qrImage = await pdf.embedPng(Buffer.from(qrDataUrl.split(",")[1] ?? "", "base64"));
+  const qrImage = await embedQrCode(pdf, qrCodeData);
   page.drawImage(qrImage, { x: 465, y: 132, width: 68, height: 68 });
   page.drawText("Scan to verify", { x: 468, y: 120, size: 8, font: bold, color: BRAND_RED });
   page.drawText(qrCodeData, { x: 50, y: 42, size: 7, font: regular, color: MUTED_TEXT });
@@ -208,15 +126,6 @@ function genericCertificateText({
   }
 
   return `This certifies that ${learner}${classText}${schoolYearText} has a validated school document request recorded in LANHS DRMS. This certificate is issued upon request for ${purpose}.`;
-}
-
-function studentFullName(row: {
-  firstName: string;
-  middleName: string | null;
-  lastName: string;
-  suffix: string | null;
-}) {
-  return [row.firstName, row.middleName, row.lastName, row.suffix].filter(Boolean).join(" ");
 }
 
 function privateDisplayName(name: string) {
@@ -294,6 +203,10 @@ export async function generateCertificate(input: unknown) {
     })
     .where(eq(certificates.id, created.id));
 
+  const grades = await db.query.studentGrades.findMany({
+    where: eq(studentGrades.studentId, student.id),
+  });
+
   const audit = await recordAuditedAction({
     referenceType: "certificate",
     referenceId: created.certificateNumber,
@@ -309,11 +222,21 @@ export async function generateCertificate(input: unknown) {
     },
     hashMetadata: {
       certificateNumber: created.certificateNumber,
+      studentId: student.id,
       certificateType,
-      schoolYear: schoolYear?.name,
+      schoolYear: schoolYear?.name ?? "",
+      grades: grades.map((g) => ({
+        subjectCode: g.subjectId ?? "",
+        quarter1: g.quarter1,
+        quarter2: g.quarter2,
+        quarter3: g.quarter3,
+        quarter4: g.quarter4,
+        finalGrade: g.finalGrade,
+        remarks: g.remarks,
+      })),
     },
     eventType: "CERTIFICATE_ISSUED",
-    previousRecordHash: "0x0000000000000000000000000000000000000000000000000000000000000000",
+    previousRecordHash: ZERO_HASH,
   });
 
   await db
@@ -542,7 +465,7 @@ export async function generateCertificatePdf(certificateId: string) {
   const title = formalTitle(certificate.certificateType);
   const titleSize = title.length > 42 ? 13 : title.length > 32 ? 15 : 18;
 
-  drawCertificateHeader(page, logo, regular, bold);
+  drawDocumentHeader(page, logo, regular, bold);
   drawCenteredText(page, title, 680, bold, titleSize);
   page.drawText(`Certificate No.: ${certificate.certificateNumber}`, { x: 50, y: 645, size: 10, font: regular, color: DARK_TEXT });
   page.drawText(`Date Generated: ${formatDate(certificate.generatedAt)}`, { x: 365, y: 645, size: 10, font: regular, color: DARK_TEXT });
@@ -651,7 +574,7 @@ export async function reissueCertificate(certificateId: string, reason?: string)
     throw new Error("Certificate not found.");
   }
 
-  const previousHash = existing.recordHash ?? "0x0000000000000000000000000000000000000000000000000000000000000000";
+  const previousHash = existing.recordHash ?? ZERO_HASH;
 
   const schoolYear = existing.schoolYearId
     ? await db.query.schoolYears.findFirst({ where: eq(schoolYears.id, existing.schoolYearId) })
@@ -722,7 +645,11 @@ export async function voidCertificate(certificateId: string, reason: string) {
     throw new Error("Certificate not found.");
   }
 
-  const previousHash = existing.recordHash ?? "0x0000000000000000000000000000000000000000000000000000000000000000";
+  const previousHash = existing.recordHash ?? ZERO_HASH;
+
+  const grades = existing.studentId
+    ? await db.query.studentGrades.findMany({ where: eq(studentGrades.studentId, existing.studentId) })
+    : [];
 
   const audit = await recordAuditedAction({
     referenceType: "certificate",
@@ -738,7 +665,19 @@ export async function voidCertificate(certificateId: string, reason: string) {
     },
     hashMetadata: {
       certificateNumber: existing.certificateNumber,
+      studentId: existing.studentId ?? "",
+      certificateType: existing.certificateType,
+      schoolYear: "",
       voidReason: reason,
+      grades: grades.map((g) => ({
+        subjectCode: g.subjectId ?? "",
+        quarter1: g.quarter1,
+        quarter2: g.quarter2,
+        quarter3: g.quarter3,
+        quarter4: g.quarter4,
+        finalGrade: g.finalGrade,
+        remarks: g.remarks,
+      })),
     },
     eventType: "CERTIFICATE_VOIDED",
     previousRecordHash: previousHash,
