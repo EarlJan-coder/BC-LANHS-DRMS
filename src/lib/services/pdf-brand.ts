@@ -110,3 +110,17 @@ export function drawSignatureLine(
   page.drawLine({ start: { x: startX, y: 102 }, end: { x: endX, y: 102 }, thickness: 0.8, color: DARK_TEXT });
   page.drawText(label, { x: labelX, y: 88, size: 9, font: regular, color: MUTED_TEXT });
 }
+
+export const WATERMARK_SIZE = 280;
+export const WATERMARK_OPACITY = 0.08;
+
+export function drawWatermark(page: PDFPage, logo: PDFImage | null) {
+  if (!logo) return;
+  page.drawImage(logo, {
+    x: (PAGE_WIDTH - WATERMARK_SIZE) / 2,
+    y: (PAGE_HEIGHT - WATERMARK_SIZE) / 2,
+    width: WATERMARK_SIZE,
+    height: WATERMARK_SIZE,
+    opacity: WATERMARK_OPACITY,
+  });
+}
