@@ -27,6 +27,7 @@ import {
   drawCenteredText,
   drawDocumentHeader,
   drawSignatureLine,
+  drawWatermark,
   embedQrCode,
   embedSchoolLogo,
   LIGHT_BORDER,
@@ -359,6 +360,8 @@ export async function renderRequestSlipPdf(request: DocumentRequestView) {
     font: regular,
     color: MUTED_TEXT,
   });
+
+  drawWatermark(page, logo);
 
   return pdfDoc.save();
 }

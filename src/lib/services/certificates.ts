@@ -30,6 +30,7 @@ import {
   drawCenteredText,
   drawDocumentHeader,
   drawSignatureLine,
+  drawWatermark,
   drawWrappedText,
   embedQrCode,
   embedSchoolLogo,
@@ -558,6 +559,8 @@ export async function generateCertificatePdf(certificateId: string) {
   }
 
   await drawCertificateFooter(pdf, page, certificate.qrCodeData, regular, bold);
+
+  drawWatermark(page, logo);
 
   return Buffer.from(await pdf.save());
 }
