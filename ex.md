@@ -1,0 +1,5 @@
+API_KEY=alch_JtE5gBRjW5nqtq5HMFXuO
+https://eth-sepolia.g.alchemy.com/v2/alch_JtE5gBRjW5nqtq5HMFXuO
+
+
+account_private_key=67d78e6a82439d23f47e2df7f94712abb559796221dcc6711296fd757e8ca263

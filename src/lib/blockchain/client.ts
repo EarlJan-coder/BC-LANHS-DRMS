@@ -37,14 +37,22 @@ let cachedContract: Contract | null = null;
 let cachedContractKey = "";
 
 export function getAuditContract() {
-  const rpcUrl = process.env.BLOCKCHAIN_RPC_URL ?? process.env.SEPOLIA_RPC_URL;
-  const privateKey = process.env.BLOCKCHAIN_PRIVATE_KEY;
+  const isSepolia = process.env.BLOCKCHAIN_NETWORK === "sepolia";
+  const rpcUrl = isSepolia
+    ? (process.env.SEPOLIA_RPC_URL ?? process.env.BLOCKCHAIN_RPC_URL)
+    : (process.env.BLOCKCHAIN_RPC_URL ?? process.env.SEPOLIA_RPC_URL);
+
+  const rawPrivateKey = isSepolia
+    ? (process.env.DEPLOYER_PRIVATE_KEY ?? process.env.BLOCKCHAIN_PRIVATE_KEY)
+    : (process.env.BLOCKCHAIN_PRIVATE_KEY ?? process.env.DEPLOYER_PRIVATE_KEY);
+
   const contractAddress = process.env.CONTRACT_ADDRESS ?? process.env.DOCUMENT_AUDIT_CONTRACT_ADDRESS;
 
-  if (!rpcUrl || !privateKey || !contractAddress || contractAddress === "0x0000000000000000000000000000000000000000") {
+  if (!rpcUrl || !rawPrivateKey || !contractAddress || contractAddress === "0x0000000000000000000000000000000000000000") {
     return null;
   }
 
+  const privateKey = rawPrivateKey.startsWith("0x") ? rawPrivateKey : `0x${rawPrivateKey}`;
   const key = `${rpcUrl}|${privateKey}|${contractAddress}`;
   if (cachedContract && cachedContractKey === key) {
     return cachedContract;

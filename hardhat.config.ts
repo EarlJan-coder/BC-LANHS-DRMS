@@ -14,13 +14,15 @@ const networks = {
   },
   ...(process.env.SEPOLIA_RPC_URL
     ? {
-        sepolia: {
-          type: "http" as const,
-          chainType: "l1" as const,
-          url: process.env.SEPOLIA_RPC_URL,
-          accounts: process.env.BLOCKCHAIN_PRIVATE_KEY ? [process.env.BLOCKCHAIN_PRIVATE_KEY] : [],
-        },
-      }
+      sepolia: {
+        type: "http" as const,
+        chainType: "l1" as const,
+        url: process.env.SEPOLIA_RPC_URL,
+        accounts: process.env.DEPLOYER_PRIVATE_KEY
+          ? [process.env.DEPLOYER_PRIVATE_KEY.startsWith("0x") ? process.env.DEPLOYER_PRIVATE_KEY : `0x${process.env.DEPLOYER_PRIVATE_KEY}`]
+          : [],
+      },
+    }
     : {}),
 } as const;
 
