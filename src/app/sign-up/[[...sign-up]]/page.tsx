@@ -16,6 +16,8 @@ export default function SignUpPage() {
           <SignUp
             forceRedirectUrl="/dashboard"
             fallbackRedirectUrl="/dashboard"
+            signInForceRedirectUrl="/dashboard"
+            signInFallbackRedirectUrl="/dashboard"
             appearance={{
               elements: {
                 cardBox: "shadow-sm border border-border",
