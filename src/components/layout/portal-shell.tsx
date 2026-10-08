@@ -26,8 +26,8 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import type { ReactNode } from "react";
 import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import { ROLE_LABELS } from "@/lib/constants";
@@ -70,6 +70,32 @@ function roleFromPath(pathname: string): DashboardRole {
     return "registrar";
   }
   return "student";
+}
+
+function HeaderSearchForm({ role, defaultValue = "" }: { role: DashboardRole; defaultValue?: string }) {
+  return (
+    <form
+      role="search"
+      method="get"
+      action={`/${role}/search`}
+      className="hidden min-w-0 flex-1 items-center rounded-md border border-border bg-slate-50 px-3 py-2 sm:flex"
+    >
+      <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+      <input
+        type="search"
+        name="q"
+        defaultValue={defaultValue}
+        placeholder="Search records, requests, students"
+        aria-label="Search records, requests, students"
+        className="ml-2 w-full min-w-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500"
+      />
+    </form>
+  );
+}
+
+function HeaderSearch({ role }: { role: DashboardRole }) {
+  const searchParams = useSearchParams();
+  return <HeaderSearchForm role={role} defaultValue={searchParams.get("q") ?? ""} />;
 }
 
 export function PortalShell({ children }: { children: ReactNode }) {
@@ -175,10 +201,9 @@ export function PortalShell({ children }: { children: ReactNode }) {
             <div className="lg:hidden">
               <AppLogo compact />
             </div>
-            <div className="hidden min-w-0 flex-1 items-center rounded-md border border-border bg-slate-50 px-3 py-2 sm:flex">
-              <Search className="h-4 w-4 text-slate-400" aria-hidden />
-              <span className="ml-2 text-sm text-slate-500">Search records, requests, students</span>
-            </div>
+            <Suspense fallback={<HeaderSearchForm role={role} />}>
+              <HeaderSearch role={role} />
+            </Suspense>
             <div className="ml-auto flex items-center gap-3">
               <span className="hidden rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-brand ring-1 ring-rose-100 sm:inline-flex">
                 {ROLE_LABELS[role]}
