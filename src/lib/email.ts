@@ -1,13 +1,15 @@
 import { Resend } from "resend";
 import { APP_NAME, SCHOOL_NAME } from "@/lib/constants";
+import { renderWorkflowEmailHtml } from "@/lib/email-template";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const fromEmail = process.env.RESEND_FROM_EMAIL ?? "LANHS DRMS <no-reply@example.com>";
+const fromEmail = process.env.RESEND_FROM_EMAIL ?? "LANHS DRMS <no-reply@lanhsdrms.online>";
 
 async function sendRequestNotificationEmail(input: {
   to: string;
   subject: string;
   message: string;
+  html?: string;
 }) {
   if (!resend) {
     return { ok: false, reason: "RESEND_API_KEY is not configured." };
@@ -19,6 +21,7 @@ async function sendRequestNotificationEmail(input: {
       to: input.to,
       subject: input.subject,
       text: input.message,
+      html: input.html,
     });
   } catch (error) {
     return { ok: false, reason: error instanceof Error ? error.message : "Unable to send email." };
@@ -59,5 +62,12 @@ export async function sendWorkflowEmail(input: {
     to: input.to,
     subject: input.subject,
     message: lines.join("\n"),
+    html: renderWorkflowEmailHtml({
+      studentName: input.studentName,
+      trackingNumber: input.trackingNumber,
+      documentType: input.documentType,
+      status: input.status,
+      instruction: input.instruction,
+    }),
   });
 }

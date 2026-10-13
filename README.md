@@ -125,7 +125,7 @@ Set:
 
 ```bash
 RESEND_API_KEY=""
-RESEND_FROM_EMAIL="LANHS DRMS <no-reply@example.com>"
+RESEND_FROM_EMAIL="LANHS DRMS <no-reply@lanhsdrms.online>"
 ```
 
 Request submission, request updates, grade imports, and certificate generation attempt professional school-themed email notifications. Email failures do not roll back the main database transaction.
