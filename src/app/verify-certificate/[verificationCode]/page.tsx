@@ -48,8 +48,8 @@ export default async function VerifyCertificatePage({
   const eventTimeline = blockchainResult?.eventTimeline;
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10">
-      <div className="mx-auto max-w-2xl">
+    <main className="min-h-screen bg-slate-50 px-4 py-10 overflow-x-hidden">
+      <div className="mx-auto w-full max-w-2xl">
         <div className="mb-8 flex justify-center">
           <AppLogo />
         </div>
@@ -126,7 +126,7 @@ function EventTimelineItem({ event, isLast }: { event: LifecycleEvent; isLast: b
         {!isLast && <div className="mt-1 w-px flex-1 bg-slate-300" />}
       </div>
       <div className="flex-1 pb-2">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${colorClass}`}>
             {label}
           </span>
@@ -144,9 +144,9 @@ function EventTimelineItem({ event, isLast }: { event: LifecycleEvent; isLast: b
 
 function Detail({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-border p-4">
+    <div className="rounded-md border border-border p-4 min-w-0">
       <p className="text-xs font-medium uppercase text-slate-500">{label}</p>
-      <p className="mt-1 break-words text-sm font-semibold text-slate-950">{value}</p>
+      <p className="mt-1 break-all text-sm font-semibold text-slate-950">{value}</p>
     </div>
   );
 }

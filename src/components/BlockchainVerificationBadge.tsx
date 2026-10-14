@@ -30,7 +30,7 @@ export function BlockchainVerificationBadge({ result }: BlockchainVerificationBa
 
   return (
     <div
-      className={`rounded-md border p-4 ${
+      className={`rounded-md border p-4 overflow-hidden ${
         isValid ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-800"
       }`}
     >
@@ -42,17 +42,17 @@ export function BlockchainVerificationBadge({ result }: BlockchainVerificationBa
       </div>
       <div className="grid gap-2 text-sm">
         {result.transactionHash && (
-          <div className="flex items-center gap-2">
+          <div className="min-w-0">
             <span className="font-medium">Tx Hash:</span>
-            <code className="break-all rounded bg-slate-100 px-2 py-1">{result.transactionHash}</code>
+            <code className="mt-1 block break-all rounded bg-slate-100 px-2 py-1 text-xs">{result.transactionHash}</code>
             {explorerUrl && (
               <a
                 href={explorerUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-brand hover:underline"
+                className="mt-1 inline-flex items-center gap-1 text-xs text-brand hover:underline"
               >
-                <ExternalLink className="h-3 w-3" />
+                <ExternalLink className="h-3 w-3 shrink-0" />
                 View on Etherscan
               </a>
             )}
