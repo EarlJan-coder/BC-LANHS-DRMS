@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle2, Download, UploadCloud, XCircle } from "lucide-react";
+import type { FormEvent } from "react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -12,7 +13,9 @@ export function GradeImportUploader() {
   const [fileName, setFileName] = useState("");
   const [loading, setLoading] = useState<"validate" | "commit" | null>(null);
 
-  async function validate(formData: FormData) {
+  async function handleValidate(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
     const file = formData.get("file");
     if (!(file instanceof File) || !file.name) {
       toast.error("Select an Excel or CSV file first.");
@@ -80,7 +83,7 @@ export function GradeImportUploader() {
           <CardTitle>Bulk grade import</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={validate} className="grid gap-4">
+          <form onSubmit={handleValidate} className="grid gap-4">
             <div className="flex flex-col gap-3 rounded-lg border border-dashed border-rose-200 bg-rose-50/50 p-5 sm:flex-row sm:items-center sm:justify-between">
               <input
                 name="file"
