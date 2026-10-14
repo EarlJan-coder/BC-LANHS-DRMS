@@ -20,28 +20,33 @@ export function RequestForm() {
     setLoading(true);
     setTrackingNumber(null);
 
-    const response = await fetch("/api/document-requests", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        documentType: formData.get("documentType"),
-        purpose: formData.get("purpose"),
-        schoolYearNeeded: formData.get("schoolYearNeeded"),
-        gradeLevelNeeded: formData.get("gradeLevelNeeded"),
-        remarks: formData.get("remarks"),
-      }),
-    });
+    try {
+      const response = await fetch("/api/document-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          documentType: formData.get("documentType"),
+          purpose: formData.get("purpose"),
+          schoolYearNeeded: formData.get("schoolYearNeeded"),
+          gradeLevelNeeded: formData.get("gradeLevelNeeded"),
+          remarks: formData.get("remarks"),
+        }),
+      });
 
-    const data = await response.json();
-    setLoading(false);
+      const data = await response.json();
 
-    if (!response.ok) {
-      toast.error(data.error ?? "Unable to submit request.");
-      return;
+      if (!response.ok) {
+        toast.error(data.error ?? "Unable to submit request.");
+        return;
+      }
+
+      setTrackingNumber(data.trackingNumber);
+      toast.success("Document request submitted.");
+    } catch {
+      toast.error("Unable to submit request. Check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
-
-    setTrackingNumber(data.trackingNumber);
-    toast.success("Document request submitted.");
   }
 
   return (
@@ -96,9 +101,9 @@ export function RequestForm() {
             <Textarea id="remarks" name="remarks" placeholder="Optional details for the registrar" />
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Button type="submit" disabled={loading}>
-              <FilePlus className="h-4 w-4" aria-hidden />
-              {loading ? "Submitting" : "Submit request"}
+            <Button type="submit" loading={loading}>
+              {loading ? null : <FilePlus className="h-4 w-4" aria-hidden />}
+              {loading ? "Submitting…" : "Submit request"}
             </Button>
             {trackingNumber ? (
               <span className="rounded-md bg-rose-50 px-3 py-2 text-sm font-medium text-brand ring-1 ring-rose-100">

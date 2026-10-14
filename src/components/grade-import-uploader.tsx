@@ -10,7 +10,7 @@ import type { GradeImportValidation } from "@/lib/types";
 export function GradeImportUploader() {
   const [validation, setValidation] = useState<GradeImportValidation | null>(null);
   const [fileName, setFileName] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<"validate" | "commit" | null>(null);
 
   async function validate(formData: FormData) {
     const file = formData.get("file");
@@ -19,23 +19,28 @@ export function GradeImportUploader() {
       return;
     }
 
-    setLoading(true);
+    setLoading("validate");
     setFileName(file.name);
 
-    const response = await fetch("/api/grade-import/validate", {
-      method: "POST",
-      body: formData,
-    });
-    const data = await response.json();
-    setLoading(false);
+    try {
+      const response = await fetch("/api/grade-import/validate", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json();
 
-    if (!response.ok) {
-      toast.error(data.error ?? "Unable to validate file.");
-      return;
+      if (!response.ok) {
+        toast.error(data.error ?? "Unable to validate file.");
+        return;
+      }
+
+      setValidation(data);
+      toast.success("Grade import file validated.");
+    } catch {
+      toast.error("Unable to validate file. Check your connection and try again.");
+    } finally {
+      setLoading(null);
     }
-
-    setValidation(data);
-    toast.success("Grade import file validated.");
   }
 
   async function commit() {
@@ -44,22 +49,29 @@ export function GradeImportUploader() {
       return;
     }
 
-    setLoading(true);
-    const response = await fetch("/api/grade-import/commit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fileName, rows: validation.validRows }),
-    });
-    const data = await response.json();
-    setLoading(false);
+    setLoading("commit");
+    try {
+      const response = await fetch("/api/grade-import/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName, rows: validation.validRows }),
+      });
+      const data = await response.json();
 
-    if (!response.ok) {
-      toast.error(data.error ?? "Unable to save grade records.");
-      return;
+      if (!response.ok) {
+        toast.error(data.error ?? "Unable to save grade records.");
+        return;
+      }
+
+      toast.success(`Saved ${data.savedRows} grade row(s).`);
+    } catch {
+      toast.error("Unable to save grade records. Check your connection and try again.");
+    } finally {
+      setLoading(null);
     }
-
-    toast.success(`Saved ${data.savedRows} grade row(s).`);
   }
+
+  const busy = loading !== null;
 
   return (
     <div className="grid gap-5">
@@ -81,12 +93,21 @@ export function GradeImportUploader() {
                   <Download className="h-4 w-4" aria-hidden />
                   XLSX template
                 </ButtonLink>
-                <Button type="submit" disabled={loading}>
-                  <UploadCloud className="h-4 w-4" aria-hidden />
-                  {loading ? "Validating" : "Validate"}
+                <Button type="submit" loading={loading === "validate"} disabled={busy}>
+                  {loading === "validate" ? null : (
+                    <UploadCloud className="h-4 w-4" aria-hidden />
+                  )}
+                  {loading === "validate" ? "Validating…" : "Validate"}
                 </Button>
               </div>
             </div>
+            {busy ? (
+              <p role="status" aria-live="polite" className="text-sm text-slate-500">
+                {loading === "validate"
+                  ? "Validating file… this may take a moment for large spreadsheets."
+                  : "Saving grade records… this may take a moment."}
+              </p>
+            ) : null}
           </form>
         </CardContent>
       </Card>
@@ -171,9 +192,16 @@ export function GradeImportUploader() {
             ) : null}
 
             <div className="mt-5 flex justify-end">
-              <Button type="button" onClick={commit} disabled={loading || validation.validRows.length === 0}>
-                <CheckCircle2 className="h-4 w-4" aria-hidden />
-                Save valid rows
+              <Button
+                type="button"
+                onClick={commit}
+                loading={loading === "commit"}
+                disabled={busy || validation.validRows.length === 0}
+              >
+                {loading === "commit" ? null : (
+                  <CheckCircle2 className="h-4 w-4" aria-hidden />
+                )}
+                {loading === "commit" ? "Saving…" : "Save valid rows"}
               </Button>
             </div>
           </CardContent>

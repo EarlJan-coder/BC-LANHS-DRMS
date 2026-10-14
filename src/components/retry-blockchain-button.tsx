@@ -10,22 +10,27 @@ export function RetryBlockchainButton() {
 
   async function retry() {
     setLoading(true);
-    const response = await fetch("/api/blockchain/retry", { method: "POST" });
-    const data = await response.json();
-    setLoading(false);
+    try {
+      const response = await fetch("/api/blockchain/retry", { method: "POST" });
+      const data = await response.json();
 
-    if (!response.ok) {
-      toast.error(data.error ?? "Unable to retry blockchain proofs.");
-      return;
+      if (!response.ok) {
+        toast.error(data.error ?? "Unable to retry blockchain proofs.");
+        return;
+      }
+
+      toast.success(`Retried ${data.retry.attempted} proof(s), submitted ${data.retry.submitted}.`);
+    } catch {
+      toast.error("Unable to retry blockchain proofs. Check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
-
-    toast.success(`Retried ${data.retry.attempted} proof(s), submitted ${data.retry.submitted}.`);
   }
 
   return (
-    <Button type="button" tone="secondary" onClick={retry} disabled={loading}>
-      <RotateCw className="h-4 w-4" aria-hidden />
-      {loading ? "Retrying" : "Retry pending proofs"}
+    <Button type="button" tone="secondary" onClick={retry} loading={loading}>
+      {loading ? null : <RotateCw className="h-4 w-4" aria-hidden />}
+      {loading ? "Retrying…" : "Retry pending proofs"}
     </Button>
   );
 }

@@ -28,25 +28,30 @@ export function RequestStatusActions({ requestId }: { requestId: string }) {
       status === "rejected" ? window.prompt("Enter rejection reason", "Registrar rejected this request after validation.") : null;
 
     setLoading(status);
-    const response = await fetch(`/api/document-requests/${requestId}/status`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        status,
-        remarks: `Status updated to ${status}.`,
-        registrarRemarks: `Registrar marked this request as ${status.replaceAll("_", " ")}.`,
-        rejectionReason: status === "rejected" ? rejectionReason : undefined,
-      }),
-    });
-    const data = await response.json();
-    setLoading(null);
+    try {
+      const response = await fetch(`/api/document-requests/${requestId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status,
+          remarks: `Status updated to ${status}.`,
+          registrarRemarks: `Registrar marked this request as ${status.replaceAll("_", " ")}.`,
+          rejectionReason: status === "rejected" ? rejectionReason : undefined,
+        }),
+      });
+      const data = await response.json();
 
-    if (!response.ok) {
-      toast.error(data.error ?? "Unable to update status.");
-      return;
+      if (!response.ok) {
+        toast.error(data.error ?? "Unable to update status.");
+        return;
+      }
+
+      toast.success("Request status updated.");
+    } catch {
+      toast.error("Unable to update status. Check your connection and try again.");
+    } finally {
+      setLoading(null);
     }
-
-    toast.success("Request status updated.");
   }
 
   return (
@@ -60,10 +65,11 @@ export function RequestStatusActions({ requestId }: { requestId: string }) {
             type="button"
             tone={action.status === "rejected" ? "danger" : "secondary"}
             onClick={() => updateStatus(action.status, action.confirm)}
+            loading={loading === action.status}
             disabled={loading !== null}
           >
-            <Icon className="h-4 w-4" aria-hidden />
-            {loading === action.status ? "Saving" : action.label}
+            {loading === action.status ? null : <Icon className="h-4 w-4" aria-hidden />}
+            {loading === action.status ? "Saving…" : action.label}
           </Button>
         );
       })}

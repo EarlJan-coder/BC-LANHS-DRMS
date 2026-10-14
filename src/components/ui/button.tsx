@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 type ButtonTone = "primary" | "secondary" | "ghost" | "danger";
@@ -26,9 +27,32 @@ export function Button({
   className,
   tone = "primary",
   size = "md",
+  loading = false,
+  disabled,
+  children,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { tone?: ButtonTone; size?: ButtonSize }) {
-  return <button className={cn(base, tones[tone], sizes[size], className)} {...props} />;
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  tone?: ButtonTone;
+  size?: ButtonSize;
+  loading?: boolean;
+}) {
+  return (
+    <button
+      aria-busy={loading || undefined}
+      className={cn(
+        base,
+        tones[tone],
+        sizes[size],
+        loading && "disabled:opacity-100",
+        className,
+      )}
+      disabled={disabled || loading}
+      {...props}
+    >
+      {loading ? <Spinner /> : null}
+      {children}
+    </button>
+  );
 }
 
 export function ButtonLink({
