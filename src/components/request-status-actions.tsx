@@ -1,6 +1,7 @@
 "use client";
 
 import { Ban, Check, ClipboardCheck, PackageCheck, RotateCw, SearchCheck, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ const actions: Array<{ status: RequestStatus; label: string; icon: typeof Check;
 ];
 
 export function RequestStatusActions({ requestId }: { requestId: string }) {
+  const router = useRouter();
   const [loading, setLoading] = useState<RequestStatus | null>(null);
 
   async function updateStatus(status: RequestStatus, confirmText: string) {
@@ -47,6 +49,7 @@ export function RequestStatusActions({ requestId }: { requestId: string }) {
       }
 
       toast.success("Request status updated.");
+      router.refresh();
     } catch {
       toast.error("Unable to update status. Check your connection and try again.");
     } finally {

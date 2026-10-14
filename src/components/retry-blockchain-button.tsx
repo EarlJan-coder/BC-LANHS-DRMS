@@ -1,11 +1,13 @@
 "use client";
 
 import { RotateCw } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 export function RetryBlockchainButton() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   async function retry() {
@@ -20,6 +22,7 @@ export function RetryBlockchainButton() {
       }
 
       toast.success(`Retried ${data.retry.attempted} proof(s), submitted ${data.retry.submitted}.`);
+      router.refresh();
     } catch {
       toast.error("Unable to retry blockchain proofs. Check your connection and try again.");
     } finally {
