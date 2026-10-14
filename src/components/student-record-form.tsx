@@ -119,9 +119,9 @@ export function StudentRecordForm({
             <Textarea id="address" name="address" />
           </div>
           <div className="md:col-span-2">
-            <Button type="submit" disabled={loading}>
-              <UserPlus className="h-4 w-4" aria-hidden />
-              {loading ? "Saving" : "Save student record"}
+            <Button type="submit" loading={loading}>
+              {loading ? null : <UserPlus className="h-4 w-4" aria-hidden />}
+              {loading ? "Saving…" : "Save student record"}
             </Button>
           </div>
         </form>

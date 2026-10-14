@@ -117,11 +117,11 @@ export function StudentRecordActions({
           tone="danger"
           size="sm"
           onClick={onDelete}
-          disabled={deleting}
+          loading={deleting}
           aria-label={`Delete ${student.name}`}
         >
-          <Trash2 className="h-4 w-4" aria-hidden />
-          {deleting ? "Deleting" : "Delete"}
+          {deleting ? null : <Trash2 className="h-4 w-4" aria-hidden />}
+          {deleting ? "Deleting…" : "Delete"}
         </Button>
       </div>
 
@@ -251,9 +251,9 @@ export function StudentRecordActions({
                 <Button type="button" tone="secondary" onClick={() => setEditing(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={saving}>
-                  <Save className="h-4 w-4" aria-hidden />
-                  {saving ? "Saving" : "Save changes"}
+                <Button type="submit" loading={saving}>
+                  {saving ? null : <Save className="h-4 w-4" aria-hidden />}
+                  {saving ? "Saving…" : "Save changes"}
                 </Button>
               </div>
             </form>

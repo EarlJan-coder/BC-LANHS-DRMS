@@ -132,8 +132,6 @@ export function AcademicSetupManager({ data }: { data: AcademicSetupData }) {
     }
   }
 
-  const isSubmitting = Boolean(submitting);
-
   return (
     <div className="grid gap-6">
       <div className="grid gap-3 md:grid-cols-4">
@@ -181,7 +179,7 @@ export function AcademicSetupManager({ data }: { data: AcademicSetupData }) {
         <SchoolYearsPanel
           rows={data.schoolYears}
           formRef={schoolYearFormRef}
-          isSubmitting={isSubmitting}
+          submitting={submitting}
           save={save}
         />
       ) : null}
@@ -190,7 +188,7 @@ export function AcademicSetupManager({ data }: { data: AcademicSetupData }) {
         <GradeLevelsPanel
           rows={data.gradeLevels}
           formRef={gradeLevelFormRef}
-          isSubmitting={isSubmitting}
+          submitting={submitting}
           save={save}
         />
       ) : null}
@@ -200,7 +198,7 @@ export function AcademicSetupManager({ data }: { data: AcademicSetupData }) {
           rows={data.subjects}
           gradeLevels={data.gradeLevels}
           formRef={subjectFormRef}
-          isSubmitting={isSubmitting}
+          submitting={submitting}
           save={save}
         />
       ) : null}
@@ -211,7 +209,7 @@ export function AcademicSetupManager({ data }: { data: AcademicSetupData }) {
           gradeLevels={data.gradeLevels}
           schoolYears={data.schoolYears}
           formRef={sectionFormRef}
-          isSubmitting={isSubmitting}
+          submitting={submitting}
           save={save}
         />
       ) : null}
@@ -220,7 +218,7 @@ export function AcademicSetupManager({ data }: { data: AcademicSetupData }) {
         <DocumentTypesPanel
           rows={data.documentTypes}
           formRef={documentTypeFormRef}
-          isSubmitting={isSubmitting}
+          submitting={submitting}
           save={save}
         />
       ) : null}
@@ -231,12 +229,12 @@ export function AcademicSetupManager({ data }: { data: AcademicSetupData }) {
 function SchoolYearsPanel({
   rows,
   formRef,
-  isSubmitting,
+  submitting,
   save,
 }: {
   rows: AcademicSetupData["schoolYears"];
   formRef: RefObject<HTMLFormElement | null>;
-  isSubmitting: boolean;
+  submitting: string | null;
   save: (input: {
     entity: Entity;
     id?: string;
@@ -267,9 +265,13 @@ function SchoolYearsPanel({
             <Field id="new-school-year-ends-on" label="End date" name="endsOn" type="date" />
           </div>
           <CheckboxField id="new-school-year-active" name="isActive" label="Set as active" defaultChecked={rows.length === 0} />
-          <Button type="submit" disabled={isSubmitting}>
-            <Plus className="h-4 w-4" aria-hidden />
-            Add school year
+          <Button
+            type="submit"
+            loading={submitting === "school-years-new"}
+            disabled={submitting !== null}
+          >
+            {submitting === "school-years-new" ? null : <Plus className="h-4 w-4" aria-hidden />}
+            {submitting === "school-years-new" ? "Adding…" : "Add school year"}
           </Button>
         </form>
       }
@@ -297,9 +299,16 @@ function SchoolYearsPanel({
                 <StatusPill active={row.isActive} activeLabel="Active" inactiveLabel="Closed" />
                 <CheckboxField id={`school-year-active-${row.id}`} name="isActive" label="Active" defaultChecked={row.isActive} />
               </div>
-              <Button type="submit" tone="secondary" disabled={isSubmitting}>
-                <Save className="h-4 w-4" aria-hidden />
-                Save
+              <Button
+                type="submit"
+                tone="secondary"
+                loading={submitting === `school-years-${row.id}`}
+                disabled={submitting !== null}
+              >
+                {submitting === `school-years-${row.id}` ? null : (
+                  <Save className="h-4 w-4" aria-hidden />
+                )}
+                {submitting === `school-years-${row.id}` ? "Saving…" : "Save"}
               </Button>
             </form>
           ))
@@ -312,12 +321,12 @@ function SchoolYearsPanel({
 function GradeLevelsPanel({
   rows,
   formRef,
-  isSubmitting,
+  submitting,
   save,
 }: {
   rows: AcademicSetupData["gradeLevels"];
   formRef: RefObject<HTMLFormElement | null>;
-  isSubmitting: boolean;
+  submitting: string | null;
   save: (input: {
     entity: Entity;
     id?: string;
@@ -345,9 +354,13 @@ function GradeLevelsPanel({
           <Field id="new-grade-level-name" label="Grade level" name="name" placeholder="Grade 12" required />
           <Field id="new-grade-level-order" label="Sort order" name="order" type="number" min="0" max="99" defaultValue={String(rows.length + 1)} />
           <CheckboxField id="new-grade-level-active" name="isActive" label="Active" defaultChecked />
-          <Button type="submit" disabled={isSubmitting}>
-            <Plus className="h-4 w-4" aria-hidden />
-            Add grade level
+          <Button
+            type="submit"
+            loading={submitting === "grade-levels-new"}
+            disabled={submitting !== null}
+          >
+            {submitting === "grade-levels-new" ? null : <Plus className="h-4 w-4" aria-hidden />}
+            {submitting === "grade-levels-new" ? "Adding…" : "Add grade level"}
           </Button>
         </form>
       }
@@ -380,9 +393,16 @@ function GradeLevelsPanel({
                 <StatusPill active={row.isActive} activeLabel="Active" inactiveLabel="Inactive" />
                 <CheckboxField id={`grade-level-active-${row.id}`} name="isActive" label="Active" defaultChecked={row.isActive} />
               </div>
-              <Button type="submit" tone="secondary" disabled={isSubmitting}>
-                <Save className="h-4 w-4" aria-hidden />
-                Save
+              <Button
+                type="submit"
+                tone="secondary"
+                loading={submitting === `grade-levels-${row.id}`}
+                disabled={submitting !== null}
+              >
+                {submitting === `grade-levels-${row.id}` ? null : (
+                  <Save className="h-4 w-4" aria-hidden />
+                )}
+                {submitting === `grade-levels-${row.id}` ? "Saving…" : "Save"}
               </Button>
             </form>
           ))
@@ -397,14 +417,14 @@ function SectionsPanel({
   gradeLevels,
   schoolYears,
   formRef,
-  isSubmitting,
+  submitting,
   save,
 }: {
   rows: AcademicSetupData["sections"];
   gradeLevels: AcademicSetupData["gradeLevels"];
   schoolYears: AcademicSetupData["schoolYears"];
   formRef: RefObject<HTMLFormElement | null>;
-  isSubmitting: boolean;
+  submitting: string | null;
   save: (input: {
     entity: Entity;
     id?: string;
@@ -439,9 +459,13 @@ function SectionsPanel({
           <SchoolYearSelect schoolYears={schoolYears} id="new-section-school-year" />
           <Field id="new-section-adviser" label="Adviser" name="adviserName" placeholder="Ms. Elena Garcia" />
           <CheckboxField id="new-section-active" name="isActive" label="Active" defaultChecked />
-          <Button type="submit" disabled={isSubmitting}>
-            <Plus className="h-4 w-4" aria-hidden />
-            Add section
+          <Button
+            type="submit"
+            loading={submitting === "sections-new"}
+            disabled={submitting !== null}
+          >
+            {submitting === "sections-new" ? null : <Plus className="h-4 w-4" aria-hidden />}
+            {submitting === "sections-new" ? "Adding…" : "Add section"}
           </Button>
         </form>
       }
@@ -480,9 +504,16 @@ function SectionsPanel({
                 <StatusPill active={row.isActive} activeLabel="Active" inactiveLabel="Inactive" />
                 <CheckboxField id={`section-active-${row.id}`} name="isActive" label="Active" defaultChecked={row.isActive} />
               </div>
-              <Button type="submit" tone="secondary" disabled={isSubmitting}>
-                <Save className="h-4 w-4" aria-hidden />
-                Save
+              <Button
+                type="submit"
+                tone="secondary"
+                loading={submitting === `sections-${row.id}`}
+                disabled={submitting !== null}
+              >
+                {submitting === `sections-${row.id}` ? null : (
+                  <Save className="h-4 w-4" aria-hidden />
+                )}
+                {submitting === `sections-${row.id}` ? "Saving…" : "Save"}
               </Button>
             </form>
           ))
@@ -496,13 +527,13 @@ function SubjectsPanel({
   rows,
   gradeLevels,
   formRef,
-  isSubmitting,
+  submitting,
   save,
 }: {
   rows: AcademicSetupData["subjects"];
   gradeLevels: AcademicSetupData["gradeLevels"];
   formRef: RefObject<HTMLFormElement | null>;
-  isSubmitting: boolean;
+  submitting: string | null;
   save: (input: {
     entity: Entity;
     id?: string;
@@ -531,9 +562,13 @@ function SubjectsPanel({
           <Field id="new-subject-name" label="Subject name" name="name" placeholder="English for Academic and Professional Purposes" required />
           <GradeLevelSelect gradeLevels={gradeLevels} id="new-subject-grade-level" />
           <CheckboxField id="new-subject-active" name="isActive" label="Active" defaultChecked />
-          <Button type="submit" disabled={isSubmitting}>
-            <Plus className="h-4 w-4" aria-hidden />
-            Add subject
+          <Button
+            type="submit"
+            loading={submitting === "subjects-new"}
+            disabled={submitting !== null}
+          >
+            {submitting === "subjects-new" ? null : <Plus className="h-4 w-4" aria-hidden />}
+            {submitting === "subjects-new" ? "Adding…" : "Add subject"}
           </Button>
         </form>
       }
@@ -561,9 +596,16 @@ function SubjectsPanel({
                 <StatusPill active={row.isActive} activeLabel="Active" inactiveLabel="Inactive" />
                 <CheckboxField id={`subject-active-${row.id}`} name="isActive" label="Active" defaultChecked={row.isActive} />
               </div>
-              <Button type="submit" tone="secondary" disabled={isSubmitting}>
-                <Save className="h-4 w-4" aria-hidden />
-                Save
+              <Button
+                type="submit"
+                tone="secondary"
+                loading={submitting === `subjects-${row.id}`}
+                disabled={submitting !== null}
+              >
+                {submitting === `subjects-${row.id}` ? null : (
+                  <Save className="h-4 w-4" aria-hidden />
+                )}
+                {submitting === `subjects-${row.id}` ? "Saving…" : "Save"}
               </Button>
             </form>
           ))
@@ -576,12 +618,12 @@ function SubjectsPanel({
 function DocumentTypesPanel({
   rows,
   formRef,
-  isSubmitting,
+  submitting,
   save,
 }: {
   rows: AcademicSetupData["documentTypes"];
   formRef: RefObject<HTMLFormElement | null>;
-  isSubmitting: boolean;
+  submitting: string | null;
   save: (input: {
     entity: Entity;
     id?: string;
@@ -629,9 +671,13 @@ function DocumentTypesPanel({
             <Field id="new-document-type-fee" label="Fee" name="fee" type="number" min="0" step="0.01" defaultValue="0" />
           </div>
           <CheckboxField id="new-document-type-active" name="isActive" label="Active" defaultChecked />
-          <Button type="submit" disabled={isSubmitting}>
-            <Plus className="h-4 w-4" aria-hidden />
-            Add document type
+          <Button
+            type="submit"
+            loading={submitting === "document-types-new"}
+            disabled={submitting !== null}
+          >
+            {submitting === "document-types-new" ? null : <Plus className="h-4 w-4" aria-hidden />}
+            {submitting === "document-types-new" ? "Adding…" : "Add document type"}
           </Button>
         </form>
       }
@@ -670,9 +716,16 @@ function DocumentTypesPanel({
                 <StatusPill active={row.isActive} activeLabel="Active" inactiveLabel="Inactive" />
                 <CheckboxField id={`document-type-active-${row.id}`} name="isActive" label="Active" defaultChecked={row.isActive} />
               </div>
-              <Button type="submit" tone="secondary" disabled={isSubmitting}>
-                <Save className="h-4 w-4" aria-hidden />
-                Save
+              <Button
+                type="submit"
+                tone="secondary"
+                loading={submitting === `document-types-${row.id}`}
+                disabled={submitting !== null}
+              >
+                {submitting === `document-types-${row.id}` ? null : (
+                  <Save className="h-4 w-4" aria-hidden />
+                )}
+                {submitting === `document-types-${row.id}` ? "Saving…" : "Save"}
               </Button>
             </form>
           ))

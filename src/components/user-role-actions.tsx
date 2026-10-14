@@ -24,21 +24,26 @@ export function UserRoleActions({
 
   async function save() {
     setLoading(true);
-    const response = await fetch(`/api/users/${userId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role: nextRole, status: nextStatus }),
-    });
-    const data = await response.json();
-    setLoading(false);
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: nextRole, status: nextStatus }),
+      });
+      const data = await response.json();
 
-    if (!response.ok) {
-      toast.error(data.error ?? "Unable to update user.");
-      return;
+      if (!response.ok) {
+        toast.error(data.error ?? "Unable to update user.");
+        return;
+      }
+
+      toast.success("User updated.");
+      router.refresh();
+    } catch {
+      toast.error("Unable to update user. Check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
-
-    toast.success("User updated.");
-    router.refresh();
   }
 
   return (
@@ -54,8 +59,15 @@ export function UserRoleActions({
         <option value="inactive">Inactive</option>
         <option value="suspended">Suspended</option>
       </Select>
-      <Button type="button" size="icon" tone="secondary" onClick={save} disabled={loading} aria-label="Save user">
-        <Save className="h-4 w-4" />
+      <Button
+        type="button"
+        size="icon"
+        tone="secondary"
+        onClick={save}
+        loading={loading}
+        aria-label="Save user"
+      >
+        {loading ? null : <Save className="h-4 w-4" />}
       </Button>
     </div>
   );

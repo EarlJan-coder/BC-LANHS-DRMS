@@ -22,28 +22,33 @@ export function GenerateCertificateButton({
     }
 
     setLoading(true);
-    const response = await fetch("/api/certificates", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ requestId, certificateType: documentType }),
-    });
-    const data = await response.json();
-    setLoading(false);
+    try {
+      const response = await fetch("/api/certificates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId, certificateType: documentType }),
+      });
+      const data = await response.json();
 
-    if (!response.ok) {
-      toast.error(data.error ?? "Unable to generate certificate.");
-      return;
+      if (!response.ok) {
+        toast.error(data.error ?? "Unable to generate certificate.");
+        return;
+      }
+
+      toast.success("Certificate generated.");
+      router.push(`/registrar/certificates/${data.id}`);
+      router.refresh();
+    } catch {
+      toast.error("Unable to generate certificate. Check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
-
-    toast.success("Certificate generated.");
-    router.push(`/registrar/certificates/${data.id}`);
-    router.refresh();
   }
 
   return (
-    <Button type="button" onClick={generate} disabled={loading}>
-      <FileBadge className="h-4 w-4" aria-hidden />
-      {loading ? "Generating" : "Generate certificate"}
+    <Button type="button" onClick={generate} loading={loading}>
+      {loading ? null : <FileBadge className="h-4 w-4" aria-hidden />}
+      {loading ? "Generating…" : "Generate certificate"}
     </Button>
   );
 }

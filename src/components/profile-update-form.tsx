@@ -23,26 +23,31 @@ export function ProfileUpdateForm({
 
   async function submit(formData: FormData) {
     setLoading(true);
-    const response = await fetch("/api/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        lrn: formData.get("lrn"),
-        contactNumber: formData.get("contactNumber"),
-        guardianName: formData.get("guardianName"),
-        address: formData.get("address"),
-      }),
-    });
-    const data = await response.json();
-    setLoading(false);
+    try {
+      const response = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lrn: formData.get("lrn"),
+          contactNumber: formData.get("contactNumber"),
+          guardianName: formData.get("guardianName"),
+          address: formData.get("address"),
+        }),
+      });
+      const data = await response.json();
 
-    if (!response.ok) {
-      toast.error(data.error ?? "Unable to update profile.");
-      return;
+      if (!response.ok) {
+        toast.error(data.error ?? "Unable to update profile.");
+        return;
+      }
+
+      toast.success("Profile updated.");
+      router.refresh();
+    } catch {
+      toast.error("Unable to update profile. Check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
-
-    toast.success("Profile updated.");
-    router.refresh();
   }
 
   function editableValue(value: string) {
@@ -68,9 +73,9 @@ export function ProfileUpdateForm({
         <Textarea id="address" name="address" defaultValue={editableValue(address)} />
       </div>
       <div className="sm:col-span-2">
-        <Button type="submit" disabled={loading}>
-          <Save className="h-4 w-4" aria-hidden />
-          {loading ? "Saving" : "Save profile"}
+        <Button type="submit" loading={loading}>
+          {loading ? null : <Save className="h-4 w-4" aria-hidden />}
+          {loading ? "Saving…" : "Save profile"}
         </Button>
       </div>
     </form>
