@@ -17,7 +17,15 @@ const actions: Array<{ status: RequestStatus; label: string; icon: typeof Check;
   { status: "cancelled", label: "Cancel", icon: Ban, confirm: "Cancel this document request?" },
 ];
 
-export function RequestStatusActions({ requestId }: { requestId: string }) {
+export function RequestStatusActions({
+  requestId,
+  currentStatus,
+  onStatusChange,
+}: {
+  requestId: string;
+  currentStatus?: RequestStatus;
+  onStatusChange?: (newStatus: RequestStatus, remarks: string) => void;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState<RequestStatus | null>(null);
 
@@ -29,6 +37,15 @@ export function RequestStatusActions({ requestId }: { requestId: string }) {
     const rejectionReason =
       status === "rejected" ? window.prompt("Enter rejection reason", "Registrar rejected this request after validation.") : null;
 
+    if (status === "rejected" && (rejectionReason === null || rejectionReason.trim() === "")) {
+      return;
+    }
+
+    const registrarRemarks =
+      status === "rejected" && rejectionReason
+        ? `Registrar rejected this request. Reason: ${rejectionReason}`
+        : `Registrar marked this request as ${status.replaceAll("_", " ")}.`;
+
     setLoading(status);
     try {
       const response = await fetch(`/api/document-requests/${requestId}/status`, {
@@ -37,7 +54,7 @@ export function RequestStatusActions({ requestId }: { requestId: string }) {
         body: JSON.stringify({
           status,
           remarks: `Status updated to ${status}.`,
-          registrarRemarks: `Registrar marked this request as ${status.replaceAll("_", " ")}.`,
+          registrarRemarks,
           rejectionReason: status === "rejected" ? rejectionReason : undefined,
         }),
       });
@@ -49,6 +66,9 @@ export function RequestStatusActions({ requestId }: { requestId: string }) {
       }
 
       toast.success("Request status updated.");
+      if (onStatusChange) {
+        onStatusChange(status, registrarRemarks);
+      }
       router.refresh();
     } catch {
       toast.error("Unable to update status. Check your connection and try again.");
@@ -70,6 +90,7 @@ export function RequestStatusActions({ requestId }: { requestId: string }) {
             onClick={() => updateStatus(action.status, action.confirm)}
             loading={loading === action.status}
             disabled={loading !== null}
+            aria-pressed={currentStatus === action.status}
           >
             {loading === action.status ? null : <Icon className="h-4 w-4" aria-hidden />}
             {loading === action.status ? "Saving…" : action.label}

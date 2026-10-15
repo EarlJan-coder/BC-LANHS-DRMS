@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
 import { clerkConfigured, getCurrentRole } from "@/lib/auth";
 import { updateDocumentRequestStatus } from "@/lib/services/document-requests";
@@ -16,6 +17,19 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
     const updated = await updateDocumentRequestStatus(id, body, role === "admin" ? "admin" : "registrar");
+
+    revalidatePath(`/registrar/requests/${id}`);
+    if (updated.trackingNumber && updated.trackingNumber !== id) {
+      revalidatePath(`/registrar/requests/${updated.trackingNumber}`);
+    }
+    revalidatePath("/registrar/requests");
+    revalidatePath(`/student/requests/${id}`);
+    if (updated.trackingNumber && updated.trackingNumber !== id) {
+      revalidatePath(`/student/requests/${updated.trackingNumber}`);
+    }
+    revalidatePath("/student/requests");
+    revalidatePath("/registrar/dashboard");
+
     return NextResponse.json(updated);
   } catch (error) {
     if (error instanceof ZodError) {
