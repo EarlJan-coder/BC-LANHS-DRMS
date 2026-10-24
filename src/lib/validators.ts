@@ -16,30 +16,6 @@ export const updateRequestStatusSchema = z.object({
   rejectionReason: z.string().optional(),
 });
 
-export const gradeImportCommitSchema = z.object({
-  fileName: z.string().min(1),
-  rows: z
-    .array(
-      z.object({
-        lrn: z.string().min(1),
-        firstName: z.string(),
-        lastName: z.string(),
-        schoolYear: z.string().min(1),
-        gradeLevel: z.string().min(1),
-        section: z.string().min(1),
-        subjectCode: z.string().min(1),
-        subjectName: z.string().min(1),
-        quarter1: z.number().nullable(),
-        quarter2: z.number().nullable(),
-        quarter3: z.number().nullable(),
-        quarter4: z.number().nullable(),
-        finalGrade: z.number().nullable(),
-        remarks: z.string(),
-      }),
-    )
-    .min(1),
-});
-
 export const studentRecordSchema = z.object({
   lrn: z.string().trim().min(1, "LRN is required."),
   firstName: z.string().trim().min(1, "First name is required."),
@@ -62,6 +38,27 @@ export const certificateGenerateSchema = z.object({
   certificateType: z.string().min(2).optional(),
 });
 
+// PDF content overrides for certificate preview/edit. Deliberately excludes
+// schoolYear / certificateNumber / certificateType (blockchain hash inputs).
+// Empty or whitespace-only strings clear the override (undefined = live value).
+const overrideField = z
+  .string()
+  .transform((value) => (value.trim() === "" ? undefined : value.trim()))
+  .optional();
+
+export const certificateOverrideSchema = z.object({
+  studentName: overrideField,
+  gradeLevel: overrideField,
+  section: overrideField,
+  purpose: overrideField,
+  dateGenerated: z
+    .preprocess(
+      (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+      z.coerce.date().optional(),
+    )
+    .optional(),
+});
+
 export const userRoleUpdateSchema = z.object({
   role: z.enum(["student", "alumni", "registrar", "admin"]),
   status: z.enum(["active", "inactive", "suspended"]).optional(),
@@ -82,18 +79,6 @@ export const schoolYearMutationSchema = z.object({
 export const gradeLevelMutationSchema = z.object({
   name: z.string().trim().min(2, "Grade level is required.").max(40, "Grade level must be 40 characters or less."),
   order: z.coerce.number().int("Sort order must be a whole number.").min(0).max(99).default(0),
-  isActive: checkboxBoolean,
-});
-
-export const subjectMutationSchema = z.object({
-  code: z
-    .string()
-    .trim()
-    .min(2, "Subject code is required.")
-    .max(40, "Subject code must be 40 characters or less.")
-    .transform((value) => value.toUpperCase()),
-  name: z.string().trim().min(2, "Subject name is required.").max(120, "Subject name must be 120 characters or less."),
-  gradeLevelId: z.string().uuid().optional().or(z.literal("")),
   isActive: checkboxBoolean,
 });
 

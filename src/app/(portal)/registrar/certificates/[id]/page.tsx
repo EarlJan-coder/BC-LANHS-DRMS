@@ -1,4 +1,4 @@
-import { Download, ExternalLink, QrCode } from "lucide-react";
+import { Download, ExternalLink, PencilLine, QrCode } from "lucide-react";
 import { notFound } from "next/navigation";
 import { SectionHeading } from "@/components/section-heading";
 import { ButtonLink } from "@/components/ui/button";
@@ -26,6 +26,10 @@ export default async function CertificateDetailsPage({
           <>
             <ButtonLink href="/registrar/certificates" tone="secondary">
               Back
+            </ButtonLink>
+            <ButtonLink href={`/registrar/certificates/${certificate.id}/edit`} tone="secondary">
+              <PencilLine className="h-4 w-4" aria-hidden />
+              Preview &amp; edit PDF
             </ButtonLink>
             <ButtonLink href={`/api/certificates/${certificate.id}/pdf`}>
               <Download className="h-4 w-4" aria-hidden />

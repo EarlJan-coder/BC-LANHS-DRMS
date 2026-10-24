@@ -36,26 +36,28 @@ export const blockchainStatusEnum = pgEnum("blockchain_status", [
   "failed",
   "verified",
 ]);
-export const notificationTypeEnum = pgEnum("notification_type", ["request", "grade", "certificate", "system", "audit"]);
+export const notificationTypeEnum = pgEnum("notification_type", ["request", "certificate", "system", "audit"]);
 
 export const users = pgTable(
   "users",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    clerkId: varchar("clerk_id", { length: 191 }).notNull(),
+    lrn: varchar("lrn", { length: 30 }),
     email: varchar("email", { length: 191 }).notNull(),
+    passwordHash: text("password_hash").notNull(),
     firstName: varchar("first_name", { length: 100 }).notNull(),
     middleName: varchar("middle_name", { length: 100 }),
     lastName: varchar("last_name", { length: 100 }).notNull(),
     role: userRoleEnum("role").notNull().default("student"),
     status: accountStatusEnum("status").notNull().default("active"),
     isActive: boolean("is_active").notNull().default(true),
+    tokenVersion: integer("token_version").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("users_clerk_id_idx").on(table.clerkId),
     uniqueIndex("users_email_idx").on(table.email),
+    uniqueIndex("users_lrn_idx").on(table.lrn),
     index("users_role_idx").on(table.role),
     index("users_status_idx").on(table.status),
   ],
@@ -141,6 +143,17 @@ export const students = pgTable(
   ],
 );
 
+export const authRateLimits = pgTable(
+  "auth_rate_limits",
+  {
+    bucketKey: varchar("bucket_key", { length: 64 }).primaryKey(),
+    windowStartedAt: timestamp("window_started_at", { withTimezone: true }).notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("auth_rate_limits_updated_idx").on(table.updatedAt)],
+);
+
 export const documentTypes = pgTable(
   "document_types",
   {
@@ -210,89 +223,6 @@ export const requestStatusHistory = pgTable(
   (table) => [index("request_status_history_request_id_idx").on(table.requestId)],
 );
 
-export const subjects = pgTable(
-  "subjects",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    code: varchar("code", { length: 40 }).notNull(),
-    name: varchar("name", { length: 120 }).notNull(),
-    gradeLevelId: uuid("grade_level_id").references(() => gradeLevels.id),
-    isActive: boolean("is_active").notNull().default(true),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    uniqueIndex("subjects_code_idx").on(table.code),
-    index("subjects_grade_level_id_idx").on(table.gradeLevelId),
-  ],
-);
-
-export const gradeImportBatches = pgTable(
-  "grade_import_batches",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    batchNumber: varchar("batch_number", { length: 60 }).notNull(),
-    fileName: varchar("file_name", { length: 255 }).notNull(),
-    schoolYearId: uuid("school_year_id").references(() => schoolYears.id),
-    importedByUserId: uuid("imported_by_user_id").references(() => users.id),
-    totalRows: integer("total_rows").notNull().default(0),
-    validRows: integer("valid_rows").notNull().default(0),
-    invalidRows: integer("invalid_rows").notNull().default(0),
-    importedRows: integer("imported_rows").notNull().default(0),
-    status: varchar("status", { length: 40 }).notNull().default("validated"),
-    blockchainStatus: blockchainStatusEnum("blockchain_status").notNull().default("pending"),
-    blockchainTxHash: varchar("blockchain_tx_hash", { length: 90 }),
-    recordHash: varchar("record_hash", { length: 66 }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    uniqueIndex("grade_import_batches_number_idx").on(table.batchNumber),
-    index("grade_import_batches_imported_by_idx").on(table.importedByUserId),
-  ],
-);
-
-export const studentGrades = pgTable(
-  "student_grades",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    studentId: uuid("student_id").notNull().references(() => students.id),
-    subjectId: uuid("subject_id").references(() => subjects.id),
-    schoolYearId: uuid("school_year_id").references(() => schoolYears.id),
-    gradeLevelId: uuid("grade_level_id").references(() => gradeLevels.id),
-    sectionId: uuid("section_id").references(() => sections.id),
-    importBatchId: uuid("import_batch_id").references(() => gradeImportBatches.id),
-    quarter1: numeric("quarter_1", { precision: 5, scale: 2 }),
-    quarter2: numeric("quarter_2", { precision: 5, scale: 2 }),
-    quarter3: numeric("quarter_3", { precision: 5, scale: 2 }),
-    quarter4: numeric("quarter_4", { precision: 5, scale: 2 }),
-    finalGrade: numeric("final_grade", { precision: 5, scale: 2 }),
-    remarks: varchar("remarks", { length: 50 }),
-    encodedBy: uuid("encoded_by").references(() => users.id),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    index("student_grades_student_id_idx").on(table.studentId),
-    uniqueIndex("student_grades_unique_subject_idx").on(table.studentId, table.subjectId, table.schoolYearId),
-  ],
-);
-
-export const gradeImportErrors = pgTable(
-  "grade_import_errors",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    batchId: uuid("batch_id").references(() => gradeImportBatches.id),
-    rowNumber: integer("row_number").notNull(),
-    fieldName: varchar("field_name", { length: 80 }),
-    errorMessage: text("error_message").notNull(),
-    message: text("message").notNull(),
-    rawData: jsonb("raw_data"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [index("grade_import_errors_batch_id_idx").on(table.batchId)],
-);
-
 export const certificates = pgTable(
   "certificates",
   {
@@ -311,6 +241,13 @@ export const certificates = pgTable(
     recordHash: varchar("record_hash", { length: 66 }),
     blockNumber: bigint("block_number", { mode: "number" }),
     network: varchar("network", { length: 40 }),
+    // PDF content overrides: null = render the live joined value. Never used
+    // for school year / certificate number / type (blockchain hash inputs).
+    overrideStudentName: varchar("override_student_name", { length: 200 }),
+    overrideGradeLevel: varchar("override_grade_level", { length: 100 }),
+    overrideSection: varchar("override_section", { length: 100 }),
+    overridePurpose: text("override_purpose"),
+    overrideDateGenerated: timestamp("override_date_generated", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -416,7 +353,6 @@ export const studentsRelations = relations(students, ({ one, many }) => ({
     references: [schoolYears.id],
   }),
   requests: many(documentRequests),
-  grades: many(studentGrades),
   certificates: many(certificates),
 }));
 
