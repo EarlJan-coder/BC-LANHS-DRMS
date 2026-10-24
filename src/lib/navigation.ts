@@ -1,6 +1,6 @@
 import type { DashboardRole } from "./types";
 
-export const navigationByRole: Record<DashboardRole, Array<{ label: string; href: string; icon: string }>> = {
+export const navigationByRole: Record<DashboardRole, Array<{ label: string; href: string; icon: string; badge?: boolean }>> = {
   student: [
     { label: "Dashboard", href: "/student/dashboard", icon: "LayoutDashboard" },
     { label: "Submit request", href: "/student/requests/new", icon: "FilePlus" },
@@ -11,9 +11,8 @@ export const navigationByRole: Record<DashboardRole, Array<{ label: string; href
   registrar: [
     { label: "Dashboard", href: "/registrar/dashboard", icon: "LayoutDashboard" },
     { label: "Requests", href: "/registrar/requests", icon: "Inbox" },
+    { label: "Notifications", href: "/registrar/notifications", icon: "Bell", badge: true },
     { label: "Student records", href: "/registrar/students", icon: "GraduationCap" },
-    { label: "Grade management", href: "/registrar/grades", icon: "BookOpenCheck" },
-    { label: "Bulk import", href: "/registrar/grades/import", icon: "UploadCloud" },
     { label: "Certificates", href: "/registrar/certificates", icon: "FileBadge" },
     { label: "Reports", href: "/registrar/reports", icon: "BarChart3" },
     { label: "Audit logs", href: "/registrar/audit-logs", icon: "ShieldCheck" },
@@ -26,7 +25,6 @@ export const navigationByRole: Record<DashboardRole, Array<{ label: string; href
     { label: "School years", href: "/admin/school-years", icon: "CalendarDays" },
     { label: "Grade levels", href: "/admin/grade-levels", icon: "PanelsTopLeft" },
     { label: "Sections", href: "/admin/sections", icon: "Blocks" },
-    { label: "Subjects", href: "/admin/subjects", icon: "Library" },
     { label: "Blockchain trail", href: "/admin/blockchain", icon: "Blocks" },
     { label: "Settings", href: "/admin/settings", icon: "Settings" },
   ],

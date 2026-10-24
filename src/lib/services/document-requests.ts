@@ -18,6 +18,8 @@ import { sendWorkflowEmail } from "@/lib/email";
 import { generateTrackingNumber } from "@/lib/utils";
 import { documentRequestSchema, updateRequestStatusSchema } from "@/lib/validators";
 import { getDocumentRequestView } from "@/lib/services/live-data";
+import { buildNewRequestNotification } from "@/lib/notifications";
+import { createRegistrarNotifications } from "@/lib/services/notifications";
 import type { DocumentRequestView } from "@/lib/types";
 import { recordAuditedAction } from "./audit-log";
 import {
@@ -142,15 +144,8 @@ export async function createDocumentRequest(input: unknown) {
       });
     }
 
-    await sendWorkflowEmail({
-      to: profile.email,
-      studentName: `${profile.firstName} ${profile.lastName}`,
-      trackingNumber,
-      documentType: values.documentType,
-      status: "pending",
-      subject: `LANHS DRMS request submitted: ${trackingNumber}`,
-      instruction: "Your document request was received and is now pending registrar review.",
-    });
+    // Registrar copies: one per active registrar, own read state each.
+    await createRegistrarNotifications(buildNewRequestNotification(trackingNumber, values.documentType));
   }
 
   const audit = await recordAuditedAction({

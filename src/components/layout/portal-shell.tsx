@@ -4,7 +4,6 @@ import {
   BarChart3,
   Bell,
   Blocks,
-  BookOpenCheck,
   CalendarDays,
   FileBadge,
   FilePlus,
@@ -15,24 +14,25 @@ import {
   KeyRound,
   LayoutDashboard,
   Library,
+  LogOut,
   Menu,
   PanelsTopLeft,
   Search,
   Settings,
   ShieldCheck,
-  UploadCloud,
   UserRound,
   Users,
   X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Suspense, useState } from "react";
 import type { ReactNode } from "react";
-import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import { ROLE_LABELS } from "@/lib/constants";
 import { navigationByRole } from "@/lib/navigation";
 import type { DashboardRole } from "@/lib/types";
+import type { UserRole } from "@/db/schema";
 import { cn } from "@/lib/utils";
 import { AppLogo } from "./app-logo";
 
@@ -40,7 +40,6 @@ const icons = {
   BarChart3,
   Bell,
   Blocks,
-  BookOpenCheck,
   CalendarDays,
   FileBadge,
   FilePlus,
@@ -56,7 +55,6 @@ const icons = {
   Search,
   Settings,
   ShieldCheck,
-  UploadCloud,
   UserRound,
   Users,
   X,
@@ -98,15 +96,30 @@ function HeaderSearch({ role }: { role: DashboardRole }) {
   return <HeaderSearchForm role={role} defaultValue={searchParams.get("q") ?? ""} />;
 }
 
-export function PortalShell({ children }: { children: ReactNode }) {
+export function PortalShell({
+  children,
+  user,
+  unreadCount = null,
+}: {
+  children: ReactNode;
+  user: { firstName: string; lastName: string; email: string; role: UserRole };
+  /** Formatted unread notification badge (null = hidden), from the server layout. */
+  unreadCount?: string | null;
+}) {
   const pathname = usePathname();
+  const router = useRouter();
   const role = roleFromPath(pathname);
   const nav = navigationByRole[role];
-  const hasClerk = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const toggleMobileMenu = () => setMobileMenuOpen((prev) => !prev);
   const closeMobileMenu = () => setMobileMenuOpen(false);
+
+  async function signOut() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/sign-in");
+    router.refresh();
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -131,6 +144,14 @@ export function PortalShell({ children }: { children: ReactNode }) {
               >
                 <Icon className="h-4 w-4" aria-hidden />
                 <span className="truncate">{item.label}</span>
+                {item.badge && unreadCount ? (
+                  <span
+                    className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-xs font-semibold text-white"
+                    aria-label={`${unreadCount} unread notifications`}
+                  >
+                    {unreadCount}
+                  </span>
+                ) : null}
               </Link>
             );
           })}
@@ -181,6 +202,14 @@ export function PortalShell({ children }: { children: ReactNode }) {
               >
                 <Icon className="h-4 w-4" aria-hidden />
                 <span className="truncate">{item.label}</span>
+                {item.badge && unreadCount ? (
+                  <span
+                    className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-xs font-semibold text-white"
+                    aria-label={`${unreadCount} unread notifications`}
+                  >
+                    {unreadCount}
+                  </span>
+                ) : null}
               </Link>
             );
           })}
@@ -208,22 +237,19 @@ export function PortalShell({ children }: { children: ReactNode }) {
               <span className="hidden rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-brand ring-1 ring-rose-100 sm:inline-flex">
                 {ROLE_LABELS[role]}
               </span>
-              {hasClerk ? (
-                <>
-                  <Show when="signed-in">
-                    <UserButton />
-                  </Show>
-                  <Show when="signed-out">
-                    <SignInButton mode="modal">
-                      <button className="rounded-md border border-border px-3 py-2 text-sm font-medium text-slate-700">
-                        Sign in
-                      </button>
-                    </SignInButton>
-                  </Show>
-                </>
-              ) : (
-                <span className="rounded-md bg-slate-100 px-3 py-2 text-xs font-medium text-slate-600">Demo mode</span>
-              )}
+              <span className="hidden text-right sm:block">
+                <span className="block text-sm font-medium text-slate-900">{user.firstName} {user.lastName}</span>
+                <span className="block text-xs text-slate-500">{user.email}</span>
+              </span>
+              <button
+                type="button"
+                onClick={signOut}
+                className="inline-flex h-10 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                aria-label="Log out"
+              >
+                <LogOut className="h-4 w-4" aria-hidden />
+                <span className="hidden sm:inline">Log out</span>
+              </button>
             </div>
           </div>
         </header>

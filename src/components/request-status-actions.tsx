@@ -1,21 +1,31 @@
 "use client";
 
-import { Ban, Check, ClipboardCheck, PackageCheck, RotateCw, SearchCheck, X } from "lucide-react";
+import { Check, ClipboardCheck, PackageCheck, RotateCw, X, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/dialog";
 import type { RequestStatus } from "@/db/schema";
+import { REQUEST_ACTIONS, buildStatusUpdatePayload, type StatusColor } from "@/lib/request-actions";
+import { cn } from "@/lib/utils";
 
-const actions: Array<{ status: RequestStatus; label: string; icon: typeof Check; confirm: string }> = [
-  { status: "under_review", label: "Review", icon: SearchCheck, confirm: "Mark this request as under review?" },
-  { status: "approved", label: "Approve", icon: Check, confirm: "Approve this document request?" },
-  { status: "rejected", label: "Reject", icon: X, confirm: "Reject this document request?" },
-  { status: "processing", label: "Process", icon: RotateCw, confirm: "Mark this request as processing?" },
-  { status: "ready_for_pickup", label: "Ready", icon: PackageCheck, confirm: "Mark this document as ready for pickup?" },
-  { status: "claimed", label: "Claimed", icon: ClipboardCheck, confirm: "Mark this document as claimed?" },
-  { status: "cancelled", label: "Cancel", icon: Ban, confirm: "Cancel this document request?" },
-];
+const icons: Record<RequestStatus, LucideIcon> = {
+  approved: Check,
+  rejected: X,
+  processing: RotateCw,
+  ready_for_pickup: PackageCheck,
+  claimed: ClipboardCheck,
+} as Record<RequestStatus, LucideIcon>;
+
+/** Highlight classes for the button matching the request's current status. */
+const activeColors: Record<StatusColor, string> = {
+  green: "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 focus-visible:outline-emerald-600",
+  red: "bg-red-600 text-white shadow-sm hover:bg-red-700 focus-visible:outline-red-600",
+  amber: "bg-amber-500 text-white shadow-sm hover:bg-amber-600 focus-visible:outline-amber-600",
+  blue: "bg-blue-600 text-white shadow-sm hover:bg-blue-700 focus-visible:outline-blue-600",
+  purple: "bg-violet-600 text-white shadow-sm hover:bg-violet-700 focus-visible:outline-violet-600",
+};
 
 export function RequestStatusActions({
   requestId,
@@ -28,35 +38,21 @@ export function RequestStatusActions({
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState<RequestStatus | null>(null);
+  const [pendingAction, setPendingAction] = useState<(typeof REQUEST_ACTIONS)[number] | null>(null);
 
-  async function updateStatus(status: RequestStatus, confirmText: string) {
-    if (!window.confirm(confirmText)) {
+  async function submitStatus(status: RequestStatus, rejectionReason?: string) {
+    const payload = buildStatusUpdatePayload(status, rejectionReason);
+    if (!payload) {
+      toast.error("Enter a rejection reason.");
       return;
     }
-
-    const rejectionReason =
-      status === "rejected" ? window.prompt("Enter rejection reason", "Registrar rejected this request after validation.") : null;
-
-    if (status === "rejected" && (rejectionReason === null || rejectionReason.trim() === "")) {
-      return;
-    }
-
-    const registrarRemarks =
-      status === "rejected" && rejectionReason
-        ? `Registrar rejected this request. Reason: ${rejectionReason}`
-        : `Registrar marked this request as ${status.replaceAll("_", " ")}.`;
 
     setLoading(status);
     try {
       const response = await fetch(`/api/document-requests/${requestId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status,
-          remarks: `Status updated to ${status}.`,
-          registrarRemarks,
-          rejectionReason: status === "rejected" ? rejectionReason : undefined,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await response.json();
 
@@ -66,9 +62,8 @@ export function RequestStatusActions({
       }
 
       toast.success("Request status updated.");
-      if (onStatusChange) {
-        onStatusChange(status, registrarRemarks);
-      }
+      setPendingAction(null);
+      onStatusChange?.(status, payload.registrarRemarks);
       router.refresh();
     } catch {
       toast.error("Unable to update status. Check your connection and try again.");
@@ -77,26 +72,57 @@ export function RequestStatusActions({
     }
   }
 
-  return (
-    <div className="flex flex-wrap gap-2">
-      {actions.map((action) => {
-        const Icon = action.icon;
+  function confirmAction(reason?: string) {
+    if (!pendingAction) {
+      return;
+    }
+    void submitStatus(pendingAction.status, pendingAction.status === "rejected" ? reason : undefined);
+  }
 
-        return (
-          <Button
-            key={action.status}
-            type="button"
-            tone={action.status === "rejected" ? "danger" : "secondary"}
-            onClick={() => updateStatus(action.status, action.confirm)}
-            loading={loading === action.status}
-            disabled={loading !== null}
-            aria-pressed={currentStatus === action.status}
-          >
-            {loading === action.status ? null : <Icon className="h-4 w-4" aria-hidden />}
-            {loading === action.status ? "Saving…" : action.label}
-          </Button>
-        );
-      })}
-    </div>
+  return (
+    <>
+      <div className="flex flex-wrap gap-2">
+        {REQUEST_ACTIONS.map((action) => {
+          const Icon = icons[action.status];
+          const isActive = currentStatus === action.status;
+
+          return (
+            <Button
+              key={action.status}
+              type="button"
+              tone={isActive ? "primary" : "secondary"}
+              className={cn(isActive && activeColors[action.color])}
+              onClick={() => setPendingAction(action)}
+              loading={loading === action.status}
+              disabled={loading !== null}
+              aria-pressed={isActive}
+            >
+              {loading === action.status ? null : <Icon className="h-4 w-4" aria-hidden />}
+              {loading === action.status ? "Saving…" : action.label}
+            </Button>
+          );
+        })}
+      </div>
+
+      <ConfirmDialog
+        open={pendingAction !== null}
+        title={pendingAction ? `${pendingAction.label} this request?` : ""}
+        message={pendingAction?.confirm ?? ""}
+        confirmLabel={pendingAction?.label}
+        tone={pendingAction?.status === "rejected" ? "danger" : "primary"}
+        loading={loading !== null}
+        reason={
+          pendingAction?.status === "rejected"
+            ? {
+                label: "Rejection reason (required)",
+                placeholder: "Explain why this request is being rejected…",
+                defaultValue: "Registrar rejected this request after validation.",
+              }
+            : undefined
+        }
+        onConfirm={confirmAction}
+        onCancel={() => setPendingAction(null)}
+      />
+    </>
   );
 }
