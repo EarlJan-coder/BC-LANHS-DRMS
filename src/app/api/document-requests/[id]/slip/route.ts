@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCurrentDbUser } from "@/lib/auth";
 import { generateRequestSlipPdf } from "@/lib/services/document-requests";
 
 export async function GET(
@@ -6,8 +7,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const viewer = await getCurrentDbUser();
+    if (!viewer) {
+      return NextResponse.json({ error: "Sign in is required." }, { status: 401 });
+    }
+
     const { id } = await params;
-    const pdf = await generateRequestSlipPdf(id);
+    const pdf = await generateRequestSlipPdf(id, viewer);
 
     return new Response(new Uint8Array(pdf), {
       headers: {

@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { PDFDocument, StandardFonts, rgb, type RGB } from "pdf-lib";
-import { db } from "@/db";
+import { db, getDb } from "@/db";
 import {
   documentRequests,
   documentTypes,
@@ -42,6 +42,19 @@ export type EligibilityReason = "no_record" | "no_lrn";
 export interface RequestEligibility {
   eligible: boolean;
   reason: EligibilityReason | null;
+}
+
+/** Slip PDFs carry student PII (name, LRN, purpose): staff may read any slip,
+ * everyone else only the slip of a request they made. */
+export function canAccessRequestSlip(
+  request: { requestedByUserId: string | null },
+  viewer: { id: string; role: UserRole },
+): boolean {
+  return (
+    viewer.role === "registrar" ||
+    viewer.role === "admin" ||
+    (request.requestedByUserId !== null && request.requestedByUserId === viewer.id)
+  );
 }
 
 export async function getRequestEligibility(
@@ -366,8 +379,18 @@ export async function renderRequestSlipPdf(request: DocumentRequestView) {
   return pdfDoc.save();
 }
 
-export async function generateRequestSlipPdf(requestId: string) {
-  const request = await getDocumentRequestView(requestId, true);
+export async function generateRequestSlipPdf(requestId: string, viewer: { id: string; role: UserRole }) {
+  const row = await getDb().query.documentRequests.findFirst({
+    where: sql`${documentRequests.id}::text = ${requestId} OR ${documentRequests.trackingNumber} = ${requestId}`,
+  });
+
+  // "Not found" for both missing and unauthorized so the endpoint is not an
+  // existence oracle for request ids.
+  if (!row || !canAccessRequestSlip(row, viewer)) {
+    throw new Error("Document request not found.");
+  }
+
+  const request = await getDocumentRequestView(requestId);
   if (!request) {
     throw new Error("Document request not found.");
   }
