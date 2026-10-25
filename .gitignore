@@ -28,6 +28,9 @@
 .DS_Store
 *.pem
 
+# superpowers session scratch (briefs, ledgers, parked fragments)
+.superpowers/
+
 # debug
 npm-debug.log*
 yarn-debug.log*
