@@ -15,6 +15,7 @@ export const navigationByRole: Record<
     { label: "Dashboard", href: "/registrar/dashboard", icon: "LayoutDashboard" },
     { label: "Requests", href: "/registrar/requests", icon: "Inbox" },
     { label: "Student records", href: "/registrar/students", icon: "GraduationCap" },
+    { label: "Import students", href: "/registrar/students/import", icon: "UploadCloud" },
     { label: "Certificates", href: "/registrar/certificates", icon: "FileBadge" },
     { label: "Reports", href: "/registrar/reports", icon: "BarChart3" },
     { label: "Audit logs", href: "/registrar/audit-logs", icon: "ShieldCheck" },
