@@ -4,10 +4,10 @@ import { Card } from "@/components/ui/card";
 import { SCHOOL_NAME } from "@/lib/constants";
 
 const items = [
-  { icon: Database, title: "PostgreSQL records", copy: "Student, request, grade, notification, and audit tables are modeled with Drizzle ORM." },
+  { icon: Database, title: "PostgreSQL records", copy: "Student, request, certificate, notification, and audit tables are modeled with Drizzle ORM." },
   { icon: Mail, title: "Email notifications", copy: "Resend integration is prepared for request confirmation and status updates." },
   { icon: Blocks, title: "Blockchain proof", copy: "Only reference IDs, actions, actor roles, timestamps, and hashes are submitted on-chain." },
-  { icon: ShieldCheck, title: "Role-based access", copy: "Student, registrar, and administrator workspaces are separated through Clerk and server checks." },
+  { icon: ShieldCheck, title: "Role-based access", copy: "Email and LRN accounts use password-protected sessions and server-side role checks." },
 ];
 
 export default function AboutPage() {
@@ -19,7 +19,7 @@ export default function AboutPage() {
           <p className="text-sm font-semibold uppercase text-brand">{SCHOOL_NAME}</p>
           <h1 className="mt-3 text-3xl font-semibold text-slate-950">About the system</h1>
           <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">
-            LANHS DRMS supports registrar workflows for document requests, student records, bulk grade import,
+            LANHS DRMS supports registrar workflows for document requests, student records, bulk student import,
             certificate generation, and immutable audit verification while keeping private student information off
             the blockchain.
           </p>
