@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
-import { clerkConfigured, getCurrentRole } from "@/lib/auth";
+import { getCurrentRole } from "@/lib/auth";
 import { updateDocumentRequestStatus } from "@/lib/services/document-requests";
 
 export async function PATCH(
@@ -10,7 +10,7 @@ export async function PATCH(
 ) {
   try {
     const role = await getCurrentRole();
-    if (clerkConfigured() && role !== "registrar" && role !== "admin") {
+    if (role !== "registrar" && role !== "admin") {
       return NextResponse.json({ error: "Registrar access is required." }, { status: 403 });
     }
 

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
-import { clerkConfigured, getCurrentRole } from "@/lib/auth";
+import { getCurrentRole } from "@/lib/auth";
 import { userRoleUpdateSchema } from "@/lib/validators";
 
 export async function PATCH(
@@ -12,7 +12,7 @@ export async function PATCH(
 ) {
   try {
     const role = await getCurrentRole();
-    if (clerkConfigured() && role !== "admin") {
+    if (role !== "admin") {
       return NextResponse.json({ error: "Administrator access is required." }, { status: 403 });
     }
 

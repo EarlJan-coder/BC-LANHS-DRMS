@@ -1,16 +1,21 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { clerkConfigured, getCurrentRole } from "@/lib/auth";
+import { getCurrentRole } from "@/lib/auth";
 import { generateCertificate, listCertificateViews } from "@/lib/services/certificates";
 
 export async function GET() {
+  const role = await getCurrentRole();
+  if (role !== "registrar" && role !== "admin") {
+    return NextResponse.json({ error: "Registrar access is required." }, { status: 403 });
+  }
+
   return NextResponse.json({ data: await listCertificateViews() });
 }
 
 export async function POST(request: Request) {
   try {
     const role = await getCurrentRole();
-    if (clerkConfigured() && role !== "registrar" && role !== "admin") {
+    if (role !== "registrar" && role !== "admin") {
       return NextResponse.json({ error: "Registrar access is required." }, { status: 403 });
     }
 

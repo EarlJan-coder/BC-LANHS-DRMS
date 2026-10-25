@@ -15,6 +15,7 @@ import {
   KeyRound,
   LayoutDashboard,
   Library,
+  LogOut,
   Menu,
   PanelsTopLeft,
   Search,
@@ -26,10 +27,9 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import type { ReactNode } from "react";
-import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import { ROLE_LABELS } from "@/lib/constants";
 import { navigationByRole } from "@/lib/navigation";
 import type { DashboardRole } from "@/lib/types";
@@ -102,11 +102,22 @@ export function PortalShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const role = roleFromPath(pathname);
   const nav = navigationByRole[role];
-  const hasClerk = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   const toggleMobileMenu = () => setMobileMenuOpen((prev) => !prev);
   const closeMobileMenu = () => setMobileMenuOpen(false);
+
+  async function signOut() {
+    setSigningOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      router.replace("/sign-in");
+      router.refresh();
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -208,22 +219,15 @@ export function PortalShell({ children }: { children: ReactNode }) {
               <span className="hidden rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-brand ring-1 ring-rose-100 sm:inline-flex">
                 {ROLE_LABELS[role]}
               </span>
-              {hasClerk ? (
-                <>
-                  <Show when="signed-in">
-                    <UserButton />
-                  </Show>
-                  <Show when="signed-out">
-                    <SignInButton mode="modal">
-                      <button className="rounded-md border border-border px-3 py-2 text-sm font-medium text-slate-700">
-                        Sign in
-                      </button>
-                    </SignInButton>
-                  </Show>
-                </>
-              ) : (
-                <span className="rounded-md bg-slate-100 px-3 py-2 text-xs font-medium text-slate-600">Demo mode</span>
-              )}
+              <button
+                type="button"
+                onClick={signOut}
+                disabled={signingOut}
+                className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+              >
+                <LogOut className="h-4 w-4" aria-hidden />
+                {signingOut ? "Signing out..." : "Sign out"}
+              </button>
             </div>
           </div>
         </header>

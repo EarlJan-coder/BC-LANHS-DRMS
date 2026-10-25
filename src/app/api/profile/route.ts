@@ -2,11 +2,11 @@ import { eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { getDb } from "@/db";
-import { students } from "@/db/schema";
+import { students, users } from "@/db/schema";
 import { ensureCurrentDbUser } from "@/lib/auth";
 
 const profileUpdateSchema = z.object({
-  lrn: z.string().trim().min(1, "LRN is required."),
+  lrn: z.string().trim().regex(/^\d{12}$/, "Enter your 12-digit LRN."),
   contactNumber: z.string().trim().optional(),
   guardianName: z.string().trim().optional(),
   address: z.string().trim().optional(),
@@ -23,6 +23,10 @@ function isPostgresError(error: unknown, code: string, text?: string) {
     (error as { code?: unknown }).code === code &&
     (!text || String((error as { message?: unknown }).message ?? "").includes(text))
   );
+}
+
+function normalizeName(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
 async function hasLegacyStudentNumberColumn(db: ReturnType<typeof getDb>) {
@@ -101,6 +105,17 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "This LRN is already linked to another account." }, { status: 409 });
     }
 
+    if (
+      lrnOwner &&
+      (normalizeName(lrnOwner.firstName) !== normalizeName(user.firstName) ||
+        normalizeName(lrnOwner.lastName) !== normalizeName(user.lastName))
+    ) {
+      return NextResponse.json(
+        { error: "The name does not match the school record for this LRN. Contact the registrar to confirm your details." },
+        { status: 409 },
+      );
+    }
+
     const updateValues = {
       contactNumber: values.contactNumber,
       guardianName: values.guardianName,
@@ -133,6 +148,11 @@ export async function PATCH(request: Request) {
       await createStudentProfile(db, user, values);
     }
 
+    await db
+      .update(users)
+      .set({ lrn: values.lrn, updatedAt: new Date() })
+      .where(eq(users.id, user.id));
+
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (error instanceof ZodError) {
@@ -141,6 +161,10 @@ export async function PATCH(request: Request) {
 
     if (isPostgresError(error, "23505", "students_lrn_idx")) {
       return NextResponse.json({ error: "This LRN already belongs to another student record." }, { status: 409 });
+    }
+
+    if (isPostgresError(error, "23505", "users_lrn_idx")) {
+      return NextResponse.json({ error: "This LRN is already used by another account." }, { status: 409 });
     }
 
     if (isPostgresError(error, "23502", "student_number")) {

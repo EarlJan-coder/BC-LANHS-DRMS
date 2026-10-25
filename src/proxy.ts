@@ -1,53 +1,80 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
+import { NextResponse, type NextRequest } from "next/server";
+import { db } from "@/db";
+import { users } from "@/db/schema";
+import { SESSION_COOKIE, isSessionValidForUser, verifySessionToken } from "@/lib/session-token";
 
-const isProtectedRoute = createRouteMatcher([
-  "/dashboard(.*)",
-  "/student(.*)",
-  "/registrar(.*)",
-  "/admin(.*)",
-  "/api/document-requests(.*)",
-  "/api/users(.*)",
-  "/api/profile(.*)",
-  "/api/students(.*)",
-  "/api/academic-setup(.*)",
-  "/api/certificates(.*)",
-  "/api/grade-import(.*)",
-  "/api/audit(.*)",
-  "/api/blockchain(.*)",
-  "/api/reports(.*)",
-]);
+const protectedPrefixes = [
+  "/dashboard",
+  "/student",
+  "/registrar",
+  "/admin",
+  "/api/document-requests",
+  "/api/users",
+  "/api/profile",
+  "/api/students",
+  "/api/academic-setup",
+  "/api/certificates",
+  "/api/audit",
+  "/api/blockchain",
+  "/api/reports",
+];
 
-const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY);
+function isProtectedPath(pathname: string) {
+  return protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
 
-const proxy = clerkConfigured
-  ? clerkMiddleware(async (auth, req) => {
-      if (isProtectedRoute(req)) {
-        await auth.protect();
+export async function proxy(request: NextRequest) {
+  if (!isProtectedPath(request.nextUrl.pathname)) {
+    return NextResponse.next();
+  }
+
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  if (token) {
+    try {
+      const session = await verifySessionToken(token);
+
+      // Proxy runs on the Node.js runtime (Next 16 default), so revocation
+      // can be enforced here for every protected route — including ones with
+      // no in-route user check. A bumped users.token_version (logout) or a
+      // deleted/disabled account invalidates the cookie immediately.
+      if (db) {
+        const user = await db.query.users.findFirst({ where: eq(users.id, session.sub) });
+
+        if (user && user.isActive && user.status === "active" && isSessionValidForUser(session, user)) {
+          return NextResponse.next();
+        }
+      } else {
+        // No database configured: fall back to signature-only verification.
+        return NextResponse.next();
       }
-    })
-  : function demoProxy() {
-      return NextResponse.next();
-    };
+    } catch {
+      // Treat an invalid or expired cookie as signed out.
+    }
+  }
 
-export default proxy;
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.json({ error: "Please sign in to continue." }, { status: 401 });
+  }
+
+  const next = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+  return NextResponse.redirect(new URL(`/sign-in?next=${encodeURIComponent(next)}`, request.url));
+}
 
 export const config = {
   matcher: [
-    "/dashboard(.*)",
-    "/student(.*)",
-    "/registrar(.*)",
-    "/admin(.*)",
-    "/api/document-requests(.*)",
-    "/api/users(.*)",
-    "/api/profile(.*)",
-    "/api/students(.*)",
-    "/api/academic-setup(.*)",
-    "/api/certificates(.*)",
-    "/api/grade-import(.*)",
-    "/api/audit(.*)",
-    "/api/blockchain(.*)",
-    "/api/reports(.*)",
-    "/__clerk/(.*)",
+    "/dashboard/:path*",
+    "/student/:path*",
+    "/registrar/:path*",
+    "/admin/:path*",
+    "/api/document-requests/:path*",
+    "/api/users/:path*",
+    "/api/profile/:path*",
+    "/api/students/:path*",
+    "/api/academic-setup/:path*",
+    "/api/certificates/:path*",
+    "/api/audit/:path*",
+    "/api/blockchain/:path*",
+    "/api/reports/:path*",
   ],
 };

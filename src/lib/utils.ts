@@ -57,3 +57,28 @@ export class AppError extends Error {
   }
 }
 
+// Restricts a post-login ?next= target to a same-origin, non-API page path
+// so the sign-in redirect cannot become an open redirect.
+export function sanitizeRedirectPath(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value.startsWith("/")) {
+    return undefined;
+  }
+
+  // The WHATWG URL parser strips tabs/newlines, so "/\t/evil.com" would
+  // otherwise be parsed as the cross-origin "//evil.com".
+  if (/[\u0000-\u001f\u007f]/.test(value)) {
+    return undefined;
+  }
+
+  // Reject protocol-relative ("//host", "/\host") and backslash variants.
+  if (value.startsWith("//") || value.startsWith("/\\") || value.startsWith("\\\\")) {
+    return undefined;
+  }
+
+  if (value === "/api" || value.startsWith("/api/")) {
+    return undefined;
+  }
+
+  return value;
+}
+

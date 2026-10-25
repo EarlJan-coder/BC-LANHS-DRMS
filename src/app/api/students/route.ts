@@ -43,7 +43,12 @@ function handleStudentRecordError(error: unknown) {
 }
 
 export async function GET() {
-  return NextResponse.json({ data: await listStudentViews() });
+  try {
+    await assertStudentRecordAccess();
+    return NextResponse.json({ data: await listStudentViews() });
+  } catch (error) {
+    return handleStudentRecordError(error);
+  }
 }
 
 export async function POST(request: Request) {
