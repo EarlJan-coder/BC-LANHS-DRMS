@@ -2,7 +2,7 @@ import type { DashboardRole } from "./types";
 
 export const navigationByRole: Record<
   DashboardRole,
-  Array<{ label: string; href: string; icon: string }>
+  Array<{ label: string; href: string; icon: string; badge?: boolean }>
 > = {
   student: [
     { label: "Dashboard", href: "/student/dashboard", icon: "LayoutDashboard" },
@@ -14,6 +14,7 @@ export const navigationByRole: Record<
   registrar: [
     { label: "Dashboard", href: "/registrar/dashboard", icon: "LayoutDashboard" },
     { label: "Requests", href: "/registrar/requests", icon: "Inbox" },
+    { label: "Notifications", href: "/registrar/notifications", icon: "Bell", badge: true },
     { label: "Student records", href: "/registrar/students", icon: "GraduationCap" },
     { label: "Import students", href: "/registrar/students/import", icon: "UploadCloud" },
     { label: "Certificates", href: "/registrar/certificates", icon: "FileBadge" },

@@ -32,6 +32,7 @@ import { Suspense, useState } from "react";
 import type { ReactNode } from "react";
 import { ROLE_LABELS } from "@/lib/constants";
 import { navigationByRole } from "@/lib/navigation";
+import { formatUnreadCount } from "@/lib/notifications";
 import type { DashboardRole } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { AppLogo } from "./app-logo";
@@ -98,10 +99,11 @@ function HeaderSearch({ role }: { role: DashboardRole }) {
   return <HeaderSearchForm role={role} defaultValue={searchParams.get("q") ?? ""} />;
 }
 
-export function PortalShell({ children }: { children: ReactNode }) {
+export function PortalShell({ children, unreadCount }: { children: ReactNode; unreadCount?: number }) {
   const pathname = usePathname();
   const role = roleFromPath(pathname);
   const nav = navigationByRole[role];
+  const badgeLabel = formatUnreadCount(unreadCount ?? 0);
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -142,6 +144,14 @@ export function PortalShell({ children }: { children: ReactNode }) {
               >
                 <Icon className="h-4 w-4" aria-hidden />
                 <span className="truncate">{item.label}</span>
+                {item.badge && badgeLabel ? (
+                  <span
+                    aria-label={`${badgeLabel} unread`}
+                    className="ml-auto inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-xs font-semibold text-white ring-2 ring-white"
+                  >
+                    {badgeLabel}
+                  </span>
+                ) : null}
               </Link>
             );
           })}
@@ -192,6 +202,14 @@ export function PortalShell({ children }: { children: ReactNode }) {
               >
                 <Icon className="h-4 w-4" aria-hidden />
                 <span className="truncate">{item.label}</span>
+                {item.badge && badgeLabel ? (
+                  <span
+                    aria-label={`${badgeLabel} unread`}
+                    className="ml-auto inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-xs font-semibold text-white ring-2 ring-white"
+                  >
+                    {badgeLabel}
+                  </span>
+                ) : null}
               </Link>
             );
           })}

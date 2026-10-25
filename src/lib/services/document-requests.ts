@@ -20,6 +20,7 @@ import { documentRequestSchema, updateRequestStatusSchema } from "@/lib/validato
 import { getDocumentRequestView } from "@/lib/services/live-data";
 import type { DocumentRequestView } from "@/lib/types";
 import { recordAuditedAction } from "./audit-log";
+import { fanOutNewRequestNotification } from "./notifications";
 import {
   appUrl,
   BRAND_RED,
@@ -154,6 +155,10 @@ export async function createDocumentRequest(input: unknown) {
         message: `Your request ${trackingNumber} was submitted and is pending registrar review.`,
       });
     }
+
+    // Registrar fan-out: one 'request' copy per ACTIVE registrar (ruled
+    // behavior — no admin copies).
+    await fanOutNewRequestNotification(trackingNumber, values.documentType);
 
     await sendWorkflowEmail({
       to: profile.email,
