@@ -1,7 +1,7 @@
 import { count, eq, sql } from "drizzle-orm";
 import type { z } from "zod";
 import { getDb } from "@/db";
-import { certificates, documentRequests, gradeLevels, sections, studentGrades, students } from "@/db/schema";
+import { certificates, documentRequests, gradeLevels, sections, students } from "@/db/schema";
 import { getCurrentRole } from "@/lib/auth";
 import { AppError } from "@/lib/utils";
 import { studentRecordSchema } from "@/lib/validators";
@@ -246,20 +246,16 @@ export async function updateStudentRecord(id: string, values: StudentRecordValue
 
 export async function deleteStudentRecord(id: string) {
   const db = getDb();
-  const [requestCount, gradeCount, certificateCount] = await Promise.all([
+  const [requestCount, certificateCount] = await Promise.all([
     db.select({ value: count() }).from(documentRequests).where(eq(documentRequests.studentId, id)),
-    db.select({ value: count() }).from(studentGrades).where(eq(studentGrades.studentId, id)),
     db.select({ value: count() }).from(certificates).where(eq(certificates.studentId, id)),
   ]);
 
-  const linkedRecords =
-    Number(requestCount[0]?.value ?? 0) +
-    Number(gradeCount[0]?.value ?? 0) +
-    Number(certificateCount[0]?.value ?? 0);
+  const linkedRecords = Number(requestCount[0]?.value ?? 0) + Number(certificateCount[0]?.value ?? 0);
 
   if (linkedRecords > 0) {
     throw new StudentRecordError(
-      "This student has linked grades, document requests, or certificates. Update the status instead.",
+      "This student has linked document requests or certificates. Update the status instead.",
       409,
     );
   }

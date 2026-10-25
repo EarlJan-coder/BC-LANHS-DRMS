@@ -1,15 +1,14 @@
 import { and, count, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import type { z } from "zod";
 import { getDb } from "@/db";
-import { documentTypes, gradeLevels, schoolYears, sections, subjects } from "@/db/schema";
-import { clerkConfigured, getCurrentRole } from "@/lib/auth";
+import { documentTypes, gradeLevels, schoolYears, sections } from "@/db/schema";
+import { getCurrentRole } from "@/lib/auth";
 import { AppError, formatDate } from "@/lib/utils";
 import {
   documentTypeMutationSchema,
   gradeLevelMutationSchema,
   schoolYearMutationSchema,
   sectionMutationSchema,
-  subjectMutationSchema,
 } from "@/lib/validators";
 
 export class AcademicSetupError extends AppError {
@@ -34,16 +33,6 @@ export type AcademicGradeLevel = {
   order: number;
   isActive: boolean;
   sections: number;
-  status: string;
-};
-
-export type AcademicSubject = {
-  id: string;
-  code: string;
-  name: string;
-  gradeLevelId: string | null;
-  gradeLevel: string;
-  isActive: boolean;
   status: string;
 };
 
@@ -75,14 +64,12 @@ export type AcademicSetupData = {
   schoolYears: AcademicSchoolYear[];
   gradeLevels: AcademicGradeLevel[];
   sections: AcademicSection[];
-  subjects: AcademicSubject[];
   documentTypes: AcademicDocumentType[];
 };
 
 type SchoolYearMutation = z.infer<typeof schoolYearMutationSchema>;
 type GradeLevelMutation = z.infer<typeof gradeLevelMutationSchema>;
 type SectionMutation = z.infer<typeof sectionMutationSchema>;
-type SubjectMutation = z.infer<typeof subjectMutationSchema>;
 type DocumentTypeMutation = z.infer<typeof documentTypeMutationSchema>;
 
 function formatDateInput(date: Date | null | undefined) {
@@ -125,7 +112,7 @@ function assertDateOrder(startsOn: Date | null, endsOn: Date | null) {
 export async function assertAcademicSetupAccess() {
   const role = await getCurrentRole();
 
-  if (clerkConfigured() && role !== "registrar" && role !== "admin") {
+  if (role !== "registrar" && role !== "admin") {
     throw new AcademicSetupError("Registrar access is required.", 403);
   }
 
@@ -134,7 +121,7 @@ export async function assertAcademicSetupAccess() {
 
 export async function getAcademicSetupData(): Promise<AcademicSetupData> {
   const db = getDb();
-  const [schoolYearRows, gradeLevelRows, sectionRows, subjectRows, documentTypeRows] = await Promise.all([
+  const [schoolYearRows, gradeLevelRows, sectionRows, documentTypeRows] = await Promise.all([
     db.select().from(schoolYears).orderBy(desc(schoolYears.createdAt)),
     db
       .select({
@@ -163,18 +150,6 @@ export async function getAcademicSetupData(): Promise<AcademicSetupData> {
       .leftJoin(gradeLevels, eq(sections.gradeLevelId, gradeLevels.id))
       .leftJoin(schoolYears, eq(sections.schoolYearId, schoolYears.id))
       .orderBy(gradeLevels.order, sections.name),
-    db
-      .select({
-        id: subjects.id,
-        code: subjects.code,
-        name: subjects.name,
-        gradeLevelId: subjects.gradeLevelId,
-        gradeLevel: gradeLevels.name,
-        isActive: subjects.isActive,
-      })
-      .from(subjects)
-      .leftJoin(gradeLevels, eq(subjects.gradeLevelId, gradeLevels.id))
-      .orderBy(subjects.code, subjects.name),
     db
       .select({
         id: documentTypes.id,
@@ -218,15 +193,6 @@ export async function getAcademicSetupData(): Promise<AcademicSetupData> {
       isActive: row.isActive,
       status: row.isActive ? "Active" : "Inactive",
     })),
-    subjects: subjectRows.map((row) => ({
-      id: row.id,
-      code: row.code,
-      name: row.name,
-      gradeLevelId: row.gradeLevelId,
-      gradeLevel: row.gradeLevel ?? "Not assigned",
-      isActive: row.isActive,
-      status: row.isActive ? "Active" : "Inactive",
-    })),
     documentTypes: documentTypeRows.map((row) => ({
       id: row.id,
       name: row.name,
@@ -260,17 +226,6 @@ async function ensureUniqueGradeLevelName(name: string, currentId?: string) {
 
   if (existing && existing.id !== currentId) {
     throw new AcademicSetupError("A grade level with this name already exists.");
-  }
-}
-
-async function ensureUniqueSubjectCode(code: string, currentId?: string) {
-  const db = getDb();
-  const existing = await db.query.subjects.findFirst({
-    where: eq(subjects.code, code),
-  });
-
-  if (existing && existing.id !== currentId) {
-    throw new AcademicSetupError("A subject with this code already exists.");
   }
 }
 
@@ -516,50 +471,6 @@ export async function updateSection(id: string, values: SectionMutation) {
   return updated;
 }
 
-export async function createSubject(values: SubjectMutation) {
-  const db = getDb();
-  const gradeLevelId = values.gradeLevelId || undefined;
-
-  await Promise.all([ensureUniqueSubjectCode(values.code), ensureGradeLevelExists(gradeLevelId)]);
-
-  const [created] = await db
-    .insert(subjects)
-    .values({
-      code: values.code,
-      name: values.name,
-      gradeLevelId,
-      isActive: values.isActive,
-    })
-    .returning();
-
-  return created;
-}
-
-export async function updateSubject(id: string, values: SubjectMutation) {
-  const db = getDb();
-  const gradeLevelId = values.gradeLevelId || undefined;
-
-  await Promise.all([ensureUniqueSubjectCode(values.code, id), ensureGradeLevelExists(gradeLevelId)]);
-
-  const [updated] = await db
-    .update(subjects)
-    .set({
-      code: values.code,
-      name: values.name,
-      gradeLevelId: gradeLevelId ?? null,
-      isActive: values.isActive,
-      updatedAt: new Date(),
-    })
-    .where(eq(subjects.id, id))
-    .returning();
-
-  if (!updated) {
-    throw new AcademicSetupError("Subject not found.", 404);
-  }
-
-  return updated;
-}
-
 export async function createDocumentType(values: DocumentTypeMutation) {
   const db = getDb();
 
@@ -610,17 +521,15 @@ export async function updateDocumentType(id: string, values: DocumentTypeMutatio
 
 export async function getAcademicSetupCounts() {
   const db = getDb();
-  const [schoolYearCount, gradeLevelCount, sectionCount, subjectCount] = await Promise.all([
+  const [schoolYearCount, gradeLevelCount, sectionCount] = await Promise.all([
     db.select({ value: count() }).from(schoolYears),
     db.select({ value: count() }).from(gradeLevels),
     db.select({ value: count() }).from(sections),
-    db.select({ value: count() }).from(subjects),
   ]);
 
   return {
     schoolYears: Number(schoolYearCount[0]?.value ?? 0),
     gradeLevels: Number(gradeLevelCount[0]?.value ?? 0),
     sections: Number(sectionCount[0]?.value ?? 0),
-    subjects: Number(subjectCount[0]?.value ?? 0),
   };
 }

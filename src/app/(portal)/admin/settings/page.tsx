@@ -12,7 +12,7 @@ const icons = {
 
 const copy = {
   Database: "PostgreSQL connection through DATABASE_URL.",
-  Authentication: "Clerk keys and metadata roles for protected routes.",
+  Authentication: "Local email/LRN accounts with password hashes and signed sessions.",
   Email: "Resend sender and notification templates.",
   Blockchain: "RPC URL, contract address, and retry handling for pending proofs.",
 };

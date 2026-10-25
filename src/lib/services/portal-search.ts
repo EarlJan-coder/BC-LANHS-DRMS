@@ -5,7 +5,6 @@ import {
   listDocumentTypeViews,
   listSectionViews,
   listStudentViews,
-  listSubjectViews,
   listUserViews,
 } from "@/lib/services/live-data";
 import type { DashboardRole } from "@/lib/types";
@@ -166,10 +165,9 @@ export async function searchPortal(role: DashboardRole, rawQuery: string): Promi
     ];
   }
 
-  const [users, documentTypes, subjects, sections, auditTrail] = await Promise.all([
+  const [users, documentTypes, sections, auditTrail] = await Promise.all([
     listUserViews(),
     listDocumentTypeViews(),
-    listSubjectViews(),
     listSectionViews(),
     listAuditTrailViews(),
   ]);
@@ -204,21 +202,6 @@ export async function searchPortal(role: DashboardRole, rawQuery: string): Promi
           href: "/admin/document-types",
         },
         haystack: [documentType.name, documentType.code],
-      })),
-      query,
-    ),
-    buildGroup(
-      "subjects",
-      "Subjects",
-      "/admin/subjects",
-      subjects.map((subject) => ({
-        hit: {
-          id: subject.id,
-          title: subject.name,
-          subtitle: `${subject.code} · ${subject.gradeLevel}`,
-          href: "/admin/subjects",
-        },
-        haystack: [subject.name, subject.code, subject.gradeLevel],
       })),
       query,
     ),

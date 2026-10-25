@@ -1,5 +1,5 @@
 import { getDb } from "@/db";
-import { certificates, studentGrades, schoolYears } from "@/db/schema";
+import { certificates, schoolYears } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { buildCanonicalCertificate } from "@/lib/audit/canonical";
 import { createRecordHashFromCanonical } from "@/lib/audit/hash";
@@ -38,14 +38,10 @@ export async function verifyCertificateOnChain(certificateId: string): Promise<V
   const cert = await db.query.certificates.findFirst({ where: eq(certificates.id, certificateId) });
   if (!cert) return { valid: false, blockchainVerified: false, reason: "Certificate not found" };
 
-  // Get student grades for this certificate
+  // Certificates must be linked to a student
   if (!cert.studentId) {
     return { valid: false, blockchainVerified: false, reason: "No student linked to certificate" };
   }
-
-  const grades = await db.query.studentGrades.findMany({
-    where: eq(studentGrades.studentId, cert.studentId),
-  });
 
   // Get school year name
   let schoolYearName = "";
@@ -59,15 +55,6 @@ export async function verifyCertificateOnChain(certificateId: string): Promise<V
     certificateNumber: cert.certificateNumber,
     studentId: cert.studentId,
     schoolYear: schoolYearName,
-    grades: grades.map((g) => ({
-      subjectCode: g.subjectId ?? "",
-      quarter1: g.quarter1,
-      quarter2: g.quarter2,
-      quarter3: g.quarter3,
-      quarter4: g.quarter4,
-      finalGrade: g.finalGrade,
-      remarks: g.remarks,
-    })),
   });
 
   const computedHash = createRecordHashFromCanonical(canonical);

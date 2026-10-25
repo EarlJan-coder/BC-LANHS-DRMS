@@ -1,16 +1,14 @@
 import { createRequire } from "node:module";
 import { eq } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 import {
   documentRequests,
   documentTypes,
   gradeLevels,
-  gradeImportBatches,
   requestStatusHistory,
   schoolYears,
   sections,
-  studentGrades,
   students,
-  subjects,
   users,
 } from "../src/db/schema";
 import { DOCUMENT_TYPES } from "../src/lib/constants";
@@ -22,7 +20,31 @@ loadEnvConfig(process.cwd());
 
 async function main() {
   const { closeDb, getDb } = await import("../src/db");
+  const databaseUrl = process.env.DATABASE_URL;
+
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL is required before seeding sample data.");
+  }
+
+  const databaseHost = new URL(databaseUrl).hostname;
+  const isLocalDatabase = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(databaseHost);
+
+  if (!isLocalDatabase && process.env.ALLOW_REMOTE_SEED !== "true") {
+    throw new Error("Refusing to seed a remote database. Use a local development database or explicitly set ALLOW_REMOTE_SEED=true.");
+  }
+
   const db = getDb();
+  const seedPassword = process.env.SEED_PASSWORD;
+
+  if (!seedPassword || seedPassword.length < 8 || new TextEncoder().encode(seedPassword).byteLength > 72) {
+    throw new Error("Set SEED_PASSWORD to a password between 8 and 72 bytes before seeding sample accounts.");
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Sample seed data must not be created in production.");
+  }
+
+  const passwordHash = await bcrypt.hash(seedPassword, 12);
 
   try {
     await db.insert(schoolYears).values({ name: "2026-2027", isActive: true }).onConflictDoNothing();
@@ -50,15 +72,6 @@ async function main() {
           { name: "HUMSS - Rizal", gradeLevelId: grade12.id, adviserName: "Mr. Noel Ramos" },
         ])
         .onConflictDoNothing();
-
-      await db
-        .insert(subjects)
-        .values([
-          { code: "ENG-12", name: "English for Academic and Professional Purposes", gradeLevelId: grade12.id },
-          { code: "GENMATH-12", name: "General Mathematics", gradeLevelId: grade12.id },
-          { code: "FIL-12", name: "Filipino sa Piling Larang", gradeLevelId: grade12.id },
-        ])
-        .onConflictDoNothing();
     }
 
     await db
@@ -78,32 +91,36 @@ async function main() {
       .insert(users)
       .values([
         {
-          clerkId: "seed_admin",
+          lrn: "111111111111",
           email: "admin@lanhs.edu.ph",
+          passwordHash,
           firstName: "System",
           lastName: "Administrator",
           role: "admin",
           status: "active",
         },
         {
-          clerkId: "seed_registrar",
+          lrn: "222222222222",
           email: "registrar@lanhs.edu.ph",
+          passwordHash,
           firstName: "LANHS",
           lastName: "Registrar",
           role: "registrar",
           status: "active",
         },
         {
-          clerkId: "seed_student",
+          lrn: "123456789012",
           email: "student@lanhs.edu.ph",
+          passwordHash,
           firstName: "Maria",
           lastName: "Santos",
           role: "student",
           status: "active",
         },
         {
-          clerkId: "seed_alumni",
+          lrn: "987654321098",
           email: "alumni@lanhs.edu.ph",
+          passwordHash,
           firstName: "Juan",
           lastName: "Dela Cruz",
           role: "alumni",
@@ -115,7 +132,7 @@ async function main() {
     const schoolYear = await db.query.schoolYears.findFirst({ where: eq(schoolYears.name, "2026-2027") });
     const registrar = await db.query.users.findFirst({ where: eq(users.email, "registrar@lanhs.edu.ph") });
     const studentUser = await db.query.users.findFirst({ where: eq(users.email, "student@lanhs.edu.ph") });
-    const certificateType = await db.query.documentTypes.findFirst({ where: eq(documentTypes.name, "Certificate of Grades") });
+    const certificateType = await db.query.documentTypes.findFirst({ where: eq(documentTypes.name, "Good Moral Certificate") });
     const grade12Level = await db.query.gradeLevels.findFirst({ where: eq(gradeLevels.name, "Grade 12") });
     const stemSection = await db.query.sections.findFirst({ where: eq(sections.name, "STEM - Aguado") });
 
@@ -157,9 +174,9 @@ async function main() {
           purpose: "College scholarship application",
           schoolYearNeeded: "2026-2027",
           gradeLevelNeeded: "Grade 12",
-          remarks: "Please include all senior high school subjects.",
+          remarks: "Please include supporting school records.",
           status: "under_review",
-          registrarRemarks: "Validated student profile and grade records.",
+          registrarRemarks: "Validated student profile.",
         })
         .onConflictDoNothing();
 
@@ -189,50 +206,6 @@ async function main() {
           },
         ]);
       }
-    }
-
-    if (sampleStudent && schoolYear && grade12Level && stemSection && registrar) {
-      await db
-        .insert(gradeImportBatches)
-        .values({
-          batchNumber: "BATCH-20260603-DEMO1",
-          fileName: "sample-grade-import.xlsx",
-          schoolYearId: schoolYear.id,
-          importedByUserId: registrar.id,
-          totalRows: 3,
-          validRows: 3,
-          invalidRows: 0,
-          importedRows: 3,
-          status: "imported",
-          blockchainStatus: "pending",
-        })
-        .onConflictDoNothing();
-
-      const batch = await db.query.gradeImportBatches.findFirst({
-        where: eq(gradeImportBatches.batchNumber, "BATCH-20260603-DEMO1"),
-      });
-      const subjectRows = await db.query.subjects.findMany();
-
-      await db
-        .insert(studentGrades)
-        .values(
-          subjectRows.slice(0, 3).map((subject, index) => ({
-            studentId: sampleStudent.id,
-            subjectId: subject.id,
-            schoolYearId: schoolYear.id,
-            gradeLevelId: grade12Level.id,
-            sectionId: stemSection.id,
-            importBatchId: batch?.id,
-            quarter1: String(90 + index),
-            quarter2: String(91 + index),
-            quarter3: String(92 + index),
-            quarter4: String(93 + index),
-            finalGrade: String(92 + index),
-            remarks: "Passed",
-            encodedBy: registrar.id,
-          })),
-        )
-        .onConflictDoNothing();
     }
 
     console.log("Seed data inserted.");

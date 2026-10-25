@@ -5,7 +5,6 @@ import { createRecordHashFromCanonical } from "@/lib/audit/hash";
 import {
   buildCanonicalCertificate,
   buildCanonicalDocumentRequest,
-  buildCanonicalGradeBatch,
   buildCanonicalStatusChange,
 } from "@/lib/audit/canonical";
 import { submitAuditToChain, submitLifecycleEventToChain } from "@/lib/blockchain/client";
@@ -36,9 +35,6 @@ export async function recordAuditedAction(input: AuditedActionInput) {
       break;
     case "document_request":
       canonical = buildCanonicalDocumentRequest(input.hashMetadata as Parameters<typeof buildCanonicalDocumentRequest>[0]);
-      break;
-    case "grade_import_batch":
-      canonical = buildCanonicalGradeBatch(input.hashMetadata as Parameters<typeof buildCanonicalGradeBatch>[0]);
       break;
     case "status_change":
       canonical = buildCanonicalStatusChange(input.hashMetadata as Parameters<typeof buildCanonicalStatusChange>[0]);

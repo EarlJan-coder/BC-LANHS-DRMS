@@ -6,15 +6,12 @@ import {
   certificates,
   documentRequests,
   documentTypes,
-  gradeImportBatches,
   gradeLevels,
   notifications,
   requestStatusHistory,
   schoolYears,
   sections,
-  studentGrades,
   students,
-  subjects,
   users,
   type RequestStatus,
 } from "@/db/schema";
@@ -25,13 +22,10 @@ import type {
   DocumentRequestView,
   DocumentTypeView,
   GradeLevelView,
-  GradeRecordView,
   SchoolYearView,
   StatCard,
-  StudentGradeSummaryView,
   StudentProfileView,
   StudentView,
-  SubjectView,
   UserView,
 } from "@/lib/types";
 import { formatDate, formatDateTime } from "@/lib/utils";
@@ -61,7 +55,7 @@ async function currentRequestScope() {
   const user = await ensureCurrentDbUser();
 
   if (!user) {
-    return undefined;
+    return eq(documentRequests.id, "00000000-0000-0000-0000-000000000000");
   }
 
   const student = await db.query.students.findFirst({
@@ -128,14 +122,14 @@ export async function listDocumentRequestViews(options: { currentUserOnly?: bool
   const blockchainRows =
     references.length > 0
       ? await db
-          .select({
-            referenceId: blockchainAuditLogs.referenceId,
-            blockchainStatus: blockchainAuditLogs.blockchainStatus,
-            createdAt: blockchainAuditLogs.createdAt,
-          })
-          .from(blockchainAuditLogs)
-          .where(inArray(blockchainAuditLogs.referenceId, references))
-          .orderBy(desc(blockchainAuditLogs.createdAt))
+        .select({
+          referenceId: blockchainAuditLogs.referenceId,
+          blockchainStatus: blockchainAuditLogs.blockchainStatus,
+          createdAt: blockchainAuditLogs.createdAt,
+        })
+        .from(blockchainAuditLogs)
+        .where(inArray(blockchainAuditLogs.referenceId, references))
+        .orderBy(desc(blockchainAuditLogs.createdAt))
       : [];
 
   const latestBlockchainStatus = new Map<string, DocumentRequestView["blockchainStatus"]>();
@@ -241,7 +235,6 @@ export async function getRegistrarDashboardData() {
   return {
     stats,
     requests: await listDocumentRequestViews({ limit: 10 }),
-    gradeImports: await listRecentGradeImportBatches(6),
   };
 }
 
@@ -250,7 +243,6 @@ export async function getAdminDashboardData() {
   const [userCount] = await db.select({ value: count() }).from(users);
   const [studentCount] = await db.select({ value: count() }).from(students);
   const [requestCount] = await db.select({ value: count() }).from(documentRequests);
-  const [gradeCount] = await db.select({ value: count() }).from(studentGrades);
   const [certificateCount] = await db.select({ value: count() }).from(certificates);
   const [blockchainCount] = await db.select({ value: count() }).from(blockchainAuditLogs);
 
@@ -258,7 +250,6 @@ export async function getAdminDashboardData() {
     { label: "Total users", value: String(userCount.value), helper: "Students, staff, admins", tone: "red" },
     { label: "Total students", value: String(studentCount.value), helper: "Active and alumni records", tone: "sky" },
     { label: "Total requests", value: String(requestCount.value), helper: "Across all document types", tone: "rose" },
-    { label: "Total grade records", value: String(gradeCount.value), helper: "Validated imports", tone: "emerald" },
     { label: "Certificates", value: String(certificateCount.value), helper: "Generated PDFs", tone: "amber" },
     {
       label: "Blockchain audit entries",
@@ -279,6 +270,7 @@ export async function listStudentViews() {
   const rows = await db
     .select({
       id: students.id,
+      userId: students.userId,
       lrn: students.lrn,
       firstName: students.firstName,
       middleName: students.middleName,
@@ -302,6 +294,7 @@ export async function listStudentViews() {
 
   return rows.map<StudentView>((row) => ({
     id: row.id,
+    accountLinked: Boolean(row.userId),
     lrn: row.lrn,
     firstName: row.firstName,
     middleName: row.middleName ?? "",
@@ -350,7 +343,6 @@ export async function getStudentDetailView(id: string) {
     return null;
   }
 
-  const grades = await listGradeRecordViews(200).then((items) => items.filter((item) => item.studentId === id));
   const requests = await listDocumentRequestViews({ limit: 200 }).then((items) => items.filter((item) => item.lrn === student.lrn));
 
   const certificateRows = await db
@@ -378,7 +370,6 @@ export async function getStudentDetailView(id: string) {
       schoolYear: student.schoolYear ?? "Not assigned",
       status: student.status,
     },
-    grades,
     requests,
     certificates: certificateRows.map((certificate) => ({
       id: certificate.id,
@@ -424,20 +415,9 @@ export async function getStudentRecordFormOptions() {
 
 export async function getCurrentStudentProfile() {
   const db = getDb();
-  const user = await ensureCurrentDbUser();
+  // getCurrentProfile throws 401 when signed out, so there is no null-user
+  // path to handle here.
   const profile = await getCurrentProfile();
-
-  if (!user) {
-    return {
-      name: `${profile.firstName} ${profile.lastName}`,
-      email: profile.email,
-      lrn: "Not linked",
-      gradeAndSection: "Not linked",
-      contactNumber: "Not set",
-      guardian: "Not set",
-      address: "Not set",
-    } satisfies StudentProfileView;
-  }
 
   const row = await db
     .select({
@@ -455,7 +435,7 @@ export async function getCurrentStudentProfile() {
     .from(students)
     .leftJoin(gradeLevels, eq(students.gradeLevelId, gradeLevels.id))
     .leftJoin(sections, eq(students.sectionId, sections.id))
-    .where(eq(students.userId, user.id))
+    .where(eq(students.userId, profile.userId))
     .limit(1);
 
   const student = row[0];
@@ -568,27 +548,6 @@ export async function listGradeLevelViews() {
   }));
 }
 
-export async function listSubjectViews() {
-  const db = getDb();
-  const rows = await db
-    .select({
-      id: subjects.id,
-      code: subjects.code,
-      name: subjects.name,
-      gradeLevel: gradeLevels.name,
-    })
-    .from(subjects)
-    .leftJoin(gradeLevels, eq(subjects.gradeLevelId, gradeLevels.id))
-    .orderBy(subjects.name);
-
-  return rows.map<SubjectView>((row) => ({
-    id: row.id,
-    code: row.code,
-    name: row.name,
-    gradeLevel: row.gradeLevel ?? "Not assigned",
-  }));
-}
-
 export async function listSectionViews() {
   const db = getDb();
   const rows = await db
@@ -613,121 +572,6 @@ export async function listSectionViews() {
     adviserName: row.adviserName ?? "Not set",
     status: row.isActive ? "Active" : "Inactive",
   }));
-}
-
-export async function listGradeRecordViews(limit = 50) {
-  const db = getDb();
-  const rows = await db
-    .select({
-      id: studentGrades.id,
-      studentId: studentGrades.studentId,
-      quarter1: studentGrades.quarter1,
-      quarter2: studentGrades.quarter2,
-      quarter3: studentGrades.quarter3,
-      quarter4: studentGrades.quarter4,
-      finalGrade: studentGrades.finalGrade,
-      remarks: studentGrades.remarks,
-      subject: subjects.name,
-      subjectCode: subjects.code,
-      schoolYear: schoolYears.name,
-      firstName: students.firstName,
-      middleName: students.middleName,
-      lastName: students.lastName,
-      suffix: students.suffix,
-    })
-    .from(studentGrades)
-    .leftJoin(students, eq(studentGrades.studentId, students.id))
-    .leftJoin(subjects, eq(studentGrades.subjectId, subjects.id))
-    .leftJoin(schoolYears, eq(studentGrades.schoolYearId, schoolYears.id))
-    .orderBy(desc(studentGrades.createdAt))
-    .limit(limit);
-
-  return rows.map<GradeRecordView>((row) => ({
-    id: row.id,
-    studentId: row.studentId,
-    studentName: [row.firstName, row.middleName, row.lastName, row.suffix].filter(Boolean).join(" ") || "Unknown student",
-    subject: row.subject ?? "Unknown subject",
-    subjectCode: row.subjectCode ?? "",
-    quarter1: row.quarter1 ?? "",
-    quarter2: row.quarter2 ?? "",
-    quarter3: row.quarter3 ?? "",
-    quarter4: row.quarter4 ?? "",
-    finalGrade: row.finalGrade ?? "Not set",
-    remarks: row.remarks ?? "Not set",
-    schoolYear: row.schoolYear ?? "Not set",
-  }));
-}
-
-export async function listStudentGradeSummaryViews(limit = 100) {
-  const db = getDb();
-  const studentsRows = await db
-    .select({
-      id: students.id,
-      lrn: students.lrn,
-      firstName: students.firstName,
-      middleName: students.middleName,
-      lastName: students.lastName,
-      suffix: students.suffix,
-      gradeLevel: gradeLevels.name,
-      section: sections.name,
-      enrollmentStatus: students.enrollmentStatus,
-    })
-    .from(students)
-    .leftJoin(gradeLevels, eq(students.gradeLevelId, gradeLevels.id))
-    .leftJoin(sections, eq(students.sectionId, sections.id))
-    .orderBy(desc(students.createdAt))
-    .limit(limit);
-
-  const studentIds = studentsRows.map((s) => s.id);
-
-  const gradeRows = studentIds.length > 0
-    ? await db
-        .select({
-          studentId: studentGrades.studentId,
-          finalGrade: studentGrades.finalGrade,
-          schoolYear: schoolYears.name,
-          subject: subjects.name,
-        })
-        .from(studentGrades)
-        .leftJoin(subjects, eq(studentGrades.subjectId, subjects.id))
-        .leftJoin(schoolYears, eq(studentGrades.schoolYearId, schoolYears.id))
-        .where(inArray(studentGrades.studentId, studentIds))
-    : [];
-
-  const gradesByStudent = new Map<string, typeof gradeRows>();
-  for (const grade of gradeRows) {
-    if (!grade.studentId) continue;
-    if (!gradesByStudent.has(grade.studentId)) {
-      gradesByStudent.set(grade.studentId, []);
-    }
-    gradesByStudent.get(grade.studentId)!.push(grade);
-  }
-
-  return studentsRows.map<StudentGradeSummaryView>((student) => {
-    const grades = gradesByStudent.get(student.id) ?? [];
-    const subjectCount = grades.length;
-    const numericGrades = grades
-      .map((g) => Number(g.finalGrade))
-      .filter((n) => !Number.isNaN(n));
-    const averageFinalGrade =
-      numericGrades.length > 0
-        ? (numericGrades.reduce((sum, n) => sum + n, 0) / numericGrades.length).toFixed(2)
-        : "N/A";
-    const schoolYears = [...new Set(grades.map((g) => g.schoolYear).filter(Boolean))].sort().reverse();
-    const latestSchoolYear = schoolYears[0] ?? "N/A";
-
-    return {
-      id: student.id,
-      lrn: student.lrn,
-      name: [student.firstName, student.middleName, student.lastName, student.suffix].filter(Boolean).join(" ") || "Unknown",
-      gradeLevel: student.gradeLevel ?? "Not assigned",
-      section: student.section ?? "Not assigned",
-      status: student.enrollmentStatus,
-      subjectCount,
-      averageFinalGrade,
-      latestSchoolYear,
-    };
-  });
 }
 
 export async function listAuditTrailViews(limit = 50) {
@@ -792,14 +636,12 @@ export async function getReportSummaryCards() {
     .select({ value: count() })
     .from(documentRequests)
     .where(eq(documentRequests.status, "claimed"));
-  const [batchCount] = await db.select({ value: count() }).from(gradeImportBatches);
   const [studentCount] = await db.select({ value: count() }).from(students);
   const [certificateCount] = await db.select({ value: count() }).from(certificates);
 
   return [
     { title: "Request summary", value: String(requestCount.value), helper: "Total document requests" },
     { title: "Claimed documents", value: String(claimedCount.value), helper: "Completed registrar releases" },
-    { title: "Grade import batches", value: String(batchCount.value), helper: "Validated and saved imports" },
     { title: "Generated certificates", value: String(certificateCount.value), helper: "School document PDFs" },
     { title: "Student records", value: String(studentCount.value), helper: "Students and alumni in database" },
   ];
@@ -808,29 +650,10 @@ export async function getReportSummaryCards() {
 export async function listAdminSettingStatuses() {
   return [
     { title: "Database", value: process.env.DATABASE_URL ? "Configured" : "Missing" },
-    { title: "Authentication", value: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? "Configured" : "Missing" },
+    { title: "Authentication", value: process.env.SESSION_SECRET ? "Configured" : "Missing" },
     { title: "Email", value: process.env.RESEND_API_KEY ? "Configured" : "Missing" },
     { title: "Blockchain", value: process.env.CONTRACT_ADDRESS || process.env.DOCUMENT_AUDIT_CONTRACT_ADDRESS ? "Configured" : "Missing" },
   ];
-}
-
-export async function listRecentGradeImportBatches(limit = 10) {
-  const db = getDb();
-  return db
-    .select({
-      id: gradeImportBatches.id,
-      batchNumber: gradeImportBatches.batchNumber,
-      fileName: gradeImportBatches.fileName,
-      totalRows: gradeImportBatches.totalRows,
-      validRows: gradeImportBatches.validRows,
-      invalidRows: gradeImportBatches.invalidRows,
-      importedRows: gradeImportBatches.importedRows,
-      status: gradeImportBatches.status,
-      createdAt: gradeImportBatches.createdAt,
-    })
-    .from(gradeImportBatches)
-    .orderBy(desc(gradeImportBatches.createdAt))
-    .limit(limit);
 }
 
 export async function getBlockchainAuditStats() {

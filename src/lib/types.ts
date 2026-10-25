@@ -39,6 +39,7 @@ export type AuditTrailView = {
 
 export type StudentView = {
   id: string;
+  accountLinked: boolean;
   lrn: string;
   firstName: string;
   middleName: string;
@@ -89,40 +90,6 @@ export type GradeLevelView = {
   status: string;
 };
 
-export type SubjectView = {
-  id: string;
-  code: string;
-  name: string;
-  gradeLevel: string;
-};
-
-export type GradeRecordView = {
-  id: string;
-  studentId?: string;
-  studentName: string;
-  subject: string;
-  subjectCode?: string;
-  quarter1?: string;
-  quarter2?: string;
-  quarter3?: string;
-  quarter4?: string;
-  finalGrade: string;
-  remarks: string;
-  schoolYear: string;
-};
-
-export type StudentGradeSummaryView = {
-  id: string;
-  lrn: string;
-  name: string;
-  gradeLevel: string;
-  section: string;
-  status: string;
-  subjectCount: number;
-  averageFinalGrade: string;
-  latestSchoolYear: string;
-};
-
 export type StudentProfileView = {
   name: string;
   email: string;
@@ -131,37 +98,6 @@ export type StudentProfileView = {
   contactNumber: string;
   guardian: string;
   address: string;
-};
-
-export type GradeImportRow = {
-  lrn: string;
-  firstName: string;
-  lastName: string;
-  schoolYear: string;
-  gradeLevel: string;
-  section: string;
-  subjectCode: string;
-  subjectName: string;
-  quarter1: number | null;
-  quarter2: number | null;
-  quarter3: number | null;
-  quarter4: number | null;
-  finalGrade: number | null;
-  remarks: string;
-};
-
-export type GradeImportError = {
-  rowNumber: number;
-  fieldName: string;
-  message: string;
-  rawData?: Record<string, unknown>;
-};
-
-export type GradeImportValidation = {
-  totalRows: number;
-  validRows: GradeImportRow[];
-  errors: GradeImportError[];
-  duplicateKeys: string[];
 };
 
 export type CertificateView = {

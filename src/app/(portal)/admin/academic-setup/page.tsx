@@ -10,7 +10,7 @@ export default async function AdminAcademicSetupPage() {
     <div>
       <SectionHeading
         title="Academic setup"
-        description="Maintain the school years, grade levels, sections, subjects, and document types used for student records and grade imports."
+        description="Maintain the school years, grade levels, sections, and document types used for student records."
       />
       <AcademicSetupManager data={data} />
     </div>

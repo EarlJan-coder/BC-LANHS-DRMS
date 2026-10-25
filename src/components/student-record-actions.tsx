@@ -107,7 +107,7 @@ export function StudentRecordActions({
 
   return (
     <>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button type="button" tone="secondary" size="sm" onClick={openEditor} aria-label={`Edit ${student.name}`}>
           <Pencil className="h-4 w-4" aria-hidden />
           Edit

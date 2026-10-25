@@ -45,20 +45,6 @@ export default async function RegistrarStudentDetailsPage({
 
       <div className="mt-6 grid gap-6">
         <DataTable
-          rows={data.grades}
-          emptyMessage="No grade records found for this student."
-          columns={[
-            { key: "subject", label: "Subject", render: (row) => row.subject },
-            { key: "schoolYear", label: "School year", render: (row) => row.schoolYear },
-            { key: "q1", label: "Q1", render: (row) => row.quarter1 ?? "" },
-            { key: "q2", label: "Q2", render: (row) => row.quarter2 ?? "" },
-            { key: "q3", label: "Q3", render: (row) => row.quarter3 ?? "" },
-            { key: "q4", label: "Q4", render: (row) => row.quarter4 ?? "" },
-            { key: "final", label: "Final", render: (row) => row.finalGrade },
-          ]}
-        />
-
-        <DataTable
           rows={data.requests}
           emptyMessage="No document requests found for this student."
           columns={[

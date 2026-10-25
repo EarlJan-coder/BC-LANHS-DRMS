@@ -7,14 +7,12 @@ import {
   updateGradeLevel,
   updateSchoolYear,
   updateSection,
-  updateSubject,
 } from "@/lib/services/academic-setup";
 import {
   documentTypeMutationSchema,
   gradeLevelMutationSchema,
   schoolYearMutationSchema,
   sectionMutationSchema,
-  subjectMutationSchema,
 } from "@/lib/validators";
 
 function handleError(error: unknown) {
@@ -53,11 +51,6 @@ export async function PATCH(
 
     if (entity === "sections") {
       const data = await updateSection(id, sectionMutationSchema.parse(body));
-      return NextResponse.json({ data });
-    }
-
-    if (entity === "subjects") {
-      const data = await updateSubject(id, subjectMutationSchema.parse(body));
       return NextResponse.json({ data });
     }
 

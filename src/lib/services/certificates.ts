@@ -11,17 +11,15 @@ import {
   notifications,
   schoolYears,
   sections,
-  studentGrades,
   students,
-  subjects,
   users,
 } from "@/db/schema";
 import { ensureCurrentDbUser } from "@/lib/auth";
 import { SCHOOL_NAME } from "@/lib/constants";
 import { sendWorkflowEmail } from "@/lib/email";
-import type { CertificateVerificationView, CertificateView, GradeRecordView } from "@/lib/types";
+import type { CertificateVerificationView, CertificateView } from "@/lib/types";
 import { formatDate, generatePrefixedId, studentFullName, ZERO_HASH } from "@/lib/utils";
-import { certificateGenerateSchema } from "@/lib/validators";
+import { certificateGenerateSchema, certificateOverrideSchema } from "@/lib/validators";
 import { recordAuditedAction } from "./audit-log";
 import {
   appUrl,
@@ -75,8 +73,49 @@ async function drawCertificateFooter(pdf: PDFDocument, page: PDFPage, qrCodeData
   });
 }
 
-function isCertificateOfGrades(type: string) {
-  return type.toLowerCase().includes("certificate of grades");
+export interface CertificateDisplayRow {
+  firstName: string | null;
+  middleName: string | null;
+  lastName: string | null;
+  suffix: string | null;
+  gradeLevel: string | null;
+  section: string | null;
+  requestPurpose: string | null;
+  generatedAt: Date;
+  overrideStudentName: string | null;
+  overrideGradeLevel: string | null;
+  overrideSection: string | null;
+  overridePurpose: string | null;
+  overrideDateGenerated: Date | null;
+}
+
+export interface CertificateDisplayFields {
+  name: string;
+  gradeLevel: string;
+  section: string;
+  purpose: string;
+  dateGenerated: Date;
+}
+
+/** A set override wins; empty or whitespace-only overrides fall back to the
+ * live joined value so the PDF never renders a blank field. */
+function effectiveOverride(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+/** Effective printed content for the certificate PDF and its preview/editor.
+ * Overrides are display-only: they never enter the canonical verification hash. */
+export function resolveCertificateDisplayFields(row: CertificateDisplayRow): CertificateDisplayFields {
+  return {
+    name:
+      effectiveOverride(row.overrideStudentName) ??
+      [row.firstName, row.middleName, row.lastName, row.suffix].filter(Boolean).join(" "),
+    gradeLevel: effectiveOverride(row.overrideGradeLevel) ?? row.gradeLevel ?? "",
+    section: effectiveOverride(row.overrideSection) ?? row.section ?? "",
+    purpose: effectiveOverride(row.overridePurpose) ?? row.requestPurpose ?? "",
+    dateGenerated: row.overrideDateGenerated ?? row.generatedAt,
+  };
 }
 
 function formalTitle(type: string) {
@@ -204,10 +243,6 @@ export async function generateCertificate(input: unknown) {
     })
     .where(eq(certificates.id, created.id));
 
-  const grades = await db.query.studentGrades.findMany({
-    where: eq(studentGrades.studentId, student.id),
-  });
-
   const audit = await recordAuditedAction({
     referenceType: "certificate",
     referenceId: created.certificateNumber,
@@ -224,17 +259,7 @@ export async function generateCertificate(input: unknown) {
     hashMetadata: {
       certificateNumber: created.certificateNumber,
       studentId: student.id,
-      certificateType,
       schoolYear: schoolYear?.name ?? "",
-      grades: grades.map((g) => ({
-        subjectCode: g.subjectId ?? "",
-        quarter1: g.quarter1,
-        quarter2: g.quarter2,
-        quarter3: g.quarter3,
-        quarter4: g.quarter4,
-        finalGrade: g.finalGrade,
-        remarks: g.remarks,
-      })),
     },
     eventType: "CERTIFICATE_ISSUED",
     previousRecordHash: ZERO_HASH,
@@ -366,58 +391,27 @@ export async function verifyCertificate(code: string): Promise<CertificateVerifi
   };
 }
 
-export async function getCertificateGradeRows(certificateId: string): Promise<GradeRecordView[]> {
-  const db = getDb();
-  const certificate = await db.query.certificates.findFirst({
-    where: eq(certificates.id, certificateId),
-  });
-
-  if (!certificate?.studentId) {
-    return [];
-  }
-
-  const rows = await db
-    .select({
-      id: studentGrades.id,
-      quarter1: studentGrades.quarter1,
-      quarter2: studentGrades.quarter2,
-      quarter3: studentGrades.quarter3,
-      quarter4: studentGrades.quarter4,
-      finalGrade: studentGrades.finalGrade,
-      remarks: studentGrades.remarks,
-      subject: subjects.name,
-      subjectCode: subjects.code,
-      schoolYear: schoolYears.name,
-      firstName: students.firstName,
-      middleName: students.middleName,
-      lastName: students.lastName,
-      suffix: students.suffix,
-    })
-    .from(studentGrades)
-    .leftJoin(subjects, eq(studentGrades.subjectId, subjects.id))
-    .leftJoin(schoolYears, eq(studentGrades.schoolYearId, schoolYears.id))
-    .leftJoin(students, eq(studentGrades.studentId, students.id))
-    .where(eq(studentGrades.studentId, certificate.studentId))
-    .orderBy(subjects.name);
-
-  return rows.map((row) => ({
-    id: row.id,
-    studentName: [row.firstName, row.middleName, row.lastName, row.suffix].filter(Boolean).join(" ") || "Unknown student",
-    subject: row.subject ?? "Unknown subject",
-    subjectCode: row.subjectCode ?? "",
-    quarter1: row.quarter1 ?? "",
-    quarter2: row.quarter2 ?? "",
-    quarter3: row.quarter3 ?? "",
-    quarter4: row.quarter4 ?? "",
-    finalGrade: row.finalGrade ?? "Not set",
-    remarks: row.remarks ?? "Not set",
-    schoolYear: row.schoolYear ?? "Not set",
-  }));
+export interface CertificateEditView {
+  id: string;
+  certificateNumber: string;
+  studentName: string;
+  gradeLevel: string;
+  section: string;
+  purpose: string;
+  /** ISO timestamp of the effective "Date Generated" (override or record). */
+  dateGenerated: string;
+  hasOverride: {
+    studentName: boolean;
+    gradeLevel: boolean;
+    section: boolean;
+    purpose: boolean;
+    dateGenerated: boolean;
+  };
 }
 
-export async function generateCertificatePdf(certificateId: string) {
+async function loadCertificateDisplayRow(certificateId: string) {
   const db = getDb();
-  const row = await db
+  const rows = await db
     .select({
       id: certificates.id,
       certificateNumber: certificates.certificateNumber,
@@ -425,17 +419,22 @@ export async function generateCertificatePdf(certificateId: string) {
       qrCodeData: certificates.qrCodeData,
       generatedAt: certificates.generatedAt,
       schoolYear: schoolYears.name,
-      firstName: students.firstName,
-      middleName: students.middleName,
-      lastName: students.lastName,
-      suffix: students.suffix,
       lrn: students.lrn,
-      gradeLevel: gradeLevels.name,
-      section: sections.name,
       trackingNumber: documentRequests.trackingNumber,
       requestPurpose: documentRequests.purpose,
       requestSchoolYearNeeded: documentRequests.schoolYearNeeded,
       requestGradeLevelNeeded: documentRequests.gradeLevelNeeded,
+      firstName: students.firstName,
+      middleName: students.middleName,
+      lastName: students.lastName,
+      suffix: students.suffix,
+      gradeLevel: gradeLevels.name,
+      section: sections.name,
+      overrideStudentName: certificates.overrideStudentName,
+      overrideGradeLevel: certificates.overrideGradeLevel,
+      overrideSection: certificates.overrideSection,
+      overridePurpose: certificates.overridePurpose,
+      overrideDateGenerated: certificates.overrideDateGenerated,
     })
     .from(certificates)
     .leftJoin(students, eq(certificates.studentId, students.id))
@@ -446,30 +445,144 @@ export async function generateCertificatePdf(certificateId: string) {
     .where(eq(certificates.id, certificateId))
     .limit(1);
 
-  const certificate = row[0];
+  return rows[0];
+}
+
+type CertificateDisplayDbRow = NonNullable<Awaited<ReturnType<typeof loadCertificateDisplayRow>>>;
+
+function toDisplayRow(row: CertificateDisplayDbRow): CertificateDisplayRow {
+  return {
+    firstName: row.firstName,
+    middleName: row.middleName,
+    lastName: row.lastName,
+    suffix: row.suffix,
+    gradeLevel: row.gradeLevel ?? row.requestGradeLevelNeeded,
+    section: row.section,
+    requestPurpose: row.requestPurpose,
+    generatedAt: row.generatedAt,
+    overrideStudentName: row.overrideStudentName,
+    overrideGradeLevel: row.overrideGradeLevel,
+    overrideSection: row.overrideSection,
+    overridePurpose: row.overridePurpose,
+    overrideDateGenerated: row.overrideDateGenerated,
+  };
+}
+
+/** Current effective PDF content for the preview/edit form. Staff only. */
+export async function getCertificateEditView(certificateId: string): Promise<CertificateEditView | null> {
+  const row = await loadCertificateDisplayRow(certificateId);
+  if (!row) {
+    return null;
+  }
+
+  const fields = resolveCertificateDisplayFields(toDisplayRow(row));
+
+  return {
+    id: row.id,
+    certificateNumber: row.certificateNumber,
+    studentName: fields.name,
+    gradeLevel: fields.gradeLevel,
+    section: fields.section,
+    purpose: fields.purpose,
+    dateGenerated: fields.dateGenerated.toISOString(),
+    hasOverride: {
+      studentName: effectiveOverride(row.overrideStudentName) !== null,
+      gradeLevel: effectiveOverride(row.overrideGradeLevel) !== null,
+      section: effectiveOverride(row.overrideSection) !== null,
+      purpose: effectiveOverride(row.overridePurpose) !== null,
+      dateGenerated: row.overrideDateGenerated !== null,
+    },
+  };
+}
+
+const OVERRIDE_FIELDS = ["studentName", "gradeLevel", "section", "purpose", "dateGenerated"] as const;
+
+/** Save PDF content overrides. Provided-key semantics: a missing key leaves the
+ * stored override untouched, a blank value clears it back to the live record
+ * value (the schema maps blank/whitespace to undefined). */
+export async function updateCertificateOverrides(certificateId: string, input: unknown): Promise<CertificateEditView | null> {
+  const db = getDb();
+  const actor = await ensureCurrentDbUser();
+
+  const existing = await db.query.certificates.findFirst({
+    where: eq(certificates.id, certificateId),
+  });
+
+  if (!existing) {
+    throw new Error("Certificate not found.");
+  }
+
+  const raw = input && typeof input === "object" && !Array.isArray(input) ? (input as Record<string, unknown>) : {};
+  const provided = OVERRIDE_FIELDS.filter((field) => field in raw);
+  if (provided.length === 0) {
+    throw new Error("No editable fields were provided.");
+  }
+
+  const parsed = certificateOverrideSchema.parse(input);
+
+  const updates: Partial<typeof certificates.$inferInsert> = {};
+  if (provided.includes("studentName")) updates.overrideStudentName = parsed.studentName ?? null;
+  if (provided.includes("gradeLevel")) updates.overrideGradeLevel = parsed.gradeLevel ?? null;
+  if (provided.includes("section")) updates.overrideSection = parsed.section ?? null;
+  if (provided.includes("purpose")) updates.overridePurpose = parsed.purpose ?? null;
+  if (provided.includes("dateGenerated")) updates.overrideDateGenerated = parsed.dateGenerated ?? null;
+
+  await db
+    .update(certificates)
+    .set({ ...updates, updatedAt: new Date() })
+    .where(eq(certificates.id, certificateId));
+
+  const schoolYear = existing.schoolYearId
+    ? await db.query.schoolYears.findFirst({ where: eq(schoolYears.id, existing.schoolYearId) })
+    : undefined;
+
+  // Overrides change only the printed PDF content. The canonical hash metadata
+  // stays identical to issuance, so the record hash is logged unchanged and the
+  // certificate's verification hash is not recomputed.
+  await recordAuditedAction({
+    referenceType: "certificate",
+    referenceId: existing.certificateNumber,
+    action: "Certificate PDF content updated",
+    actorRole: actor?.role ?? "registrar",
+    actorUserId: actor?.id,
+    entityType: "certificate",
+    entityId: existing.id,
+    metadata: { changedFields: provided },
+    hashMetadata: {
+      certificateNumber: existing.certificateNumber,
+      studentId: existing.studentId ?? "",
+      schoolYear: schoolYear?.name ?? "",
+    },
+    previousRecordHash: existing.recordHash ?? ZERO_HASH,
+  });
+
+  return getCertificateEditView(certificateId);
+}
+
+export async function generateCertificatePdf(certificateId: string) {
+  const certificate = await loadCertificateDisplayRow(certificateId);
   if (!certificate) {
     throw new Error("Certificate was not found.");
   }
 
-  const isCog = isCertificateOfGrades(certificate.certificateType);
-  const grades = isCog ? await getCertificateGradeRows(certificateId) : [];
+  const display = resolveCertificateDisplayFields(toDisplayRow(certificate));
   const pdf = await PDFDocument.create();
   const page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   const logo = await embedSchoolLogo(pdf);
-  const name = [certificate.firstName, certificate.middleName, certificate.lastName, certificate.suffix].filter(Boolean).join(" ");
+  const name = display.name;
   const schoolYear = certificate.schoolYear ?? certificate.requestSchoolYearNeeded ?? "Not set";
-  const gradeLevel = certificate.gradeLevel ?? certificate.requestGradeLevelNeeded ?? "Not set";
-  const section = certificate.section ?? "Not set";
-  const purpose = certificate.requestPurpose ?? "school record validation";
+  const gradeLevel = display.gradeLevel || "Not set";
+  const section = display.section || "Not set";
+  const purpose = display.purpose || "school record validation";
   const title = formalTitle(certificate.certificateType);
   const titleSize = title.length > 42 ? 13 : title.length > 32 ? 15 : 18;
 
   drawDocumentHeader(page, logo, regular, bold);
   drawCenteredText(page, title, 680, bold, titleSize);
   page.drawText(`Certificate No.: ${certificate.certificateNumber}`, { x: 50, y: 645, size: 10, font: regular, color: DARK_TEXT });
-  page.drawText(`Date Generated: ${formatDate(certificate.generatedAt)}`, { x: 365, y: 645, size: 10, font: regular, color: DARK_TEXT });
+  page.drawText(`Date Generated: ${formatDate(display.dateGenerated)}`, { x: 365, y: 645, size: 10, font: regular, color: DARK_TEXT });
   page.drawText(`Tracking No.: ${certificate.trackingNumber ?? "Not linked"}`, { x: 50, y: 628, size: 9, font: regular, color: MUTED_TEXT });
 
   page.drawRectangle({ x: 50, y: 586, width: 495, height: 26, color: rgb(1, 1, 1), borderColor: LIGHT_BORDER, borderWidth: 0.8 });
@@ -484,79 +597,27 @@ export async function generateCertificatePdf(certificateId: string) {
   });
   page.drawText(`School Year: ${schoolYear}`, { x: 365, y: 570, size: 10, font: regular, color: DARK_TEXT });
 
-  if (isCog) {
-    page.drawText(`This certifies that ${name || "the student"} has the following grade records:`, {
-      x: 50,
-      y: 542,
-      size: 11,
-      font: regular,
-      color: DARK_TEXT,
-    });
+  page.drawRectangle({ x: 50, y: 250, width: 495, height: 300, color: rgb(1, 1, 1), borderColor: LIGHT_BORDER, borderWidth: 0.8 });
+  const body = genericCertificateText({
+    certificateType: certificate.certificateType,
+    name,
+    lrn: certificate.lrn ?? "Not set",
+    gradeLevel,
+    section,
+    schoolYear,
+    purpose,
+  });
 
-    const tableTop = 514;
-    const columns = [
-      { label: "Subject", x: 55 },
-      { label: "Q1", x: 275 },
-      { label: "Q2", x: 315 },
-      { label: "Q3", x: 355 },
-      { label: "Q4", x: 395 },
-      { label: "Final", x: 438 },
-      { label: "Remarks", x: 490 },
-    ];
-
-    page.drawRectangle({ x: 50, y: tableTop, width: 495, height: 24, color: BRAND_RED });
-    for (const column of columns) {
-      page.drawText(column.label, { x: column.x, y: tableTop + 8, size: 9, font: bold, color: rgb(1, 1, 1) });
-    }
-
-    let y = tableTop - 22;
-    for (const grade of grades.slice(0, 14)) {
-      page.drawText(grade.subject.slice(0, 36), { x: 55, y, size: 8, font: regular, color: DARK_TEXT });
-      page.drawText(String(grade.quarter1 ?? ""), { x: 277, y, size: 8, font: regular, color: DARK_TEXT });
-      page.drawText(String(grade.quarter2 ?? ""), { x: 317, y, size: 8, font: regular, color: DARK_TEXT });
-      page.drawText(String(grade.quarter3 ?? ""), { x: 357, y, size: 8, font: regular, color: DARK_TEXT });
-      page.drawText(String(grade.quarter4 ?? ""), { x: 397, y, size: 8, font: regular, color: DARK_TEXT });
-      page.drawText(String(grade.finalGrade), { x: 443, y, size: 8, font: bold, color: DARK_TEXT });
-      page.drawText(grade.remarks.slice(0, 10), { x: 490, y, size: 8, font: regular, color: DARK_TEXT });
-      page.drawLine({ start: { x: 50, y: y - 6 }, end: { x: 545, y: y - 6 }, thickness: 0.5, color: LIGHT_BORDER });
-      y -= 20;
-    }
-
-    const numericGrades = grades.map((grade) => Number(grade.finalGrade)).filter(Number.isFinite);
-    const average = numericGrades.length
-      ? (numericGrades.reduce((sum, grade) => sum + grade, 0) / numericGrades.length).toFixed(2)
-      : "Not available";
-    page.drawText(`General Average: ${average}`, { x: 50, y: 185, size: 11, font: bold, color: DARK_TEXT });
-    page.drawText("Remarks: This certificate is generated from validated LANHS DRMS grade records.", {
-      x: 50,
-      y: 165,
-      size: 9,
-      font: regular,
-      color: MUTED_TEXT,
-    });
-  } else {
-    page.drawRectangle({ x: 50, y: 250, width: 495, height: 300, color: rgb(1, 1, 1), borderColor: LIGHT_BORDER, borderWidth: 0.8 });
-    const body = genericCertificateText({
-      certificateType: certificate.certificateType,
-      name,
-      lrn: certificate.lrn ?? "Not set",
-      gradeLevel,
-      section,
-      schoolYear,
-      purpose,
-    });
-
-    let y = drawWrappedText(page, body, 72, 520, 450, regular, 12, DARK_TEXT, 20);
-    y -= 18;
-    page.drawText("This document is generated from validated LANHS DRMS records.", {
-      x: 72,
-      y,
-      size: 10,
-      font: regular,
-      color: MUTED_TEXT,
-    });
-    page.drawText(`Purpose: ${purpose.slice(0, 72)}`, { x: 72, y: 292, size: 9, font: regular, color: MUTED_TEXT });
-  }
+  let y = drawWrappedText(page, body, 72, 520, 450, regular, 12, DARK_TEXT, 20);
+  y -= 18;
+  page.drawText("This document is generated from validated LANHS DRMS records.", {
+    x: 72,
+    y,
+    size: 10,
+    font: regular,
+    color: MUTED_TEXT,
+  });
+  page.drawText(`Purpose: ${purpose.slice(0, 72)}`, { x: 72, y: 292, size: 9, font: regular, color: MUTED_TEXT });
 
   await drawCertificateFooter(pdf, page, certificate.qrCodeData, regular, bold);
 
@@ -583,10 +644,6 @@ export async function reissueCertificate(certificateId: string, reason?: string)
     ? await db.query.schoolYears.findFirst({ where: eq(schoolYears.id, existing.schoolYearId) })
     : undefined;
 
-  const grades = existing.studentId
-    ? await db.query.studentGrades.findMany({ where: eq(studentGrades.studentId, existing.studentId) })
-    : [];
-
   const audit = await recordAuditedAction({
     referenceType: "certificate",
     referenceId: existing.certificateNumber,
@@ -601,18 +658,8 @@ export async function reissueCertificate(certificateId: string, reason?: string)
     },
     hashMetadata: {
       certificateNumber: existing.certificateNumber,
-      certificateType: existing.certificateType,
-      schoolYear: schoolYear?.name ?? "",
       studentId: existing.studentId ?? "",
-      grades: grades.map((g) => ({
-        subjectCode: g.subjectId ?? "",
-        quarter1: g.quarter1,
-        quarter2: g.quarter2,
-        quarter3: g.quarter3,
-        quarter4: g.quarter4,
-        finalGrade: g.finalGrade,
-        remarks: g.remarks,
-      })),
+      schoolYear: schoolYear?.name ?? "",
     },
     eventType: "CERTIFICATE_REISSUED",
     previousRecordHash: previousHash,
@@ -650,9 +697,9 @@ export async function voidCertificate(certificateId: string, reason: string) {
 
   const previousHash = existing.recordHash ?? ZERO_HASH;
 
-  const grades = existing.studentId
-    ? await db.query.studentGrades.findMany({ where: eq(studentGrades.studentId, existing.studentId) })
-    : [];
+  const schoolYear = existing.schoolYearId
+    ? await db.query.schoolYears.findFirst({ where: eq(schoolYears.id, existing.schoolYearId) })
+    : undefined;
 
   const audit = await recordAuditedAction({
     referenceType: "certificate",
@@ -669,18 +716,7 @@ export async function voidCertificate(certificateId: string, reason: string) {
     hashMetadata: {
       certificateNumber: existing.certificateNumber,
       studentId: existing.studentId ?? "",
-      certificateType: existing.certificateType,
-      schoolYear: "",
-      voidReason: reason,
-      grades: grades.map((g) => ({
-        subjectCode: g.subjectId ?? "",
-        quarter1: g.quarter1,
-        quarter2: g.quarter2,
-        quarter3: g.quarter3,
-        quarter4: g.quarter4,
-        finalGrade: g.finalGrade,
-        remarks: g.remarks,
-      })),
+      schoolYear: schoolYear?.name ?? "",
     },
     eventType: "CERTIFICATE_VOIDED",
     previousRecordHash: previousHash,

@@ -11,7 +11,7 @@ export default async function ReportsPage() {
     <div>
       <SectionHeading
         title="Reports"
-        description="Registrar exports for school document, grade import, and certificate workflows."
+        description="Registrar exports for school document and certificate workflows."
         actions={<ButtonLink href="/api/reports/summary" tone="secondary">Export CSV</ButtonLink>}
       />
       <div className="grid gap-4 sm:grid-cols-2">

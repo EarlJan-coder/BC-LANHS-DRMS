@@ -14,7 +14,12 @@ export default async function StudentRecordsPage() {
       <SectionHeading
         title="Student records"
         description="Search and validate student and alumni records by LRN."
-        actions={<ButtonLink href="/registrar/reports" tone="secondary">Export report</ButtonLink>}
+        actions={
+          <>
+            <ButtonLink href="/registrar/students/import">Import students</ButtonLink>
+            <ButtonLink href="/registrar/reports" tone="secondary">Export report</ButtonLink>
+          </>
+        }
       />
       <div className="mb-6">
         <StudentRecordForm gradeLevels={options.gradeLevels} sections={options.sections} />

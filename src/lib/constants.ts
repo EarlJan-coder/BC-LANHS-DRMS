@@ -22,30 +22,12 @@ export const REQUEST_STATUSES: Array<{ value: RequestStatus; label: string; tone
 ];
 
 export const DOCUMENT_TYPES = [
-  "Certificate of Grades",
   "Good Moral Certificate",
   "Certificate of Enrollment",
   "Certificate of Graduation",
   "Form 137",
   "Diploma-related request",
   "Other school documents",
-];
-
-export const GRADE_IMPORT_COLUMNS = [
-  "LRN",
-  "First Name",
-  "Last Name",
-  "School Year",
-  "Grade Level",
-  "Section",
-  "Subject Code",
-  "Subject Name",
-  "Quarter 1",
-  "Quarter 2",
-  "Quarter 3",
-  "Quarter 4",
-  "Final Grade",
-  "Remarks",
 ];
 
 export const SCHOOL_ADDRESS = "Luis Aguado National High School, Philippines";

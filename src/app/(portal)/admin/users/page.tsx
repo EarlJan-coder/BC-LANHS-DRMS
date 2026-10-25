@@ -10,11 +10,11 @@ export default async function UserManagementPage() {
     <div>
       <SectionHeading
         title="User management"
-        description="Manage Clerk-linked application users and local role assignments."
+        description="Manage registered portal accounts and their role assignments."
       />
       <DataTable
         rows={users}
-        emptyMessage="No users found yet. Sign in once or seed initial users."
+        emptyMessage="No registered accounts yet."
         columns={[
           { key: "name", label: "Name", render: (row) => row.name },
           { key: "email", label: "Email", render: (row) => row.email },

@@ -7,7 +7,6 @@ import {
   createGradeLevel,
   createSchoolYear,
   createSection,
-  createSubject,
   getAcademicSetupData,
 } from "@/lib/services/academic-setup";
 import {
@@ -15,7 +14,6 @@ import {
   gradeLevelMutationSchema,
   schoolYearMutationSchema,
   sectionMutationSchema,
-  subjectMutationSchema,
 } from "@/lib/validators";
 
 function handleError(error: unknown) {
@@ -49,10 +47,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ent
 
     if (entity === "sections") {
       return NextResponse.json({ data: data.sections });
-    }
-
-    if (entity === "subjects") {
-      return NextResponse.json({ data: data.subjects });
     }
 
     if (entity === "document-types") {
@@ -93,11 +87,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
 
     if (entity === "sections") {
       const data = await createSection(sectionMutationSchema.parse(body));
-      return NextResponse.json({ data }, { status: 201 });
-    }
-
-    if (entity === "subjects") {
-      const data = await createSubject(subjectMutationSchema.parse(body));
       return NextResponse.json({ data }, { status: 201 });
     }
 

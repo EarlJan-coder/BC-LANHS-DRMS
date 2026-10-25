@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, CalendarDays, CheckCircle2, FileText, Layers3, PanelsTopLeft, Plus, Save } from "lucide-react";
+import { CalendarDays, CheckCircle2, FileText, Layers3, PanelsTopLeft, Plus, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type RefObject, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -10,7 +10,7 @@ import { Input, Label, Select } from "@/components/ui/input";
 import type { AcademicSetupData } from "@/lib/services/academic-setup";
 import { cn } from "@/lib/utils";
 
-type Entity = "school-years" | "grade-levels" | "sections" | "subjects" | "document-types";
+type Entity = "school-years" | "grade-levels" | "sections" | "document-types";
 type Panel = Entity;
 
 const panelOptions: Array<{
@@ -21,7 +21,6 @@ const panelOptions: Array<{
   { value: "school-years", label: "School years", icon: CalendarDays },
   { value: "grade-levels", label: "Grade levels", icon: Layers3 },
   { value: "sections", label: "Sections", icon: PanelsTopLeft },
-  { value: "subjects", label: "Subjects", icon: BookOpen },
   { value: "document-types", label: "Document types", icon: FileText },
 ];
 
@@ -46,15 +45,6 @@ function gradeLevelPayload(formData: FormData) {
   return {
     name: textValue(formData, "name"),
     order: textValue(formData, "order"),
-    isActive: checkboxValue(formData, "isActive"),
-  };
-}
-
-function subjectPayload(formData: FormData) {
-  return {
-    code: textValue(formData, "code"),
-    name: textValue(formData, "name"),
-    gradeLevelId: textValue(formData, "gradeLevelId"),
     isActive: checkboxValue(formData, "isActive"),
   };
 }
@@ -91,7 +81,6 @@ export function AcademicSetupManager({ data }: { data: AcademicSetupData }) {
   const schoolYearFormRef = useRef<HTMLFormElement>(null);
   const gradeLevelFormRef = useRef<HTMLFormElement>(null);
   const sectionFormRef = useRef<HTMLFormElement>(null);
-  const subjectFormRef = useRef<HTMLFormElement>(null);
   const documentTypeFormRef = useRef<HTMLFormElement>(null);
 
   async function save({
@@ -145,7 +134,7 @@ export function AcademicSetupManager({ data }: { data: AcademicSetupData }) {
                 ? data.gradeLevels.length
                 : option.value === "sections"
                   ? data.sections.length
-                  : data.subjects.length;
+                  : data.documentTypes.length;
 
           return (
             <button
@@ -188,16 +177,6 @@ export function AcademicSetupManager({ data }: { data: AcademicSetupData }) {
         <GradeLevelsPanel
           rows={data.gradeLevels}
           formRef={gradeLevelFormRef}
-          submitting={submitting}
-          save={save}
-        />
-      ) : null}
-
-      {activePanel === "subjects" ? (
-        <SubjectsPanel
-          rows={data.subjects}
-          gradeLevels={data.gradeLevels}
-          formRef={subjectFormRef}
           submitting={submitting}
           save={save}
         />
@@ -514,98 +493,6 @@ function SectionsPanel({
                   <Save className="h-4 w-4" aria-hidden />
                 )}
                 {submitting === `sections-${row.id}` ? "Saving…" : "Save"}
-              </Button>
-            </form>
-          ))
-        )
-      }
-    />
-  );
-}
-
-function SubjectsPanel({
-  rows,
-  gradeLevels,
-  formRef,
-  submitting,
-  save,
-}: {
-  rows: AcademicSetupData["subjects"];
-  gradeLevels: AcademicSetupData["gradeLevels"];
-  formRef: RefObject<HTMLFormElement | null>;
-  submitting: string | null;
-  save: (input: {
-    entity: Entity;
-    id?: string;
-    payload: Record<string, string | boolean>;
-    success: string;
-    resetRef?: RefObject<HTMLFormElement | null>;
-  }) => Promise<void>;
-}) {
-  return (
-    <PanelLayout
-      title="Subjects"
-      form={
-        <form
-          ref={formRef}
-          action={(formData) =>
-            save({
-              entity: "subjects",
-              payload: subjectPayload(formData),
-              success: "Subject added.",
-              resetRef: formRef,
-            })
-          }
-          className="grid gap-4"
-        >
-          <Field id="new-subject-code" label="Subject code" name="code" placeholder="ENG-12" required />
-          <Field id="new-subject-name" label="Subject name" name="name" placeholder="English for Academic and Professional Purposes" required />
-          <GradeLevelSelect gradeLevels={gradeLevels} id="new-subject-grade-level" />
-          <CheckboxField id="new-subject-active" name="isActive" label="Active" defaultChecked />
-          <Button
-            type="submit"
-            loading={submitting === "subjects-new"}
-            disabled={submitting !== null}
-          >
-            {submitting === "subjects-new" ? null : <Plus className="h-4 w-4" aria-hidden />}
-            {submitting === "subjects-new" ? "Adding…" : "Add subject"}
-          </Button>
-        </form>
-      }
-      rows={
-        rows.length === 0 ? (
-          <EmptyRows message="No subjects configured yet." />
-        ) : (
-          rows.map((row) => (
-            <form
-              key={row.id}
-              action={(formData) =>
-                save({
-                  entity: "subjects",
-                  id: row.id,
-                  payload: subjectPayload(formData),
-                  success: "Subject updated.",
-                })
-              }
-              className="grid gap-3 px-5 py-4 xl:grid-cols-[130px_1.4fr_220px_120px_auto] xl:items-end"
-            >
-              <Field id={`subject-code-${row.id}`} label="Code" name="code" defaultValue={row.code} required />
-              <Field id={`subject-name-${row.id}`} label="Subject" name="name" defaultValue={row.name} required />
-              <GradeLevelSelect gradeLevels={gradeLevels} id={`subject-grade-level-${row.id}`} defaultValue={row.gradeLevelId ?? ""} />
-              <div className="grid gap-3">
-                <StatusPill active={row.isActive} activeLabel="Active" inactiveLabel="Inactive" />
-                <CheckboxField id={`subject-active-${row.id}`} name="isActive" label="Active" defaultChecked={row.isActive} />
-              </div>
-              <Button
-                type="submit"
-                tone="secondary"
-                loading={submitting === `subjects-${row.id}`}
-                disabled={submitting !== null}
-              >
-                {submitting === `subjects-${row.id}` ? null : (
-                  <Save className="h-4 w-4" aria-hidden />
-                )}
-                {submitting === `subjects-${row.id}` ? "Saving…" : "Save"}
               </Button>
             </form>
           ))

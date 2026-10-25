@@ -1,4 +1,4 @@
-import { ArrowRight, Blocks, FileCheck2, ShieldCheck, UploadCloud, UsersRound } from "lucide-react";
+import { ArrowRight, Blocks, FileCheck2, ShieldCheck, UsersRound } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { AppLogo } from "@/components/layout/app-logo";
@@ -14,9 +14,9 @@ const features = [
     copy: "Students and alumni submit requests, receive tracking numbers, and monitor status updates.",
   },
   {
-    icon: UploadCloud,
-    title: "XLSX grade import",
-    copy: "Registrar staff validate spreadsheet rows, review errors, and save only clean grade records.",
+    icon: UsersRound,
+    title: "Student record management",
+    copy: "Registrar staff maintain student profiles, enrollment details, and alumni records in one place.",
   },
   {
     icon: ShieldCheck,
