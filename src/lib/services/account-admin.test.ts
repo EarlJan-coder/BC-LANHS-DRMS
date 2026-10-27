@@ -10,8 +10,9 @@ const { eq, inArray } = await import("drizzle-orm");
 const { getDb, closeDb } = await import("@/db");
 const { users } = await import("@/db/schema");
 const { AppError } = await import("@/lib/utils");
+const { comparePassword } = await import("@/lib/password");
 const { userCreateSchema } = await import("@/lib/validators");
-const { createStaffAccount, assertAdmin } = await import("@/lib/services/account-admin");
+const { createStaffAccount, assertAdmin, resetUserPassword } = await import("@/lib/services/account-admin");
 
 const hasDb = Boolean(process.env.DATABASE_URL);
 
@@ -89,6 +90,42 @@ describe("createStaffAccount (integration, local DB)", {
     } finally {
       await deleteUsers([created.id]);
     }
+  });
+});
+
+describe("resetUserPassword (integration, local DB)", {
+  skip: hasDb ? false : "DATABASE_URL not configured",
+}, () => {
+  test("resetUserPassword replaces the hash and re-arms mustChangePassword", async () => {
+    const created = await createStaffAccount({ email: "reset@example.com", firstName: "R", lastName: "S", role: "registrar", password: "placeholder123" });
+
+    try {
+      await getDb().update(users).set({ mustChangePassword: false }).where(eq(users.id, created.id));
+      await resetUserPassword(created.id, "newplaceholder456");
+      const row = await getDb().query.users.findFirst({ where: eq(users.id, created.id) });
+      assert.equal(row?.mustChangePassword, true);
+      assert.ok(await comparePassword("newplaceholder456", row?.passwordHash ?? ""));
+      assert.ok(!(await comparePassword("placeholder123", row?.passwordHash ?? "")));
+    } finally {
+      await deleteUsers([created.id]);
+    }
+  });
+
+  test("resetUserPassword bumps tokenVersion so outstanding cookies are revoked", async () => {
+    const created = await createStaffAccount({ email: "rev@example.com", firstName: "R", lastName: "V", role: "alumni", password: "placeholder123" });
+
+    try {
+      const before = (await getDb().query.users.findFirst({ where: eq(users.id, created.id) }))?.tokenVersion;
+      await resetUserPassword(created.id, "newplaceholder456");
+      const after = (await getDb().query.users.findFirst({ where: eq(users.id, created.id) }))?.tokenVersion;
+      assert.equal(after, (before ?? 0) + 1);
+    } finally {
+      await deleteUsers([created.id]);
+    }
+  });
+
+  test("resetUserPassword throws 404 for an unknown user", async () => {
+    await assert.rejects(() => resetUserPassword("00000000-0000-4000-8000-000000000000", "placeholder123"), (e: AppError) => e.status === 404);
   });
 });
 

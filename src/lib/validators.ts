@@ -72,6 +72,10 @@ export const userCreateSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters.").max(72),
 });
 
+export const userPasswordResetSchema = z.object({
+  password: z.string().min(8, "Password must be at least 8 characters.").max(72),
+});
+
 const checkboxBoolean = z
   .union([z.boolean(), z.string()])
   .optional()

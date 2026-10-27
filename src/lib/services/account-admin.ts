@@ -66,3 +66,32 @@ export function assertAdmin(actor: { role: UserRole }): void {
     throw new AppError("Only administrators can manage accounts.", 403);
   }
 }
+
+export async function resetUserPassword(userId: string, password: string): Promise<{ id: string }> {
+  if (new TextEncoder().encode(password).byteLength > 72) {
+    throw new AppError("Password must be 72 bytes or fewer.", 400);
+  }
+
+  const db = getDb();
+  const target = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+
+  if (!target) {
+    throw new AppError("Account not found.", 404);
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+
+  await db
+    .update(users)
+    .set({
+      passwordHash,
+      mustChangePassword: true,
+      tokenVersion: target.tokenVersion + 1,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId));
+
+  return { id: userId };
+}
