@@ -7,7 +7,7 @@
  * Requires DATABASE_URL + SESSION_SECRET and a running server on BASE_URL.
  */
 import { readFileSync } from "node:fs";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 // tsx does not auto-load .env.local the way the Next.js server does.
 for (const line of readFileSync(".env.local", "utf8").split(/\r?\n/)) {
@@ -36,9 +36,10 @@ function check(name: string, ok: boolean, detail = "") {
 }
 
 async function main() {
-  const { db } = await import("@/db");
-  const { users } = await import("@/db/schema");
+  const { getDb, closeDb } = await import("@/db");
+  const { users, auditLogs, blockchainAuditLogs } = await import("@/db/schema");
   const { createStaffAccount } = await import("@/lib/services/account-admin");
+  const db = getDb();
 
   // --- setup: create a staff account exactly as the admin UI does -------------
   const created = await createStaffAccount({
@@ -164,8 +165,28 @@ async function main() {
     });
     check("the new password signs in", relogin2.status === 200, `status=${relogin2.status}`);
   } finally {
-    await db.delete(users).where(eq(users.email, EMAIL));
-    console.log(`\ncleaned up test account ${EMAIL}`);
+    // Audit rows reference users, and blockchain rows reference audit rows, so
+    // delete deepest-first. Without this the FK rejects the user delete and a
+    // fully passing run still exits non-zero.
+    try {
+      const doomed = await db.select({ id: users.id }).from(users).where(eq(users.email, EMAIL));
+      for (const row of doomed) {
+        const audited = await db
+          .select({ id: auditLogs.id })
+          .from(auditLogs)
+          .where(eq(auditLogs.actorUserId, row.id));
+        const ids = audited.map((r) => r.id);
+        if (ids.length) {
+          await db.delete(blockchainAuditLogs).where(inArray(blockchainAuditLogs.auditLogId, ids));
+          await db.delete(auditLogs).where(inArray(auditLogs.id, ids));
+        }
+        await db.delete(users).where(eq(users.id, row.id));
+      }
+      console.log(`\ncleaned up test account ${EMAIL}`);
+    } catch (error) {
+      console.warn(`\ncleanup failed for ${EMAIL}:`, error instanceof Error ? error.message : error);
+    }
+    await closeDb();
   }
 
   console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);
