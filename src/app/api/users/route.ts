@@ -48,9 +48,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
 
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to create the account right now." },
-      { status: 500 },
-    );
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    }
+
+    return NextResponse.json({ error: "Unable to create the account right now." }, { status: 500 });
   }
 }
