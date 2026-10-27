@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { users, type UserRole } from "@/db/schema";
 import { AppError } from "@/lib/utils";
@@ -88,7 +88,7 @@ export async function resetUserPassword(userId: string, password: string): Promi
     .set({
       passwordHash,
       mustChangePassword: true,
-      tokenVersion: target.tokenVersion + 1,
+      tokenVersion: sql`${users.tokenVersion} + 1`,
       updatedAt: new Date(),
     })
     .where(eq(users.id, userId));
