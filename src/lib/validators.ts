@@ -64,6 +64,14 @@ export const userRoleUpdateSchema = z.object({
   status: z.enum(["active", "inactive", "suspended"]).optional(),
 });
 
+export const userCreateSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Enter a valid email address.").max(191),
+  firstName: z.string().trim().min(1, "First name is required.").max(100),
+  lastName: z.string().trim().min(1, "Last name is required.").max(100),
+  role: z.enum(["alumni", "registrar", "admin"]),
+  password: z.string().min(8, "Password must be at least 8 characters.").max(72),
+});
+
 const checkboxBoolean = z
   .union([z.boolean(), z.string()])
   .optional()

@@ -15,7 +15,7 @@ export const FALLBACK_BURST_TOKENS = 30;
 const FALLBACK_REFILL_TOKENS = 30; // sustained tokens per 15-minute window
 const FALLBACK_WINDOW_MS = WINDOW_MINUTES * 60_000;
 
-export type AuthRateLimitAction = "login" | "signup";
+export type AuthRateLimitAction = "login" | "signup" | "admin-account";
 
 type RateLimitRow = {
   attempts: number;
