@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:unit": "node --import tsx --test src/lib/session-token.test.ts src/lib/session-revocation.test.ts src/lib/utils.test.ts src/lib/services/student-import.test.ts src/lib/password.test.ts src/lib/auth-rate-limit.test.ts src/lib/validators.test.ts src/lib/services/certificates-overrides.test.ts src/lib/services/document-requests.test.ts src/lib/notifications.test.ts src/lib/services/notifications.test.ts src/proxy.test.ts scripts/check-migrations.test.ts src/lib/audit/canonical.test.ts",
+    "test:unit": "node --import tsx --test src/lib/session-token.test.ts src/lib/session-revocation.test.ts src/lib/utils.test.ts src/lib/services/student-import.test.ts src/lib/password.test.ts src/lib/auth-rate-limit.test.ts src/lib/validators.test.ts src/lib/services/certificates-overrides.test.ts src/lib/services/document-requests.test.ts src/lib/notifications.test.ts src/lib/services/notifications.test.ts src/lib/services/account-admin.test.ts src/proxy.test.ts scripts/check-migrations.test.ts src/lib/audit/canonical.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/check-migrations.ts && drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",

@@ -52,6 +52,7 @@ export const users = pgTable(
     status: accountStatusEnum("status").notNull().default("active"),
     isActive: boolean("is_active").notNull().default(true),
     tokenVersion: integer("token_version").notNull().default(0),
+    mustChangePassword: boolean("must_change_password").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
