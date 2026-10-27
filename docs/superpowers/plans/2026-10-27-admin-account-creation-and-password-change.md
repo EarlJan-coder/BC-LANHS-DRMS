@@ -190,7 +190,7 @@ git commit -m "feat: admin staff account creation with must-change-password flag
 - Test: `src/lib/services/account-admin.test.ts`
 
 **Interfaces:**
-- Consumes: `createStaffAccount` fixture helpers from Task 1; `AppError(message, status)`; `recordAuditedAction`.
+- Consumes: `createStaffAccount` fixture helpers from Task 1; `assertAdmin` from Task 1; `AppError(message, status)`; `comparePassword(password, hash)` from `@/lib/password`; `recordAuditedAction`.
 - Produces: `resetUserPassword(userId: string, password: string): Promise<{ id: string }>`; `userPasswordResetSchema`.
 
 - [ ] **Step 1: Write the failing tests**
