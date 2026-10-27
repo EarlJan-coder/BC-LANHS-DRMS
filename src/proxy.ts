@@ -9,6 +9,7 @@ const protectedPrefixes = [
   "/student",
   "/registrar",
   "/admin",
+  "/change-password",
   "/api/document-requests",
   "/api/users",
   "/api/profile",
@@ -19,6 +20,8 @@ const protectedPrefixes = [
   "/api/blockchain",
   "/api/reports",
 ];
+
+const passwordChangeAllowlist = ["/change-password", "/api/profile/password", "/api/auth/logout"];
 
 function isProtectedPath(pathname: string) {
   return protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
@@ -42,6 +45,12 @@ export async function proxy(request: NextRequest) {
         const user = await db.query.users.findFirst({ where: eq(users.id, session.sub) });
 
         if (user && user.isActive && user.status === "active" && isSessionValidForUser(session, user)) {
+          if (user.mustChangePassword && !passwordChangeAllowlist.includes(request.nextUrl.pathname)) {
+            return request.nextUrl.pathname.startsWith("/api/")
+              ? NextResponse.json({ error: "Change your password before continuing." }, { status: 403 })
+              : NextResponse.redirect(new URL("/change-password", request.url));
+          }
+
           return NextResponse.next();
         }
       } else {
@@ -67,6 +76,7 @@ export const config = {
     "/student/:path*",
     "/registrar/:path*",
     "/admin/:path*",
+    "/change-password",
     "/api/document-requests/:path*",
     "/api/users/:path*",
     "/api/profile/:path*",

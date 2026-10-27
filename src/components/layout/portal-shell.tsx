@@ -237,6 +237,16 @@ export function PortalShell({ children, unreadCount }: { children: ReactNode; un
               <span className="hidden rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-brand ring-1 ring-rose-100 sm:inline-flex">
                 {ROLE_LABELS[role]}
               </span>
+              {pathname !== "/change-password" ? (
+                <Link
+                  href="/change-password"
+                  prefetch={false}
+                  className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  <KeyRound className="h-4 w-4" aria-hidden />
+                  Change password
+                </Link>
+              ) : null}
               <button
                 type="button"
                 onClick={signOut}
