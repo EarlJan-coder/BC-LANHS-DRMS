@@ -2,12 +2,19 @@ import bcrypt from "bcryptjs";
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { users, type UserRole } from "@/db/schema";
+import { comparePassword } from "@/lib/password";
 import { AppError } from "@/lib/utils";
 
 function postgresCode(error: unknown): string | undefined {
   return typeof error === "object" && error !== null && "code" in error
     ? (error as { code?: string }).code
     : undefined;
+}
+
+function assertPasswordFitsBcrypt(password: string): void {
+  if (new TextEncoder().encode(password).byteLength > 72) {
+    throw new AppError("Password must be 72 bytes or fewer.", 400);
+  }
 }
 
 export async function createStaffAccount(input: {
@@ -17,9 +24,7 @@ export async function createStaffAccount(input: {
   role: "alumni" | "registrar" | "admin";
   password: string;
 }): Promise<{ id: string; email: string; role: UserRole }> {
-  if (new TextEncoder().encode(input.password).byteLength > 72) {
-    throw new AppError("Password must be 72 bytes or fewer.", 400);
-  }
+  assertPasswordFitsBcrypt(input.password);
 
   const db = getDb();
   const existing = await db.query.users.findFirst({
@@ -68,9 +73,7 @@ export function assertAdmin(actor: { role: UserRole }): void {
 }
 
 export async function resetUserPassword(userId: string, password: string): Promise<{ id: string }> {
-  if (new TextEncoder().encode(password).byteLength > 72) {
-    throw new AppError("Password must be 72 bytes or fewer.", 400);
-  }
+  assertPasswordFitsBcrypt(password);
 
   const db = getDb();
   const target = await db.query.users.findFirst({
@@ -94,4 +97,42 @@ export async function resetUserPassword(userId: string, password: string): Promi
     .where(eq(users.id, userId));
 
   return { id: userId };
+}
+
+export async function changeOwnPassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ tokenVersion: number }> {
+  const db = getDb();
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+
+  if (!user) {
+    throw new AppError("Account not found.", 404);
+  }
+
+  if (!(await comparePassword(currentPassword, user.passwordHash))) {
+    throw new AppError("Your current password is incorrect.", 401);
+  }
+
+  assertPasswordFitsBcrypt(newPassword);
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+
+  const [updated] = await db
+    .update(users)
+    .set({
+      passwordHash,
+      mustChangePassword: false,
+      tokenVersion: sql`${users.tokenVersion} + 1`,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId))
+    .returning({
+      tokenVersion: users.tokenVersion,
+    });
+
+  return { tokenVersion: updated.tokenVersion };
 }

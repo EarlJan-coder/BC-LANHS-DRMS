@@ -11,8 +11,8 @@ const { getDb, closeDb } = await import("@/db");
 const { users } = await import("@/db/schema");
 const { AppError } = await import("@/lib/utils");
 const { comparePassword } = await import("@/lib/password");
-const { userCreateSchema } = await import("@/lib/validators");
-const { createStaffAccount, assertAdmin, resetUserPassword } = await import("@/lib/services/account-admin");
+const { userCreateSchema, passwordChangeSchema } = await import("@/lib/validators");
+const { createStaffAccount, assertAdmin, resetUserPassword, changeOwnPassword } = await import("@/lib/services/account-admin");
 
 const hasDb = Boolean(process.env.DATABASE_URL);
 
@@ -126,6 +126,38 @@ describe("resetUserPassword (integration, local DB)", {
 
   test("resetUserPassword throws 404 for an unknown user", async () => {
     await assert.rejects(() => resetUserPassword("00000000-0000-4000-8000-000000000000", "placeholder123"), (e: AppError) => e.status === 404);
+  });
+});
+
+describe("changeOwnPassword (integration, local DB)", {
+  skip: hasDb ? false : "DATABASE_URL not configured",
+}, () => {
+  test("changeOwnPassword rejects a wrong current password with 401", async () => {
+    const created = await createStaffAccount({ email: "self@example.com", firstName: "S", lastName: "E", role: "alumni", password: "placeholder123" });
+    try {
+      await assert.rejects(() => changeOwnPassword(created.id, "not-the-password", "brandnew12345"), (e: AppError) => e.status === 401);
+      const row = await getDb().query.users.findFirst({ where: eq(users.id, created.id) });
+      assert.ok(await comparePassword("placeholder123", row.passwordHash));
+    } finally {
+      await deleteUsers([created.id]);
+    }
+  });
+
+  test("changeOwnPassword clears mustChangePassword and returns the bumped tokenVersion", async () => {
+    const created = await createStaffAccount({ email: "done@example.com", firstName: "D", lastName: "O", role: "registrar", password: "placeholder123" });
+    try {
+      const result = await changeOwnPassword(created.id, "placeholder123", "brandnew12345");
+      const row = await getDb().query.users.findFirst({ where: eq(users.id, created.id) });
+      assert.equal(row.mustChangePassword, false);
+      assert.equal(result.tokenVersion, row.tokenVersion);
+      assert.ok(result.tokenVersion > 0);
+    } finally {
+      await deleteUsers([created.id]);
+    }
+  });
+
+  test("changeOwnPassword rejects a short new password", () => {
+    assert.throws(() => passwordChangeSchema.parse({ currentPassword: "placeholder123", newPassword: "short" }));
   });
 });
 

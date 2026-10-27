@@ -76,6 +76,11 @@ export const userPasswordResetSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters.").max(72),
 });
 
+export const passwordChangeSchema = z.object({
+  currentPassword: z.string().min(1, "Enter your current password.").max(72),
+  newPassword: z.string().min(8, "Password must be at least 8 characters.").max(72),
+});
+
 const checkboxBoolean = z
   .union([z.boolean(), z.string()])
   .optional()
