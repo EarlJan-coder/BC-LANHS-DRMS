@@ -159,6 +159,21 @@ describe("changeOwnPassword (integration, local DB)", {
   test("changeOwnPassword rejects a short new password", () => {
     assert.throws(() => passwordChangeSchema.parse({ currentPassword: "placeholder123", newPassword: "short" }));
   });
+
+  test("changeOwnPassword rejects when the new password matches the current one and leaves state unchanged", async () => {
+    const created = await createStaffAccount({ email: "same@example.com", firstName: "S", lastName: "A", role: "alumni", password: "placeholder123" });
+    try {
+      await assert.rejects(
+        () => changeOwnPassword(created.id, "placeholder123", "placeholder123"),
+        (e: AppError) => e.status === 400 && e.message === "New password must be different from your current password.",
+      );
+      const row = await getDb().query.users.findFirst({ where: eq(users.id, created.id) });
+      assert.ok(await comparePassword("placeholder123", row.passwordHash));
+      assert.equal(row.mustChangePassword, true);
+    } finally {
+      await deleteUsers([created.id]);
+    }
+  });
 });
 
 test("createStaffAccount rejects the student role at the schema boundary", () => {
@@ -170,6 +185,20 @@ test("createStaffAccount rejects the student role at the schema boundary", () =>
       role: "student",
       password: "placeholder123",
     }),
+  );
+});
+
+test("createStaffAccount rejects the student role at the service boundary", async () => {
+  await assert.rejects(
+    () =>
+      createStaffAccount({
+        email: "svc-student@example.com",
+        firstName: "S",
+        lastName: "T",
+        role: "student" as "alumni",
+        password: "placeholder123",
+      }),
+    (e: AppError) => e.status === 400 && e.message === "Student accounts cannot be created here.",
   );
 });
 

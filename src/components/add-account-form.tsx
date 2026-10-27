@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ function roleLabel(role: string): string {
 }
 
 export function AddAccountForm() {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<FormState>(initialFormState);
@@ -76,6 +78,7 @@ export function AddAccountForm() {
       });
       setForm(initialFormState);
       setIsOpen(false);
+      router.refresh();
     } catch {
       toast.error("Unable to create the account right now.");
     } finally {

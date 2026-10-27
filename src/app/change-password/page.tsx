@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { ChangePasswordForm } from "@/components/change-password-form";
+import { ChangePasswordSignOut } from "@/components/change-password-sign-out";
 import { AppLogo } from "@/components/layout/app-logo";
 import { getCurrentDbUser } from "@/lib/auth";
 
@@ -18,9 +19,14 @@ export default async function ChangePasswordPage() {
         </div>
         <div className="mb-5 text-center">
           <h1 className="text-2xl font-semibold text-slate-950">Set a new password</h1>
-          <p className="mt-2 text-sm text-slate-600">Your account was created with a temporary password.</p>
+          {user.mustChangePassword ? (
+            <p className="mt-2 text-sm text-slate-600">Your account has a temporary password.</p>
+          ) : null}
         </div>
         <ChangePasswordForm mustChangePassword={user.mustChangePassword} />
+        <div className="mt-4 flex justify-center">
+          <ChangePasswordSignOut />
+        </div>
       </div>
     </main>
   );

@@ -6,9 +6,17 @@ import { comparePassword } from "@/lib/password";
 import { AppError } from "@/lib/utils";
 
 function postgresCode(error: unknown): string | undefined {
-  return typeof error === "object" && error !== null && "code" in error
-    ? (error as { code?: string }).code
-    : undefined;
+  if (!error || typeof error !== "object") {
+    return undefined;
+  }
+
+  const cause = "cause" in error ? (error as { cause?: unknown }).cause : error;
+
+  if (cause && typeof cause === "object" && "code" in cause) {
+    return (cause as { code?: string }).code;
+  }
+
+  return "code" in error ? (error as { code?: string }).code : undefined;
 }
 
 function assertPasswordFitsBcrypt(password: string): void {
@@ -21,9 +29,13 @@ export async function createStaffAccount(input: {
   email: string;
   firstName: string;
   lastName: string;
-  role: "alumni" | "registrar" | "admin";
+  role: UserRole;
   password: string;
 }): Promise<{ id: string; email: string; role: UserRole }> {
+  if (input.role === "student") {
+    throw new AppError("Student accounts cannot be created here.", 400);
+  }
+
   assertPasswordFitsBcrypt(input.password);
 
   const db = getDb();
@@ -115,6 +127,10 @@ export async function changeOwnPassword(
 
   if (!(await comparePassword(currentPassword, user.passwordHash))) {
     throw new AppError("Your current password is incorrect.", 401);
+  }
+
+  if (await comparePassword(newPassword, user.passwordHash)) {
+    throw new AppError("New password must be different from your current password.", 400);
   }
 
   assertPasswordFitsBcrypt(newPassword);
