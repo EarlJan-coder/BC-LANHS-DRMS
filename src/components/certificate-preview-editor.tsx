@@ -14,6 +14,9 @@ export interface CertificateEditValues {
   purpose: string;
   /** yyyy-mm-dd for <input type="date"> */
   dateGenerated: string;
+  /** Signatory names typed per certificate; blank prints no name on the PDF. */
+  registrarName: string;
+  principalName: string;
 }
 
 export function CertificatePreviewEditor({
@@ -48,6 +51,8 @@ export function CertificatePreviewEditor({
           section: values.section,
           purpose: values.purpose,
           dateGenerated: values.dateGenerated,
+          registrarName: values.registrarName,
+          principalName: values.principalName,
         }),
       });
       const data = await response.json();
@@ -75,7 +80,15 @@ export function CertificatePreviewEditor({
       const response = await fetch(`/api/certificates/${certificateId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentName: "", gradeLevel: "", section: "", purpose: "", dateGenerated: "" }),
+        body: JSON.stringify({
+          studentName: "",
+          gradeLevel: "",
+          section: "",
+          purpose: "",
+          dateGenerated: "",
+          registrarName: "",
+          principalName: "",
+        }),
       });
       const data = await response.json();
 
@@ -93,6 +106,8 @@ export function CertificatePreviewEditor({
           section: view.section,
           purpose: view.purpose,
           dateGenerated: view.dateGenerated.slice(0, 10),
+          registrarName: view.registrarName,
+          principalName: view.principalName,
         });
       }
 
@@ -147,10 +162,27 @@ export function CertificatePreviewEditor({
             onChange={(value) => setField("dateGenerated", value)}
             type="date"
           />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Registrar name"
+              value={values.registrarName}
+              override={hasOverride.registrarName}
+              onChange={(value) => setField("registrarName", value)}
+              maxLength={200}
+            />
+            <Field
+              label="Principal name"
+              value={values.principalName}
+              override={hasOverride.principalName}
+              onChange={(value) => setField("principalName", value)}
+              maxLength={200}
+            />
+          </div>
 
           <p className="text-xs text-slate-500">
             School year, certificate number, and certificate type are not editable — they are covered by
-            certificate verification.
+            certificate verification. Signatory names are typed per certificate; leave a name blank to print
+            no name above its signature line.
           </p>
 
           <div className="flex flex-wrap gap-2">
@@ -197,6 +229,7 @@ function Field({
   onChange,
   textarea = false,
   type = "text",
+  maxLength,
 }: {
   label: string;
   value: string;
@@ -204,6 +237,7 @@ function Field({
   onChange: (value: string) => void;
   textarea?: boolean;
   type?: string;
+  maxLength?: number;
 }) {
   return (
     <div>
@@ -220,6 +254,7 @@ function Field({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           rows={3}
+          maxLength={maxLength}
           className="mt-1 w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
         />
       ) : (
@@ -227,6 +262,7 @@ function Field({
           type={type}
           value={value}
           onChange={(event) => onChange(event.target.value)}
+          maxLength={maxLength}
           className="mt-1 w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
         />
       )}

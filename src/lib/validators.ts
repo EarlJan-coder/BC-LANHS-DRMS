@@ -41,8 +41,18 @@ export const certificateGenerateSchema = z.object({
 // PDF content overrides for certificate preview/edit. Deliberately excludes
 // schoolYear / certificateNumber / certificateType (blockchain hash inputs).
 // Empty or whitespace-only strings clear the override (undefined = live value).
+// registrarName / principalName are signatory names typed per certificate;
+// clearing them prints no name above the signature line.
 const overrideField = z
   .string()
+  .transform((value) => (value.trim() === "" ? undefined : value.trim()))
+  .optional();
+
+// Signatory names are capped at their column width (200) so an over-long paste
+// is rejected as a clean validation error instead of a raw database error.
+const overrideSignatoryName = z
+  .string()
+  .max(200, "Signatory names must be 200 characters or fewer.")
   .transform((value) => (value.trim() === "" ? undefined : value.trim()))
   .optional();
 
@@ -51,6 +61,8 @@ export const certificateOverrideSchema = z.object({
   gradeLevel: overrideField,
   section: overrideField,
   purpose: overrideField,
+  registrarName: overrideSignatoryName,
+  principalName: overrideSignatoryName,
   dateGenerated: z
     .preprocess(
       (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -58,6 +70,8 @@ export const certificateOverrideSchema = z.object({
     )
     .optional(),
 });
+
+export type CertificateOverrideValues = z.infer<typeof certificateOverrideSchema>;
 
 export const userRoleUpdateSchema = z.object({
   role: z.enum(["student", "alumni", "registrar", "admin"]),

@@ -19,7 +19,11 @@ import { SCHOOL_NAME } from "@/lib/constants";
 import { sendWorkflowEmail } from "@/lib/email";
 import type { CertificateVerificationView, CertificateView } from "@/lib/types";
 import { formatDate, generatePrefixedId, studentFullName, ZERO_HASH } from "@/lib/utils";
-import { certificateGenerateSchema, certificateOverrideSchema } from "@/lib/validators";
+import {
+  certificateGenerateSchema,
+  certificateOverrideSchema,
+  type CertificateOverrideValues,
+} from "@/lib/validators";
 import { recordAuditedAction } from "./audit-log";
 import {
   appUrl,
@@ -28,6 +32,7 @@ import {
   drawCenteredText,
   drawDocumentHeader,
   drawSignatureLine,
+  drawSignatureName,
   drawWatermark,
   drawWrappedText,
   embedQrCode,
@@ -56,8 +61,17 @@ function verificationCode() {
   return randomBytes(16).toString("hex");
 }
 
-async function drawCertificateFooter(pdf: PDFDocument, page: PDFPage, qrCodeData: string, regular: PDFFont, bold: PDFFont) {
+async function drawCertificateFooter(
+  pdf: PDFDocument,
+  page: PDFPage,
+  qrCodeData: string,
+  regular: PDFFont,
+  bold: PDFFont,
+  names: { registrarName: string; principalName: string },
+) {
+  drawSignatureName(page, names.registrarName, 70, 215, 108, bold);
   drawSignatureLine(page, 70, 215, "Registrar", 112, regular);
+  drawSignatureName(page, names.principalName, 300, 465, 108, bold);
   drawSignatureLine(page, 300, 465, "School Head / Principal", 338, regular);
 
   const qrImage = await embedQrCode(pdf, qrCodeData);
@@ -87,6 +101,8 @@ export interface CertificateDisplayRow {
   overrideSection: string | null;
   overridePurpose: string | null;
   overrideDateGenerated: Date | null;
+  overrideRegistrarName: string | null;
+  overridePrincipalName: string | null;
 }
 
 export interface CertificateDisplayFields {
@@ -95,6 +111,9 @@ export interface CertificateDisplayFields {
   section: string;
   purpose: string;
   dateGenerated: Date;
+  /** Typed per certificate; "" prints no name above the signature line. */
+  registrarName: string;
+  principalName: string;
 }
 
 /** A set override wins; empty or whitespace-only overrides fall back to the
@@ -115,6 +134,10 @@ export function resolveCertificateDisplayFields(row: CertificateDisplayRow): Cer
     section: effectiveOverride(row.overrideSection) ?? row.section ?? "",
     purpose: effectiveOverride(row.overridePurpose) ?? row.requestPurpose ?? "",
     dateGenerated: row.overrideDateGenerated ?? row.generatedAt,
+    // Signatory names have no live record value: a blank override simply
+    // prints no name above the signature line.
+    registrarName: effectiveOverride(row.overrideRegistrarName) ?? "",
+    principalName: effectiveOverride(row.overridePrincipalName) ?? "",
   };
 }
 
@@ -400,12 +423,17 @@ export interface CertificateEditView {
   purpose: string;
   /** ISO timestamp of the effective "Date Generated" (override or record). */
   dateGenerated: string;
+  /** Typed per certificate; "" prints no name above the signature line. */
+  registrarName: string;
+  principalName: string;
   hasOverride: {
     studentName: boolean;
     gradeLevel: boolean;
     section: boolean;
     purpose: boolean;
     dateGenerated: boolean;
+    registrarName: boolean;
+    principalName: boolean;
   };
 }
 
@@ -435,6 +463,8 @@ async function loadCertificateDisplayRow(certificateId: string) {
       overrideSection: certificates.overrideSection,
       overridePurpose: certificates.overridePurpose,
       overrideDateGenerated: certificates.overrideDateGenerated,
+      overrideRegistrarName: certificates.overrideRegistrarName,
+      overridePrincipalName: certificates.overridePrincipalName,
     })
     .from(certificates)
     .leftJoin(students, eq(certificates.studentId, students.id))
@@ -465,6 +495,8 @@ function toDisplayRow(row: CertificateDisplayDbRow): CertificateDisplayRow {
     overrideSection: row.overrideSection,
     overridePurpose: row.overridePurpose,
     overrideDateGenerated: row.overrideDateGenerated,
+    overrideRegistrarName: row.overrideRegistrarName,
+    overridePrincipalName: row.overridePrincipalName,
   };
 }
 
@@ -485,21 +517,46 @@ export async function getCertificateEditView(certificateId: string): Promise<Cer
     section: fields.section,
     purpose: fields.purpose,
     dateGenerated: fields.dateGenerated.toISOString(),
+    registrarName: fields.registrarName,
+    principalName: fields.principalName,
     hasOverride: {
       studentName: effectiveOverride(row.overrideStudentName) !== null,
       gradeLevel: effectiveOverride(row.overrideGradeLevel) !== null,
       section: effectiveOverride(row.overrideSection) !== null,
       purpose: effectiveOverride(row.overridePurpose) !== null,
       dateGenerated: row.overrideDateGenerated !== null,
+      registrarName: effectiveOverride(row.overrideRegistrarName) !== null,
+      principalName: effectiveOverride(row.overridePrincipalName) !== null,
     },
   };
 }
 
-const OVERRIDE_FIELDS = ["studentName", "gradeLevel", "section", "purpose", "dateGenerated"] as const;
+const OVERRIDE_FIELDS = ["studentName", "gradeLevel", "section", "purpose", "dateGenerated", "registrarName", "principalName"] as const;
+
+type OverrideField = (typeof OVERRIDE_FIELDS)[number];
+
+/** Column updates for the fields the caller actually sent. A missing key leaves
+ * the stored value untouched; a blank value (parsed to undefined) clears it —
+ * for signatory names that means printing no name above the signature line. */
+export function buildOverrideUpdates(
+  provided: readonly OverrideField[],
+  parsed: CertificateOverrideValues,
+): Partial<typeof certificates.$inferInsert> {
+  const updates: Partial<typeof certificates.$inferInsert> = {};
+  if (provided.includes("studentName")) updates.overrideStudentName = parsed.studentName ?? null;
+  if (provided.includes("gradeLevel")) updates.overrideGradeLevel = parsed.gradeLevel ?? null;
+  if (provided.includes("section")) updates.overrideSection = parsed.section ?? null;
+  if (provided.includes("purpose")) updates.overridePurpose = parsed.purpose ?? null;
+  if (provided.includes("dateGenerated")) updates.overrideDateGenerated = parsed.dateGenerated ?? null;
+  if (provided.includes("registrarName")) updates.overrideRegistrarName = parsed.registrarName ?? null;
+  if (provided.includes("principalName")) updates.overridePrincipalName = parsed.principalName ?? null;
+  return updates;
+}
 
 /** Save PDF content overrides. Provided-key semantics: a missing key leaves the
- * stored override untouched, a blank value clears it back to the live record
- * value (the schema maps blank/whitespace to undefined). */
+ * stored override untouched, a blank value clears it (the schema maps
+ * blank/whitespace to undefined) — back to the live record value, or, for the
+ * signatory names, to printing no name at all. */
 export async function updateCertificateOverrides(certificateId: string, input: unknown): Promise<CertificateEditView | null> {
   const db = getDb();
   const actor = await ensureCurrentDbUser();
@@ -519,13 +576,7 @@ export async function updateCertificateOverrides(certificateId: string, input: u
   }
 
   const parsed = certificateOverrideSchema.parse(input);
-
-  const updates: Partial<typeof certificates.$inferInsert> = {};
-  if (provided.includes("studentName")) updates.overrideStudentName = parsed.studentName ?? null;
-  if (provided.includes("gradeLevel")) updates.overrideGradeLevel = parsed.gradeLevel ?? null;
-  if (provided.includes("section")) updates.overrideSection = parsed.section ?? null;
-  if (provided.includes("purpose")) updates.overridePurpose = parsed.purpose ?? null;
-  if (provided.includes("dateGenerated")) updates.overrideDateGenerated = parsed.dateGenerated ?? null;
+  const updates = buildOverrideUpdates(provided, parsed);
 
   await db
     .update(certificates)
@@ -619,7 +670,10 @@ export async function generateCertificatePdf(certificateId: string) {
   });
   page.drawText(`Purpose: ${purpose.slice(0, 72)}`, { x: 72, y: 292, size: 9, font: regular, color: MUTED_TEXT });
 
-  await drawCertificateFooter(pdf, page, certificate.qrCodeData, regular, bold);
+  await drawCertificateFooter(pdf, page, certificate.qrCodeData, regular, bold, {
+    registrarName: display.registrarName,
+    principalName: display.principalName,
+  });
 
   drawWatermark(page, logo);
 

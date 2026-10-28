@@ -29,6 +29,8 @@ export default async function CertificateEditPage({
           section: certificate.section,
           purpose: certificate.purpose,
           dateGenerated: certificate.dateGenerated.slice(0, 10),
+          registrarName: certificate.registrarName,
+          principalName: certificate.principalName,
         }}
         hasOverride={certificate.hasOverride}
       />

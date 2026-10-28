@@ -249,6 +249,11 @@ export const certificates = pgTable(
     overrideSection: varchar("override_section", { length: 100 }),
     overridePurpose: text("override_purpose"),
     overrideDateGenerated: timestamp("override_date_generated", { withTimezone: true }),
+    // Signatory names typed per certificate in the preview editor. There is no
+    // live record value behind these: null renders no name above the signature
+    // line. Display-only, like the overrides above.
+    overrideRegistrarName: varchar("override_registrar_name", { length: 200 }),
+    overridePrincipalName: varchar("override_principal_name", { length: 200 }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

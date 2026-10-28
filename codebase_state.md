@@ -33,7 +33,7 @@ A **single-package Next.js 16 App Router** full-stack web app (flat `src/` tree,
 blockchain-lanhs/
 ├── contracts/
 │   └── DocumentRequestAudit.sol        # Single Solidity audit contract
-├── drizzle/                            # 11 DB migrations (0000–0010)
+├── drizzle/                            # 13 DB migrations (0000–0012)
 ├── scripts/
 │   ├── seed.ts                         # Sample data seeder (SEED_PASSWORD; refuses production and non-local DBs)
 │   ├── check-migrations.ts             # db:migrate safety guard (see Key Modules)
@@ -120,6 +120,8 @@ blockchain-lanhs/
 - Generation / lifecycle: `generateCertificate`, `listCertificateViews`, `getCertificateView`, `verifyCertificate`, `generateCertificatePdf`, `reissueCertificate`, `voidCertificate`
 - PDF content overrides: `resolveCertificateDisplayFields` (a set override wins; empty/whitespace-only falls back to the live joined value), `getCertificateEditView`, `updateCertificateOverrides` (provided-key semantics; a missing key leaves the stored override untouched). Never applied to school year / certificate number / type (blockchain hash inputs).
 - Columns: `certificates.override_student_name|override_grade_level|override_section|override_purpose|override_date_generated` (migration 0010)
+- Signatory names (migration 0012): `certificates.override_registrar_name|override_principal_name` — typed per certificate in the preview editor, printed bold and centered above the PDF's signature lines (`drawSignatureName` in `pdf-brand.ts`, auto-shrunk to fit the signature block). Unlike the other overrides there is no live fallback: blank prints no name. Saved/cleared through the same PATCH as the other overrides (`buildOverrideUpdates`).
+- Adding an override field touches three places together: the `certificates` columns, `certificateOverrideSchema`, and `OVERRIDE_FIELDS` + `buildOverrideUpdates`.
 - API: `GET/PATCH /api/certificates/[id]` (PATCH saves overrides, staff only), `GET /api/certificates/[id]/pdf`
 - UI: `certificate-preview-editor.tsx` at `/registrar/certificates/[id]/edit`
 
@@ -171,7 +173,7 @@ blockchain-lanhs/
 
 **Enums:** `user_role`, `account_status`, `student_type`, `student_status`, `request_status`, `blockchain_status`, `notification_type` (`request`, `certificate`, `system`, `audit`)
 
-**Migrations (11, `0000`–`0010`):**
+**Migrations (13, `0000`–`0012`):**
 
 | File | Effect |
 |---|---|
@@ -186,6 +188,8 @@ blockchain-lanhs/
 | `0008` | Removes all Certificate of Grades and grade data, drops the grade tables (`student_grades`, `subjects`, `grade_import_batches`, `grade_import_errors`), rebuilds `notification_type` without `grade` |
 | `0009` | `users.token_version` for session revocation |
 | `0010` | Certificate PDF override columns |
+| `0011` | `users.must_change_password` for the forced password change on first sign-in |
+| `0012` | Certificate signatory name columns (`override_registrar_name`, `override_principal_name`) |
 
 ---
 

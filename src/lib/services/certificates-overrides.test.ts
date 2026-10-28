@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { resolveCertificateDisplayFields } from "@/lib/services/certificates";
+import { buildOverrideUpdates, resolveCertificateDisplayFields } from "@/lib/services/certificates";
 
 const liveRow = {
   firstName: "Juan",
@@ -16,6 +16,8 @@ const liveRow = {
   overrideSection: null,
   overridePurpose: null,
   overrideDateGenerated: null,
+  overrideRegistrarName: null,
+  overridePrincipalName: null,
 };
 
 describe("resolveCertificateDisplayFields", () => {
@@ -66,5 +68,52 @@ describe("resolveCertificateDisplayFields", () => {
     assert.equal(fields.purpose, "Transfer requirements");
     assert.equal(fields.name, "Juan Santos Dela Cruz");
     assert.equal(fields.gradeLevel, "Grade 10");
+  });
+});
+
+describe("resolveCertificateDisplayFields signatory names", () => {
+  it("prints no signatory name when none has been typed", () => {
+    const fields = resolveCertificateDisplayFields(liveRow);
+    assert.equal(fields.registrarName, "");
+    assert.equal(fields.principalName, "");
+  });
+
+  it("uses the typed signatory names", () => {
+    const fields = resolveCertificateDisplayFields({
+      ...liveRow,
+      overrideRegistrarName: "Ana Reyes",
+      overridePrincipalName: "Dr. Luis Ramos",
+    });
+    assert.equal(fields.registrarName, "Ana Reyes");
+    assert.equal(fields.principalName, "Dr. Luis Ramos");
+  });
+
+  it("treats blank signatory names as not typed", () => {
+    const fields = resolveCertificateDisplayFields({
+      ...liveRow,
+      overrideRegistrarName: "   ",
+      overridePrincipalName: "",
+    });
+    assert.equal(fields.registrarName, "");
+    assert.equal(fields.principalName, "");
+  });
+});
+
+describe("buildOverrideUpdates", () => {
+  it("maps typed signatory names to their columns", () => {
+    assert.deepEqual(
+      buildOverrideUpdates(["registrarName", "principalName"], {
+        registrarName: "Ana Reyes",
+        principalName: "Dr. Luis Ramos",
+      }),
+      { overrideRegistrarName: "Ana Reyes", overridePrincipalName: "Dr. Luis Ramos" },
+    );
+  });
+
+  it("clears a provided blank name to null and leaves absent fields untouched", () => {
+    const updates = buildOverrideUpdates(["registrarName"], {});
+    assert.deepEqual(updates, { overrideRegistrarName: null });
+    assert.equal("overridePrincipalName" in updates, false);
+    assert.equal("overrideStudentName" in updates, false);
   });
 });

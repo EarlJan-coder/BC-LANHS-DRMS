@@ -111,6 +111,49 @@ export function drawSignatureLine(
   page.drawText(label, { x: labelX, y: 88, size: 9, font: regular, color: MUTED_TEXT });
 }
 
+export const SIGNATURE_NAME_PREFERRED_SIZE = 10;
+export const SIGNATURE_NAME_MIN_SIZE = 7;
+
+/** Largest size in [minSize, preferredSize] that keeps the name within maxWidth.
+ * The floor keeps an unreasonably long name readable instead of microscopic. */
+export function fitSignatureNameSize(
+  font: PDFFont,
+  text: string,
+  maxWidth: number,
+  preferredSize = SIGNATURE_NAME_PREFERRED_SIZE,
+  minSize = SIGNATURE_NAME_MIN_SIZE,
+): number {
+  let size = preferredSize;
+  while (size > minSize && font.widthOfTextAtSize(text, size) > maxWidth) {
+    size -= 0.5;
+  }
+  return size;
+}
+
+/** Draws a signatory's name centered above a signature line. Returns the
+ * layout actually drawn (exposed for tests and PDF verification), or null when
+ * no name was typed. */
+export function drawSignatureName(
+  page: PDFPage,
+  text: string,
+  startX: number,
+  endX: number,
+  y: number,
+  font: PDFFont,
+): { x: number; size: number } | null {
+  const name = text.trim();
+  if (!name) {
+    return null;
+  }
+
+  const maxWidth = endX - startX;
+  const size = fitSignatureNameSize(font, name, maxWidth);
+  const width = font.widthOfTextAtSize(name, size);
+  const x = startX + (maxWidth - width) / 2;
+  page.drawText(name, { x, y, size, font, color: DARK_TEXT });
+  return { x, size };
+}
+
 export const WATERMARK_SIZE = 280;
 export const WATERMARK_OPACITY = 0.08;
 

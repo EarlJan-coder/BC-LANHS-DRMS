@@ -12,7 +12,7 @@ LANHS DRMS is a full-stack registrar portal for online document requests, studen
 - Student document request submission with tracking numbers, remarks, status timeline, notifications, email attempts, request-slip PDFs (staff or the requesting student only), and audit logging.
 - Registrar request queue with search/filter, status actions, certificate generation, ready/claimed workflow, and blockchain proof status.
 - Student records with bulk CSV/XLSX import: XLSX template download, preview validation, per-row error messages, duplicate LRN detection, atomic batch saving, and a batch audit entry.
-- Certificate PDFs with QR verification URL, a registrar preview editor for per-certificate content overrides, public privacy-safe verification page, and blockchain hash proof.
+- Certificate PDFs with QR verification URL, a registrar preview editor for per-certificate content overrides (including the registrar and principal names printed above the signature lines), public privacy-safe verification page, and blockchain hash proof.
 - Registrar notifications: document-request submissions fan out one in-app notification per ACTIVE registrar (no admin copies); registrar nav shows an unread badge (server-rendered count, "99+" cap) with mark-one / mark-all read at /registrar/notifications.
 - Admin user, document type, school year, grade level, section, settings, and blockchain retry screens.
 - Solidity smart contract and Hardhat workflow for local and Sepolia deployment.
@@ -151,7 +151,7 @@ Per-address buckets are only active when `TRUST_PROXY` is set to `true` (or `1`)
 
 Signup responses do not reveal whether an LRN exists or whether a submitted name matches the school record: every roster-match failure (unknown LRN, name mismatch, or a lost link race) returns the same 400 response. One deliberate exception: a 409 "An account already uses that email or LRN." confirms that an account already exists for that email or LRN. This is a known account-existence oracle, accepted because there is no email-verification flow to hide behind and roster matching already reveals LRN existence; do not describe signup as concealing account existence. Rate limiting (per-LRN buckets plus the per-instance fallback budget) bounds how fast the oracle can be probed — it does not remove it. Login likewise always performs a password comparison, so response timing does not reveal valid emails or LRNs.
 
-Migration `0006` removes existing account rows while retaining student, request, certificate, notification, and audit records. Historical user UUIDs remain in attribution fields. Migration `0007` makes user LRN nullable for operator-provisioned staff accounts and adds the rate-limit table. Migration `0008` removes all Certificate of Grades and grade data and drops the grade tables. Migration `0009` adds `users.token_version` for session revocation. Migration `0010` adds the certificate PDF override columns. There are 11 migrations in total (`0000`–`0010`).
+Migration `0006` removes existing account rows while retaining student, request, certificate, notification, and audit records. Historical user UUIDs remain in attribution fields. Migration `0007` makes user LRN nullable for operator-provisioned staff accounts and adds the rate-limit table. Migration `0008` removes all Certificate of Grades and grade data and drops the grade tables. Migration `0009` adds `users.token_version` for session revocation. Migration `0010` adds the certificate PDF override columns. Migration `0011` adds `users.must_change_password` for the forced password change on first sign-in. Migration `0012` adds the certificate signatory name columns (`override_registrar_name`, `override_principal_name`). There are 13 migrations in total (`0000`–`0012`).
 
 The first production admin is created by an operator only after verifying the person's identity through the school's trusted process. Apply migrations first, then run `npm run auth:bootstrap-admin` from a secured interactive terminal with the intended `DATABASE_URL` and `SESSION_SECRET`. The script displays only the database host, requires typing `CREATE FIRST ADMIN`, hides the password (8–72 bytes) while entered, and refuses to run if an admin already exists. It creates an admin account without an LRN; the script is not a public signup path.
 
@@ -199,7 +199,7 @@ XLSX date cells (for example Birth Date) are read with `sheet_to_json`'s `UTC: t
 Registrar workflow:
 
 1. Open a document request and generate the certificate.
-2. Preview the PDF and adjust its content at `/registrar/certificates/[id]/edit` — per-certificate overrides for student name, grade level, section, purpose, and date generated. An empty override renders the live student/request value.
+2. Preview the PDF and adjust its content at `/registrar/certificates/[id]/edit` — per-certificate overrides for student name, grade level, section, purpose, and date generated. An empty override renders the live student/request value. The registrar and principal names printed above the signature lines are typed per certificate; leave one blank to print no name there.
 3. Download the PDF.
 4. Scan the QR code or open `/verify-certificate/[verificationCode]`.
 

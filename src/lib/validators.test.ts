@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { certificateOverrideSchema } from "@/lib/validators";
 
 describe("certificateOverrideSchema", () => {
-  it("accepts the five editable content fields", () => {
+  it("accepts the seven editable content fields", () => {
     const parsed = certificateOverrideSchema.parse({
       studentName: "Juan Dela Cruz",
       gradeLevel: "Grade 10",
@@ -32,6 +32,22 @@ describe("certificateOverrideSchema", () => {
     assert.equal(parsed.gradeLevel, undefined);
     assert.equal(parsed.section, undefined);
     assert.equal(parsed.purpose, "Scholarship application");
+  });
+
+  it("accepts signatory names and blanks them like the other fields", () => {
+    const parsed = certificateOverrideSchema.parse({
+      studentName: "Juan Dela Cruz",
+      registrarName: "  Ana Reyes ",
+      principalName: "   ",
+    });
+    assert.equal(parsed.registrarName, "Ana Reyes");
+    // A blank signatory name clears back to printing no name at all.
+    assert.equal(parsed.principalName, undefined);
+  });
+
+  it("rejects a signatory name longer than the column allows", () => {
+    assert.throws(() => certificateOverrideSchema.parse({ registrarName: "X".repeat(201) }));
+    assert.throws(() => certificateOverrideSchema.parse({ principalName: "X".repeat(201) }));
   });
 
   it("strips non-editable fields (school year, certificate number, certificate type)", () => {
