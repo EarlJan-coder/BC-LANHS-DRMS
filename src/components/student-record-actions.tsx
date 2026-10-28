@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/dialog";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import type { StudentView } from "@/lib/types";
 
@@ -34,6 +35,7 @@ export function StudentRecordActions({
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [selectedGradeLevelId, setSelectedGradeLevelId] = useState(student.gradeLevelId);
   const [selectedSectionId, setSelectedSectionId] = useState(student.sectionId);
   const filteredSections = useMemo(
@@ -77,14 +79,6 @@ export function StudentRecordActions({
   }
 
   async function onDelete() {
-    const confirmed = window.confirm(
-      "Delete this student record? Records with linked grades, requests, or certificates cannot be deleted.",
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
     setDeleting(true);
 
     try {
@@ -97,6 +91,7 @@ export function StudentRecordActions({
       }
 
       toast.success("Student record deleted.");
+      setConfirmDeleteOpen(false);
       router.refresh();
     } catch {
       toast.error("Unable to delete student record.");
@@ -116,7 +111,7 @@ export function StudentRecordActions({
           type="button"
           tone="danger"
           size="sm"
-          onClick={onDelete}
+          onClick={() => setConfirmDeleteOpen(true)}
           loading={deleting}
           aria-label={`Delete ${student.name}`}
         >
@@ -124,6 +119,17 @@ export function StudentRecordActions({
           {deleting ? "Deleting…" : "Delete"}
         </Button>
       </div>
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title="Delete this student record?"
+        message="Records with linked grades, requests, or certificates cannot be deleted."
+        confirmLabel="Delete"
+        tone="danger"
+        loading={deleting}
+        onConfirm={onDelete}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
 
       {editing ? (
         <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/50 p-4">

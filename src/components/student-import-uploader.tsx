@@ -7,6 +7,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/dialog";
 import type { StudentImportValidation } from "@/lib/services/student-import";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -17,6 +18,7 @@ export function StudentImportUploader() {
   const [fileName, setFileName] = useState("");
   const [loading, setLoading] = useState<"validate" | "commit" | null>(null);
   const [importedCount, setImportedCount] = useState<number | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   async function handleValidate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -60,16 +62,18 @@ export function StudentImportUploader() {
     }
   }
 
-  async function commit() {
+  function requestCommit() {
     if (!validation || validation.validRows.length === 0 || validation.errors.length > 0) {
       toast.error("Fix every row error before importing the batch.");
       return;
     }
 
-    const confirmed = window.confirm(
-      `Add ${validation.validRows.length} student record(s) from ${fileName}? The batch will be saved together.`,
-    );
-    if (!confirmed) {
+    setConfirmOpen(true);
+  }
+
+  async function commit() {
+    const rows = validation?.validRows;
+    if (!rows || rows.length === 0) {
       return;
     }
 
@@ -78,7 +82,7 @@ export function StudentImportUploader() {
       const response = await fetch("/api/students/import/commit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rows: validation.validRows, fileName }),
+        body: JSON.stringify({ rows, fileName }),
       });
       const data = await response.json();
 
@@ -93,6 +97,7 @@ export function StudentImportUploader() {
       setImportedCount(Number(data.importedCount ?? 0));
       setValidation(null);
       toast.success(`Imported ${data.importedCount} student record(s).`);
+      setConfirmOpen(false);
       router.refresh();
     } catch {
       toast.error("Unable to import students. Check your connection and try again.");
@@ -245,7 +250,7 @@ export function StudentImportUploader() {
 
             <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-slate-500">No accounts or passwords are created by this import. Students can sign up after their record is added.</p>
-              <Button type="button" onClick={commit} loading={loading === "commit"} disabled={busy || !canImport}>
+              <Button type="button" onClick={requestCommit} loading={loading === "commit"} disabled={busy || !canImport}>
                 {loading === "commit" ? null : <CheckCircle2 className="h-4 w-4" aria-hidden />}
                 {loading === "commit" ? "Importing…" : `Import ${validation.validRows.length} students`}
               </Button>
@@ -253,6 +258,16 @@ export function StudentImportUploader() {
           </CardContent>
         </Card>
       ) : null}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Import these students?"
+        message={`Add ${validation?.validRows.length ?? 0} student record(s) from ${fileName}. The batch will be saved together.`}
+        confirmLabel="Import students"
+        loading={loading === "commit"}
+        onConfirm={commit}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }
