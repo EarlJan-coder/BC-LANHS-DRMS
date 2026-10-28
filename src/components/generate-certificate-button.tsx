@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/dialog";
 
 export function GenerateCertificateButton({
   requestId,
@@ -15,12 +16,9 @@ export function GenerateCertificateButton({
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   async function generate() {
-    if (!window.confirm(`Generate a downloadable ${documentType} PDF for this request?`)) {
-      return;
-    }
-
     setLoading(true);
     try {
       const response = await fetch("/api/certificates", {
@@ -36,6 +34,7 @@ export function GenerateCertificateButton({
       }
 
       toast.success("Certificate generated.");
+      setConfirmOpen(false);
       router.push(`/registrar/certificates/${data.id}`);
       router.refresh();
     } catch {
@@ -46,9 +45,20 @@ export function GenerateCertificateButton({
   }
 
   return (
-    <Button type="button" onClick={generate} loading={loading}>
-      {loading ? null : <FileBadge className="h-4 w-4" aria-hidden />}
-      {loading ? "Generating…" : "Generate certificate"}
-    </Button>
+    <>
+      <Button type="button" onClick={() => setConfirmOpen(true)} loading={loading}>
+        {loading ? null : <FileBadge className="h-4 w-4" aria-hidden />}
+        {loading ? "Generating…" : "Generate certificate"}
+      </Button>
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Generate certificate?"
+        message={`A downloadable ${documentType} PDF will be generated for this request.`}
+        confirmLabel="Generate"
+        loading={loading}
+        onConfirm={generate}
+        onCancel={() => setConfirmOpen(false)}
+      />
+    </>
   );
 }
