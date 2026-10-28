@@ -99,6 +99,39 @@ function HeaderSearch({ role }: { role: DashboardRole }) {
   return <HeaderSearchForm role={role} defaultValue={searchParams.get("q") ?? ""} />;
 }
 
+function SidebarAccountActions({
+  signingOut,
+  onSignOut,
+  onNavigate,
+}: {
+  signingOut: boolean;
+  onSignOut: () => void;
+  onNavigate?: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1 border-t border-border px-3 py-4">
+      <Link
+        href="/change-password"
+        prefetch={false}
+        onClick={onNavigate}
+        className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-slate-600 transition hover:bg-rose-50 hover:text-brand"
+      >
+        <KeyRound className="h-4 w-4" aria-hidden />
+        <span className="truncate">Change password</span>
+      </Link>
+      <button
+        type="button"
+        onClick={onSignOut}
+        disabled={signingOut}
+        className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-slate-600 transition hover:bg-rose-50 hover:text-brand disabled:opacity-60"
+      >
+        <LogOut className="h-4 w-4" aria-hidden />
+        <span className="truncate">{signingOut ? "Signing out..." : "Sign out"}</span>
+      </button>
+    </div>
+  );
+}
+
 export function PortalShell({ children, unreadCount }: { children: ReactNode; unreadCount?: number }) {
   const pathname = usePathname();
   const role = roleFromPath(pathname);
@@ -123,11 +156,11 @@ export function PortalShell({ children, unreadCount }: { children: ReactNode; un
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 border-r border-border bg-white lg:block">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r border-border bg-white lg:flex">
         <div className="flex h-20 items-center border-b border-border px-5">
           <AppLogo />
         </div>
-        <nav className="flex flex-col gap-1 px-3 py-4">
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
           {nav.map((item) => {
             const Icon = icons[item.icon as keyof typeof icons] ?? LayoutDashboard;
             const active = pathname === item.href || (item.href !== `/${role}` && pathname.startsWith(item.href));
@@ -156,6 +189,7 @@ export function PortalShell({ children, unreadCount }: { children: ReactNode; un
             );
           })}
         </nav>
+        <SidebarAccountActions signingOut={signingOut} onSignOut={signOut} />
       </aside>
 
       {/* Mobile menu overlay */}
@@ -168,7 +202,7 @@ export function PortalShell({ children, unreadCount }: { children: ReactNode; un
       )}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 border-r border-border bg-white transform transition-transform duration-200 ease-in-out lg:hidden",
+          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-border bg-white transform transition-transform duration-200 ease-in-out lg:hidden",
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full",
         )}
         aria-label="Mobile navigation"
@@ -184,7 +218,7 @@ export function PortalShell({ children, unreadCount }: { children: ReactNode; un
             <X className="h-5 w-5" />
           </button>
         </div>
-        <nav className="flex flex-col gap-1 px-3 py-4">
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
           {nav.map((item) => {
             const Icon = icons[item.icon as keyof typeof icons] ?? LayoutDashboard;
             const active = pathname === item.href || (item.href !== `/${role}` && pathname.startsWith(item.href));
@@ -214,6 +248,14 @@ export function PortalShell({ children, unreadCount }: { children: ReactNode; un
             );
           })}
         </nav>
+        <SidebarAccountActions
+          signingOut={signingOut}
+          onSignOut={() => {
+            closeMobileMenu();
+            void signOut();
+          }}
+          onNavigate={closeMobileMenu}
+        />
       </aside>
 
       <div className="lg:pl-72">
@@ -237,25 +279,6 @@ export function PortalShell({ children, unreadCount }: { children: ReactNode; un
               <span className="hidden rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-brand ring-1 ring-rose-100 sm:inline-flex">
                 {ROLE_LABELS[role]}
               </span>
-              {pathname !== "/change-password" ? (
-                <Link
-                  href="/change-password"
-                  prefetch={false}
-                  className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                >
-                  <KeyRound className="h-4 w-4" aria-hidden />
-                  Change password
-                </Link>
-              ) : null}
-              <button
-                type="button"
-                onClick={signOut}
-                disabled={signingOut}
-                className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
-              >
-                <LogOut className="h-4 w-4" aria-hidden />
-                {signingOut ? "Signing out..." : "Sign out"}
-              </button>
             </div>
           </div>
         </header>
