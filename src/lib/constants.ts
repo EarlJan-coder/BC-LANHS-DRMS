@@ -4,9 +4,9 @@ export const APP_NAME = "LANHS DRMS";
 export const SCHOOL_NAME = "Luis Aguado National High School";
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  student: "Student / Alumni",
-  alumni: "Student / Alumni",
-  registrar: "Registrar / Staff",
+  student: "Student",
+  alumni: "Student",
+  registrar: "Registrar",
   admin: "Administrator",
 };
 
