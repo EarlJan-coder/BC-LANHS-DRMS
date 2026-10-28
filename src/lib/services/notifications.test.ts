@@ -27,7 +27,7 @@ function fixtureEmail() {
 }
 
 async function createFixtureUser(overrides: {
-  role?: "student" | "alumni" | "registrar" | "admin";
+  role?: "student" | "registrar" | "admin";
   isActive?: boolean;
   status?: "active" | "inactive" | "suspended";
 } = {}) {

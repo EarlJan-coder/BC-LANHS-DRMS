@@ -50,7 +50,6 @@ export function UserRoleActions({
     <div className="flex min-w-[280px] items-center gap-2">
       <Select value={nextRole} onChange={(event) => setNextRole(event.target.value as UserRole)} aria-label="Role">
         <option value="student">Student</option>
-        <option value="alumni">Alumni</option>
         <option value="registrar">Registrar</option>
         <option value="admin">Admin</option>
       </Select>

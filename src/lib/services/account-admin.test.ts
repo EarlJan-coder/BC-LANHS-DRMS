@@ -64,7 +64,7 @@ describe("createStaffAccount (integration, local DB)", {
             email: "dup@example.com",
             firstName: "C",
             lastName: "D",
-            role: "alumni",
+            role: "registrar",
             password: "placeholder123",
           }),
         (error: AppError) => error.status === 409,
@@ -79,7 +79,7 @@ describe("createStaffAccount (integration, local DB)", {
       email: "hash@example.com",
       firstName: "H",
       lastName: "I",
-      role: "alumni",
+      role: "registrar",
       password: "placeholder123",
     });
 
@@ -112,7 +112,7 @@ describe("resetUserPassword (integration, local DB)", {
   });
 
   test("resetUserPassword bumps tokenVersion so outstanding cookies are revoked", async () => {
-    const created = await createStaffAccount({ email: "rev@example.com", firstName: "R", lastName: "V", role: "alumni", password: "placeholder123" });
+    const created = await createStaffAccount({ email: "rev@example.com", firstName: "R", lastName: "V", role: "registrar", password: "placeholder123" });
 
     try {
       const before = (await getDb().query.users.findFirst({ where: eq(users.id, created.id) }))?.tokenVersion;
@@ -133,7 +133,7 @@ describe("changeOwnPassword (integration, local DB)", {
   skip: hasDb ? false : "DATABASE_URL not configured",
 }, () => {
   test("changeOwnPassword rejects a wrong current password with 401", async () => {
-    const created = await createStaffAccount({ email: "self@example.com", firstName: "S", lastName: "E", role: "alumni", password: "placeholder123" });
+    const created = await createStaffAccount({ email: "self@example.com", firstName: "S", lastName: "E", role: "registrar", password: "placeholder123" });
     try {
       await assert.rejects(() => changeOwnPassword(created.id, "not-the-password", "brandnew12345"), (e: AppError) => e.status === 401);
       const row = await getDb().query.users.findFirst({ where: eq(users.id, created.id) });
@@ -161,7 +161,7 @@ describe("changeOwnPassword (integration, local DB)", {
   });
 
   test("changeOwnPassword rejects when the new password matches the current one and leaves state unchanged", async () => {
-    const created = await createStaffAccount({ email: "same@example.com", firstName: "S", lastName: "A", role: "alumni", password: "placeholder123" });
+    const created = await createStaffAccount({ email: "same@example.com", firstName: "S", lastName: "A", role: "registrar", password: "placeholder123" });
     try {
       await assert.rejects(
         () => changeOwnPassword(created.id, "placeholder123", "placeholder123"),
@@ -195,7 +195,7 @@ test("createStaffAccount rejects the student role at the service boundary", asyn
         email: "svc-student@example.com",
         firstName: "S",
         lastName: "T",
-        role: "student" as "alumni",
+        role: "student",
         password: "placeholder123",
       }),
     (e: AppError) => e.status === 400 && e.message === "Student accounts cannot be created here.",
@@ -204,7 +204,7 @@ test("createStaffAccount rejects the student role at the service boundary", asyn
 
 test("assertAdmin allows an admin and throws 403 for every other role", () => {
   assert.doesNotThrow(() => assertAdmin({ role: "admin" }));
-  for (const role of ["student", "alumni", "registrar"] as const) {
+  for (const role of ["student", "registrar"] as const) {
     assert.throws(() => assertAdmin({ role }), (e: AppError) => e.status === 403);
   }
 });

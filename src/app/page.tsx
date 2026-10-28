@@ -11,7 +11,7 @@ const features = [
   {
     icon: FileCheck2,
     title: "Online document requests",
-    copy: "Students and alumni submit requests, receive tracking numbers, and monitor status updates.",
+    copy: "Students submit requests, receive tracking numbers, and monitor status updates.",
   },
   {
     icon: UsersRound,

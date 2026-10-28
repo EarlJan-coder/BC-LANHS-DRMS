@@ -3,8 +3,8 @@ import { SectionHeading } from "@/components/section-heading";
 import { Card } from "@/components/ui/card";
 
 const roles = [
-  { name: "Student / Alumni", access: "Requests, profile, notifications" },
-  { name: "Registrar / Staff", access: "Requests, records, grades, reports, audit logs" },
+  { name: "Student", access: "Requests, profile, notifications" },
+  { name: "Registrar", access: "Requests, records, grades, reports, audit logs" },
   { name: "Administrator", access: "Users, roles, setup tables, blockchain trail, settings" },
 ];
 

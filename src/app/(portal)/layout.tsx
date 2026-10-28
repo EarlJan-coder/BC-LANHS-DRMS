@@ -7,13 +7,12 @@ import type { DashboardRole } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-// UserRole includes "alumni"; DashboardRole (the nav keys) does not. Alumni
-// share the student nav, which has no badge items.
+// DashboardRole (the nav keys) matches UserRole one-to-one now that the
+// alumni role is gone.
 const dashboardRoleFor: Record<string, DashboardRole | undefined> = {
   admin: "admin",
   registrar: "registrar",
   student: "student",
-  alumni: "student",
 };
 
 export default async function PortalLayout({ children }: { children: ReactNode }) {

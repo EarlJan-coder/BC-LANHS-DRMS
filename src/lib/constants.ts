@@ -5,7 +5,6 @@ export const SCHOOL_NAME = "Luis Aguado National High School";
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   student: "Student",
-  alumni: "Student",
   registrar: "Registrar",
   admin: "Administrator",
 };

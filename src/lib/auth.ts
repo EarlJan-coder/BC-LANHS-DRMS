@@ -75,7 +75,7 @@ export function roleCanAccessPath(role: UserRole, pathname: string) {
   }
 
   if (pathname.startsWith("/student")) {
-    return role === "student" || role === "alumni" || role === "admin";
+    return role === "student" || role === "admin";
   }
 
   return true;

@@ -15,7 +15,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
-export const userRoleEnum = pgEnum("user_role", ["student", "alumni", "registrar", "admin"]);
+export const userRoleEnum = pgEnum("user_role", ["student", "registrar", "admin"]);
 export const accountStatusEnum = pgEnum("account_status", ["active", "inactive", "suspended"]);
 export const studentTypeEnum = pgEnum("student_type", ["current", "alumni", "transferee"]);
 export const studentStatusEnum = pgEnum("student_status", ["enrolled", "alumni", "transferred", "inactive"]);

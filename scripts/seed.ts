@@ -117,15 +117,6 @@ async function main() {
           role: "student",
           status: "active",
         },
-        {
-          lrn: "987654321098",
-          email: "alumni@lanhs.edu.ph",
-          passwordHash,
-          firstName: "Juan",
-          lastName: "Dela Cruz",
-          role: "alumni",
-          status: "active",
-        },
       ])
       .onConflictDoNothing();
 

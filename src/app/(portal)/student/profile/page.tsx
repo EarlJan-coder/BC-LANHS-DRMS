@@ -8,7 +8,7 @@ export default async function StudentProfilePage() {
 
   return (
     <div>
-      <SectionHeading title="Profile" description="Student and alumni information used for registrar validation." />
+      <SectionHeading title="Profile" description="Student information used for registrar validation." />
       <Card>
         <CardHeader>
           <CardTitle>Student profile</CardTitle>

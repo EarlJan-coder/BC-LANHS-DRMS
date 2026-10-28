@@ -11,7 +11,7 @@ type FormState = {
   email: string;
   firstName: string;
   lastName: string;
-  role: "alumni" | "registrar" | "admin";
+  role: "registrar" | "admin";
   password: string;
 };
 
@@ -25,14 +25,12 @@ const initialFormState: FormState = {
   email: "",
   firstName: "",
   lastName: "",
-  role: "alumni",
+  role: "registrar",
   password: "",
 };
 
 function roleLabel(role: string): string {
   switch (role) {
-    case "alumni":
-      return "Alumni";
     case "registrar":
       return "Registrar";
     case "admin":
@@ -197,7 +195,6 @@ export function AddAccountForm() {
                     onChange={(event) => updateField("role", event.target.value as FormState["role"])}
                     required
                   >
-                    <option value="alumni">Alumni</option>
                     <option value="registrar">Registrar</option>
                     <option value="admin">Admin</option>
                   </Select>
