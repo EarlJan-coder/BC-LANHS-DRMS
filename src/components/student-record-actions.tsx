@@ -103,7 +103,14 @@ export function StudentRecordActions({
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" tone="secondary" size="sm" onClick={openEditor} aria-label={`Edit ${student.name}`}>
+        <Button
+          type="button"
+          tone="secondary"
+          size="sm"
+          onClick={openEditor}
+          disabled={saving || deleting}
+          aria-label={`Edit ${student.name}`}
+        >
           <Pencil className="h-4 w-4" aria-hidden />
           Edit
         </Button>
@@ -153,6 +160,7 @@ export function StudentRecordActions({
                 tone="ghost"
                 size="icon"
                 onClick={() => setEditing(false)}
+                disabled={saving || deleting}
                 aria-label="Close edit student dialog"
               >
                 <X className="h-4 w-4" aria-hidden />
@@ -254,7 +262,7 @@ export function StudentRecordActions({
               </div>
 
               <div className="flex flex-col-reverse gap-2 border-t border-border bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end">
-                <Button type="button" tone="secondary" onClick={() => setEditing(false)}>
+                <Button type="button" tone="secondary" onClick={() => setEditing(false)} disabled={saving || deleting}>
                   Cancel
                 </Button>
                 <Button type="submit" loading={saving}>
