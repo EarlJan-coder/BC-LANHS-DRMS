@@ -128,6 +128,7 @@ export function StudentRecordActions({
           size="sm"
           onClick={() => setConfirmDeleteOpen(true)}
           loading={deleting}
+          disabled={saving || deleting}
           aria-label={`Delete ${student.name}`}
         >
           {deleting ? null : <Trash2 className="h-4 w-4" aria-hidden />}
@@ -176,7 +177,8 @@ export function StudentRecordActions({
             </div>
 
             <form onSubmit={onSubmit}>
-              <div className="grid max-h-[calc(100vh-14rem)] gap-4 overflow-y-auto px-5 py-5 md:grid-cols-2">
+              <fieldset disabled={saving} className="contents">
+                <div className="grid max-h-[calc(100vh-14rem)] gap-4 overflow-y-auto px-5 py-5 md:grid-cols-2">
                 <Field id={`edit-lrn-${student.id}`} label="LRN" name="lrn" defaultValue={student.lrn} required />
                 <Field
                   id={`edit-firstName-${student.id}`}
@@ -268,6 +270,7 @@ export function StudentRecordActions({
                   <Textarea id={`edit-address-${student.id}`} name="address" defaultValue={student.address} />
                 </div>
               </div>
+              </fieldset>
 
               <div className="flex flex-col-reverse gap-2 border-t border-border bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end">
                 <Button type="button" tone="secondary" onClick={() => setEditing(false)} disabled={saving || deleting}>

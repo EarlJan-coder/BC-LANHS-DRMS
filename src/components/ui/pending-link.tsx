@@ -37,7 +37,9 @@ export function LinkPendingContent({
         <Spinner />
       ) : null}
       {children != null ? (
-        <span className={cn("min-w-0", pending && "opacity-60")}>{children}</span>
+        <span className={cn("inline-flex min-w-0 items-center gap-2", pending && "opacity-60")}>
+          {children}
+        </span>
       ) : null}
     </span>
   );

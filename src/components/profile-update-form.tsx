@@ -2,7 +2,7 @@
 
 import { Save } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Textarea } from "@/components/ui/input";
@@ -21,8 +21,13 @@ export function ProfileUpdateForm({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  async function submit(formData: FormData) {
+  // onSubmit (not <form action>): form actions suppress mid-flight state and
+  // auto-reset uncontrolled fields on completion (same fix as auth-form).
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (loading) return;
     setLoading(true);
+    const formData = new FormData(event.currentTarget);
     try {
       const response = await fetch("/api/profile", {
         method: "PATCH",
@@ -55,7 +60,7 @@ export function ProfileUpdateForm({
   }
 
   return (
-    <form action={submit} className="grid gap-4 sm:grid-cols-2">
+    <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
       <div className="grid gap-2 sm:col-span-2">
         <Label htmlFor="lrn">Learner Reference Number (LRN)</Label>
         <Input id="lrn" name="lrn" defaultValue={editableValue(lrn)} required />

@@ -2,7 +2,7 @@
 
 import { UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,8 +29,13 @@ export function StudentRecordForm({
     ? sections.filter((section) => !section.gradeLevelId || section.gradeLevelId === selectedGradeLevelId)
     : [];
 
-  async function onSubmit(formData: FormData) {
+  // onSubmit (not <form action>): form actions suppress mid-flight state and
+  // auto-reset uncontrolled fields on completion (same fix as auth-form).
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (loading) return;
     setLoading(true);
+    const formData = new FormData(event.currentTarget);
 
     try {
       const response = await fetch("/api/students", {
@@ -60,7 +65,7 @@ export function StudentRecordForm({
         <CardTitle>Add student record</CardTitle>
       </CardHeader>
       <CardContent>
-        <form action={onSubmit} className="grid gap-4 md:grid-cols-2">
+        <form onSubmit={onSubmit} className="grid gap-4 md:grid-cols-2">
           <Field label="LRN" name="lrn" required />
           <Field label="First name" name="firstName" required />
           <Field label="Middle name" name="middleName" />
