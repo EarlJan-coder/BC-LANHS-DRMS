@@ -1,6 +1,8 @@
 import { CheckCircle2, ShieldCheck, XCircle } from "lucide-react";
+import { Suspense } from "react";
 import { AppLogo } from "@/components/layout/app-logo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
 import { BlockchainVerificationBadge } from "@/components/BlockchainVerificationBadge";
 import { verifyCertificate } from "@/lib/services/certificates";
 import { verifyCertificateOnChain } from "@/lib/services/blockchain-verification";
@@ -30,6 +32,48 @@ export default async function VerifyCertificatePage({
   params: Promise<{ verificationCode: string }>;
 }) {
   const { verificationCode } = await params;
+
+  return (
+    <main className="min-h-screen bg-slate-50 px-4 py-10 overflow-x-hidden">
+      <div className="mx-auto w-full max-w-2xl">
+        <div className="mb-8 flex justify-center">
+          <AppLogo />
+        </div>
+        {/* The DB lookup and the on-chain RPC are slow; stream them in so direct
+            visits see the page shell and progress feedback immediately. */}
+        <Suspense fallback={<VerificationSkeleton />}>
+          <VerificationResult verificationCode={verificationCode} />
+        </Suspense>
+      </div>
+    </main>
+  );
+}
+
+function VerificationSkeleton() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Spinner className="h-5 w-5 text-brand" />
+          Certificate verification
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+          <p className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+            <Spinner className="h-4 w-4 text-brand" />
+            Checking certificate against blockchain proof…
+          </p>
+          <p className="mt-1 text-sm text-slate-700">
+            This takes a few seconds while the certificate record and its on-chain proof are queried.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+async function VerificationResult({ verificationCode }: { verificationCode: string }) {
   const result: CertificateVerificationView = await verifyCertificate(verificationCode).catch(() => ({ valid: false }));
 
   let blockchainResult;
@@ -48,70 +92,63 @@ export default async function VerifyCertificatePage({
   const eventTimeline = blockchainResult?.eventTimeline;
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10 overflow-x-hidden">
-      <div className="mx-auto w-full max-w-2xl">
-        <div className="mb-8 flex justify-center">
-          <AppLogo />
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          {result.valid ? (
+            <CheckCircle2 className="h-5 w-5 text-emerald-600" aria-hidden />
+          ) : (
+            <XCircle className="h-5 w-5 text-red-600" aria-hidden />
+          )}
+          Certificate verification
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-5">
+        <div
+          className={
+            result.valid
+              ? "rounded-md border border-emerald-200 bg-emerald-50 p-4 text-emerald-800"
+              : "rounded-md border border-red-200 bg-red-50 p-4 text-red-800"
+          }
+        >
+          <p className="text-sm font-semibold">{result.valid ? "Valid certificate" : "Invalid certificate"}</p>
+          <p className="mt-1 text-sm">
+            {result.valid
+              ? "This certificate code exists in LANHS DRMS."
+              : "No certificate exists for this verification code."}
+          </p>
         </div>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              {result.valid ? (
-                <CheckCircle2 className="h-5 w-5 text-emerald-600" aria-hidden />
-              ) : (
-                <XCircle className="h-5 w-5 text-red-600" aria-hidden />
-              )}
-              Certificate verification
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-5">
-            <div
-              className={
-                result.valid
-                  ? "rounded-md border border-emerald-200 bg-emerald-50 p-4 text-emerald-800"
-                  : "rounded-md border border-red-200 bg-red-50 p-4 text-red-800"
-              }
-            >
-              <p className="text-sm font-semibold">{result.valid ? "Valid certificate" : "Invalid certificate"}</p>
-              <p className="mt-1 text-sm">
-                {result.valid
-                  ? "This certificate code exists in LANHS DRMS."
-                  : "No certificate exists for this verification code."}
-              </p>
+
+        {result.valid ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Detail label="Certificate no." value={result.certificateNumber ?? "Not set"} />
+            <Detail label="Student" value={result.studentDisplayName ?? "Private"} />
+            <Detail label="Type" value={result.certificateType ?? "Certificate"} />
+            <Detail label="Date generated" value={result.issuedAt ?? "Not set"} />
+            <Detail label="Issuing school" value={result.issuingSchool ?? "LANHS"} />
+            <Detail label="Blockchain tx" value={result.blockchainTxHash ?? "Pending"} />
+          </div>
+        ) : null}
+
+        {blockchainResult && <BlockchainVerificationBadge result={blockchainResult} />}
+
+        {eventTimeline && eventTimeline.length > 0 && (
+          <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+            <p className="mb-3 text-sm font-semibold text-slate-900">Blockchain Event Timeline</p>
+            <div className="space-y-3">
+              {eventTimeline.map((event: LifecycleEvent, index: number) => (
+                <EventTimelineItem key={index} event={event} isLast={index === eventTimeline.length - 1} />
+              ))}
             </div>
+          </div>
+        )}
 
-            {result.valid ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Detail label="Certificate no." value={result.certificateNumber ?? "Not set"} />
-                <Detail label="Student" value={result.studentDisplayName ?? "Private"} />
-                <Detail label="Type" value={result.certificateType ?? "Certificate"} />
-                <Detail label="Date generated" value={result.issuedAt ?? "Not set"} />
-                <Detail label="Issuing school" value={result.issuingSchool ?? "LANHS"} />
-                <Detail label="Blockchain tx" value={result.blockchainTxHash ?? "Pending"} />
-              </div>
-            ) : null}
-
-            {blockchainResult && <BlockchainVerificationBadge result={blockchainResult} />}
-
-            {eventTimeline && eventTimeline.length > 0 && (
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
-                <p className="mb-3 text-sm font-semibold text-slate-900">Blockchain Event Timeline</p>
-                <div className="space-y-3">
-                  {eventTimeline.map((event: LifecycleEvent, index: number) => (
-                    <EventTimelineItem key={index} event={event} isLast={index === eventTimeline.length - 1} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-3 rounded-md bg-rose-50 p-4 text-sm text-brand">
-              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-              <p>Public verification does not expose full grades or private student information.</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </main>
+        <div className="flex gap-3 rounded-md bg-rose-50 p-4 text-sm text-brand">
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <p>Public verification does not expose full grades or private student information.</p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
