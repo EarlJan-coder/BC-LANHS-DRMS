@@ -3,8 +3,8 @@ import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "reac
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
-type ButtonTone = "primary" | "secondary" | "ghost" | "danger";
-type ButtonSize = "sm" | "md" | "lg" | "icon";
+export type ButtonTone = "primary" | "secondary" | "ghost" | "danger";
+export type ButtonSize = "sm" | "md" | "lg" | "icon";
 
 const tones: Record<ButtonTone, string> = {
   primary: "bg-brand text-white shadow-sm hover:bg-brand-dark focus-visible:outline-brand",
