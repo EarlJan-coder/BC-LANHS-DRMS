@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
@@ -14,10 +14,16 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function submit(formData: FormData) {
+  // onSubmit (not <form action>): form actions auto-reset uncontrolled fields
+  // when they complete, wiping the form on failed attempts (same fix as
+  // change-password-form in ee0fc4d).
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (loading) return;
     setLoading(true);
     setError("");
 
+    const formData = new FormData(event.currentTarget);
     const payload = isSignup
       ? {
           email: formData.get("email"),
@@ -41,21 +47,22 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
 
       if (!response.ok) {
         setError(result.error ?? "Unable to continue. Check your details and try again.");
+        setLoading(false);
         return;
       }
 
+      // Keep the button pending through navigation; only errors clear it.
       router.replace(next ?? "/dashboard");
       router.refresh();
     } catch {
       setError("Unable to reach the server. Check your connection and try again.");
-    } finally {
       setLoading(false);
     }
   }
 
   return (
     <Card className="p-6 sm:p-7">
-      <form action={submit} className="grid gap-4">
+      <form onSubmit={submit} className="grid gap-4">
         {isSignup ? (
           <>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -115,7 +122,13 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
         ) : null}
 
         <Button type="submit" loading={loading} className="mt-1 w-full">
-          {isSignup ? "Create account" : "Log in"}
+          {isSignup
+            ? loading
+              ? "Creating account…"
+              : "Create account"
+            : loading
+              ? "Signing in…"
+              : "Log in"}
         </Button>
       </form>
     </Card>
