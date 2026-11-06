@@ -1,9 +1,8 @@
 import { RequestForm } from "@/components/request-form";
 import { SectionHeading } from "@/components/section-heading";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { getRequestEligibility } from "@/lib/services/document-requests";
-import Link from "next/link";
 
 export default async function SubmitRequestPage() {
   const eligibility = await getRequestEligibility();
@@ -27,9 +26,9 @@ export default async function SubmitRequestPage() {
           </CardHeader>
           <CardContent className="grid gap-4">
             <p className="text-rose-700">{message}</p>
-            <Link href="/student/profile">
-              <Button tone="secondary">Go to profile</Button>
-            </Link>
+            <ButtonLink href="/student/profile" tone="secondary">
+              Go to profile
+            </ButtonLink>
           </CardContent>
         </Card>
       </div>

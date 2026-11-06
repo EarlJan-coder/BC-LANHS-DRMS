@@ -1,9 +1,9 @@
 import { Download, Eye } from "lucide-react";
-import Link from "next/link";
 import { DataTable } from "@/components/data-table";
 import { SectionHeading } from "@/components/section-heading";
 import { ButtonLink } from "@/components/ui/button";
 import { DownloadButton } from "@/components/ui/download-button";
+import { PendingLink } from "@/components/ui/pending-link";
 import { listCertificateViews } from "@/lib/services/certificates";
 
 export default async function CertificatesPage() {
@@ -23,9 +23,11 @@ export default async function CertificatesPage() {
             key: "number",
             label: "Certificate no.",
             render: (row) => (
-              <Link href={`/registrar/certificates/${row.id}`} className="font-medium text-brand" prefetch={false}>
-                {row.certificateNumber}
-              </Link>
+              <PendingLink
+                href={`/registrar/certificates/${row.id}`}
+                label={row.certificateNumber}
+                className="font-medium text-brand"
+              />
             ),
           },
           { key: "student", label: "Student", render: (row) => row.studentName },

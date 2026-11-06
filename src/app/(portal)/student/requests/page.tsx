@@ -1,5 +1,4 @@
 import { Eye, FileDown } from "lucide-react";
-import Link from "next/link";
 import { DataTable } from "@/components/data-table";
 import { RequestFilterForm } from "@/components/request-filter-form";
 import { SectionHeading } from "@/components/section-heading";
@@ -7,6 +6,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DownloadButton } from "@/components/ui/download-button";
+import { PendingLink } from "@/components/ui/pending-link";
 import { listDocumentRequestViews } from "@/lib/services/live-data";
 
 export default async function MyRequestsPage({
@@ -50,9 +50,11 @@ export default async function MyRequestsPage({
             key: "tracking",
             label: "Tracking no.",
             render: (row) => (
-              <Link href={`/student/requests/${row.id}`} prefetch={false} className="font-medium text-brand">
-                {row.trackingNumber}
-              </Link>
+              <PendingLink
+                href={`/student/requests/${row.id}`}
+                label={row.trackingNumber}
+                className="font-medium text-brand"
+              />
             ),
           },
           { key: "type", label: "Document", render: (row) => row.documentType },
@@ -64,14 +66,13 @@ export default async function MyRequestsPage({
             label: "Actions",
             render: (row) => (
               <div className="flex gap-2">
-                <Link
+                <PendingLink
                   href={`/student/requests/${row.id}`}
-                  prefetch={false}
+                  label="View request"
+                  iconOnly
+                  icon={<Eye className="h-4 w-4" />}
                   className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-slate-600 hover:text-brand"
-                  aria-label="View request"
-                >
-                  <Eye className="h-4 w-4" />
-                </Link>
+                />
                 <DownloadButton
                   href={`/api/document-requests/${row.id}/slip`}
                   tone="secondary"
