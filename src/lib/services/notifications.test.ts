@@ -65,10 +65,32 @@ async function createFixtureNotification(
   return row;
 }
 
+// Fixture cleanup must not fail a test run: a transient remote-DB blip during
+// cleanup is not the behavior under test (same hardening as
+// account-admin.test.ts). Observed: cleanup failures under parallel test-file
+// load against the shared DB failed whole runs.
+async function withCleanupRetry(label: string, run: () => Promise<void>) {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      await run();
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
+    }
+  }
+  console.warn(`notifications.test.ts: fixture cleanup failed (${label}):`, lastError);
+}
+
 async function deleteFixtureUsers(ids: string[]) {
   const db = getDb();
-  await db.delete(notifications).where(inArray(notifications.userId, ids));
-  await db.delete(users).where(inArray(users.id, ids));
+  await withCleanupRetry("notifications", async () => {
+    await db.delete(notifications).where(inArray(notifications.userId, ids));
+  });
+  await withCleanupRetry("users", async () => {
+    await db.delete(users).where(inArray(users.id, ids));
+  });
 }
 
 describe("countUnread (integration, local DB)", {
@@ -237,7 +259,9 @@ describe("fanOutNewRequestNotification (integration, local DB)", {
       // Delete every row the fan-out created — including copies that landed on
       // REAL registrars — so a shared DB is left exactly as it was found.
       if (createdIds.length > 0) {
-        await db.delete(notifications).where(inArray(notifications.id, createdIds));
+        await withCleanupRetry("fan-out notifications", async () => {
+          await db.delete(notifications).where(inArray(notifications.id, createdIds));
+        });
       }
       await deleteFixtureUsers(everyone);
     }
