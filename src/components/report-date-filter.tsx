@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useTransition, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 
 export function ReportDateFilter({
   initialFrom,
@@ -18,13 +19,16 @@ export function ReportDateFilter({
   const pathname = usePathname();
   const [from, setFrom] = useState(initialFrom ?? "");
   const [to, setTo] = useState(initialTo ?? "");
+  const [isPending, startTransition] = useTransition();
 
   function apply(nextFrom: string, nextTo: string) {
     const params = new URLSearchParams();
     if (nextFrom) params.set("from", nextFrom);
     if (nextTo) params.set("to", nextTo);
     const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname);
+    startTransition(() => {
+      router.replace(query ? `${pathname}?${query}` : pathname);
+    });
   }
 
   function clear() {
@@ -66,11 +70,14 @@ export function ReportDateFilter({
             className="mt-1 w-[10.5rem]"
           />
         </div>
-        <Button type="button" tone="ghost" onClick={clear}>
+        <Button type="button" tone="ghost" onClick={clear} disabled={isPending}>
           Clear
         </Button>
       </div>
-      <p className="text-xs text-slate-500">Showing: {periodLabel}</p>
+      <p className="flex items-center gap-1.5 text-xs text-slate-500">
+        {isPending ? <Spinner className="h-3 w-3" /> : null}
+        Showing: {periodLabel}
+      </p>
     </div>
   );
 }

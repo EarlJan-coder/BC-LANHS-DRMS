@@ -30,6 +30,8 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import type { ReactNode } from "react";
+import { PendingForm } from "@/components/ui/pending-form";
+import { Spinner } from "@/components/ui/spinner";
 import { ROLE_LABELS } from "@/lib/constants";
 import { navigationByRole } from "@/lib/navigation";
 import { formatUnreadCount } from "@/lib/notifications";
@@ -75,22 +77,30 @@ function roleFromPath(pathname: string): DashboardRole {
 
 function HeaderSearchForm({ role, defaultValue = "" }: { role: DashboardRole; defaultValue?: string }) {
   return (
-    <form
+    <PendingForm
       role="search"
-      method="get"
       action={`/${role}/search`}
       className="hidden min-w-0 flex-1 items-center rounded-md border border-border bg-slate-50 px-3 py-2 sm:flex"
     >
-      <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
-      <input
-        type="search"
-        name="q"
-        defaultValue={defaultValue}
-        placeholder="Search records, requests, students"
-        aria-label="Search records, requests, students"
-        className="ml-2 w-full min-w-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500"
-      />
-    </form>
+      {({ isPending }) => (
+        <>
+          {isPending ? (
+            <Spinner className="shrink-0 text-slate-400" />
+          ) : (
+            <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+          )}
+          <input
+            key={defaultValue}
+            type="search"
+            name="q"
+            defaultValue={defaultValue}
+            placeholder="Search records, requests, students"
+            aria-label="Search records, requests, students"
+            className="ml-2 w-full min-w-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500"
+          />
+        </>
+      )}
+    </PendingForm>
   );
 }
 
@@ -123,9 +133,10 @@ function SidebarAccountActions({
         type="button"
         onClick={onSignOut}
         disabled={signingOut}
+        aria-busy={signingOut || undefined}
         className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-slate-600 transition hover:bg-rose-50 hover:text-brand disabled:opacity-60"
       >
-        <LogOut className="h-4 w-4" aria-hidden />
+        {signingOut ? <Spinner className="h-4 w-4" /> : <LogOut className="h-4 w-4" aria-hidden />}
         <span className="truncate">{signingOut ? "Signing out..." : "Sign out"}</span>
       </button>
     </div>

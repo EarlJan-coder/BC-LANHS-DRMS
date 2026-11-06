@@ -4,6 +4,7 @@ import { DataTable } from "@/components/data-table";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBadge } from "@/components/status-badge";
 import { ButtonLink } from "@/components/ui/button";
+import { DownloadButton } from "@/components/ui/download-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getStudentDashboardData } from "@/lib/services/live-data";
 
@@ -42,15 +43,14 @@ export default async function StudentDashboardPage() {
               key: "slip",
               label: "Slip",
               render: (row) => (
-                <ButtonLink
+                <DownloadButton
                   href={`/api/document-requests/${row.id}/slip`}
                   tone="secondary"
                   size="icon"
                   aria-label={`Download request slip for ${row.trackingNumber}`}
-                  download
                 >
                   <FileDown className="h-4 w-4" aria-hidden />
-                </ButtonLink>
+                </DownloadButton>
               ),
             },
           ]}

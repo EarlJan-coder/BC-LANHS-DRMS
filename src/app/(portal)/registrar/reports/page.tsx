@@ -1,7 +1,7 @@
 import { FileDown } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { DataTable, type TableColumn } from "@/components/data-table";
-import { ButtonLink } from "@/components/ui/button";
+import { DownloadButton } from "@/components/ui/download-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ReportDateFilter } from "@/components/report-date-filter";
 import { formatPeriodLabel, listReports, parseReportRange } from "@/lib/services/reports";
@@ -63,10 +63,10 @@ export default async function ReportsPage({
                     {report.periodNoun} &middot; {report.periodLabel}
                   </p>
                 </div>
-                <ButtonLink href={pdfHref(report.key, range.fromLabel, range.toLabel)} tone="primary">
+                <DownloadButton href={pdfHref(report.key, range.fromLabel, range.toLabel)} tone="primary" loadingLabel="Preparing PDF…">
                   <FileDown className="h-4 w-4" aria-hidden />
                   Export PDF
-                </ButtonLink>
+                </DownloadButton>
               </div>
 
               <DataTable

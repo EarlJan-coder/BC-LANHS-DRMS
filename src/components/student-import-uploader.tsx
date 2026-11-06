@@ -5,7 +5,8 @@ import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { DownloadButton } from "@/components/ui/download-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import type { StudentImportValidation } from "@/lib/services/student-import";
@@ -140,10 +141,10 @@ export function StudentImportUploader() {
                 <p className="text-xs text-slate-500">Maximum 5 MB and 500 student rows per import.</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <ButtonLink href="/api/students/import/template" tone="secondary">
+                <DownloadButton href="/api/students/import/template" tone="secondary" loadingLabel="Preparing template…">
                   <Download className="h-4 w-4" aria-hidden />
                   Download template
-                </ButtonLink>
+                </DownloadButton>
                 <Button type="submit" loading={loading === "validate"} disabled={busy}>
                   {loading === "validate" ? null : <UploadCloud className="h-4 w-4" aria-hidden />}
                   {loading === "validate" ? "Checking…" : "Validate file"}

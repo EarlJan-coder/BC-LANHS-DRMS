@@ -2,6 +2,7 @@ import { Download, ExternalLink, PencilLine, QrCode } from "lucide-react";
 import { notFound } from "next/navigation";
 import { SectionHeading } from "@/components/section-heading";
 import { ButtonLink } from "@/components/ui/button";
+import { DownloadButton } from "@/components/ui/download-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCertificateView } from "@/lib/services/certificates";
 
@@ -31,10 +32,10 @@ export default async function CertificateDetailsPage({
               <PencilLine className="h-4 w-4" aria-hidden />
               Preview &amp; edit PDF
             </ButtonLink>
-            <ButtonLink href={`/api/certificates/${certificate.id}/pdf`}>
+            <DownloadButton href={`/api/certificates/${certificate.id}/pdf`} tone="primary" loadingLabel="Preparing PDF…">
               <Download className="h-4 w-4" aria-hidden />
               Download PDF
-            </ButtonLink>
+            </DownloadButton>
           </>
         }
       />

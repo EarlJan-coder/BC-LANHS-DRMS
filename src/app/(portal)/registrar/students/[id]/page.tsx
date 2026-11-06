@@ -4,6 +4,7 @@ import { DataTable } from "@/components/data-table";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBadge } from "@/components/status-badge";
 import { ButtonLink } from "@/components/ui/button";
+import { DownloadButton } from "@/components/ui/download-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getStudentDetailView } from "@/lib/services/live-data";
 
@@ -66,9 +67,9 @@ export default async function RegistrarStudentDetailsPage({
               key: "download",
               label: "PDF",
               render: (row) => (
-                <ButtonLink href={`/api/certificates/${row.id}/pdf`} tone="secondary" size="icon" aria-label="Download PDF">
+                <DownloadButton href={`/api/certificates/${row.id}/pdf`} tone="secondary" size="icon" aria-label="Download PDF">
                   <Download className="h-4 w-4" />
-                </ButtonLink>
+                </DownloadButton>
               ),
             },
           ]}

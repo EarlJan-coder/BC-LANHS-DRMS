@@ -3,6 +3,7 @@ import Link from "next/link";
 import { DataTable } from "@/components/data-table";
 import { SectionHeading } from "@/components/section-heading";
 import { ButtonLink } from "@/components/ui/button";
+import { DownloadButton } from "@/components/ui/download-button";
 import { listCertificateViews } from "@/lib/services/certificates";
 
 export default async function CertificatesPage() {
@@ -39,9 +40,9 @@ export default async function CertificatesPage() {
                 <ButtonLink href={`/registrar/certificates/${row.id}`} tone="secondary" size="icon" aria-label="View certificate">
                   <Eye className="h-4 w-4" />
                 </ButtonLink>
-                <ButtonLink href={`/api/certificates/${row.id}/pdf`} tone="secondary" size="icon" aria-label="Download PDF">
+                <DownloadButton href={`/api/certificates/${row.id}/pdf`} tone="secondary" size="icon" aria-label="Download PDF">
                   <Download className="h-4 w-4" />
-                </ButtonLink>
+                </DownloadButton>
               </div>
             ),
           },
