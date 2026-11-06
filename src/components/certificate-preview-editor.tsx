@@ -6,6 +6,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DownloadButton } from "@/components/ui/download-button";
+import { Spinner } from "@/components/ui/spinner";
 
 export interface CertificateEditValues {
   studentName: string;
@@ -34,6 +36,9 @@ export function CertificatePreviewEditor({
   const [clearing, setClearing] = useState(false);
   // Bumped after each save so the iframe re-renders the PDF with new content.
   const [previewRev, setPreviewRev] = useState(0);
+  // True on first mount and after each save/reset, until the iframe finishes
+  // loading the (slow) server-side PDF render.
+  const [previewLoading, setPreviewLoading] = useState(true);
 
   function setField(field: keyof CertificateEditValues, value: string) {
     setValues((current) => ({ ...current, [field]: value }));
@@ -63,6 +68,7 @@ export function CertificatePreviewEditor({
       }
 
       toast.success("Certificate content saved. Preview updated.");
+      setPreviewLoading(true);
       setPreviewRev((rev) => rev + 1);
       router.refresh();
     } catch {
@@ -112,6 +118,7 @@ export function CertificatePreviewEditor({
       }
 
       toast.success("Overrides cleared. Preview now shows the record values.");
+      setPreviewLoading(true);
       setPreviewRev((rev) => rev + 1);
       router.refresh();
     } catch {
@@ -187,20 +194,22 @@ export function CertificatePreviewEditor({
 
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={save} loading={saving} disabled={saving || clearing}>
-              <Save className="h-4 w-4" aria-hidden />
-              Save &amp; refresh preview
+              {saving ? null : <Save className="h-4 w-4" aria-hidden />}
+              {saving ? "Saving…" : "Save & refresh preview"}
             </Button>
             <Button type="button" tone="secondary" onClick={resetToRecord} loading={clearing} disabled={saving || clearing}>
-              <RotateCcw className="h-4 w-4" aria-hidden />
-              Reset to record values
+              {clearing ? null : <RotateCcw className="h-4 w-4" aria-hidden />}
+              {clearing ? "Resetting…" : "Reset to record values"}
             </Button>
-            <a
+            <DownloadButton
               href={`/api/certificates/${certificateId}/pdf`}
-              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              tone="secondary"
+              loadingLabel="Preparing PDF…"
+              className="shrink-0"
             >
               <Download className="h-4 w-4" aria-hidden />
               Download PDF
-            </a>
+            </DownloadButton>
           </div>
         </CardContent>
       </Card>
@@ -210,12 +219,22 @@ export function CertificatePreviewEditor({
           <CardTitle>PDF preview</CardTitle>
         </CardHeader>
         <CardContent>
-          <iframe
-            key={previewRev}
-            src={`/api/certificates/${certificateId}/pdf?inline=1&rev=${previewRev}`}
-            title="Certificate PDF preview"
-            className="h-[720px] w-full rounded-md border border-border bg-slate-100"
-          />
+          <div className="relative">
+            <iframe
+              key={previewRev}
+              src={`/api/certificates/${certificateId}/pdf?inline=1&rev=${previewRev}`}
+              title="Certificate PDF preview"
+              aria-busy={previewLoading || undefined}
+              className="h-[720px] w-full rounded-md border border-border bg-slate-100"
+              onLoad={() => setPreviewLoading(false)}
+            />
+            {previewLoading ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-md border border-border bg-slate-50">
+                <Spinner className="h-6 w-6 text-brand" />
+                <p className="text-sm text-slate-600">Rendering certificate PDF…</p>
+              </div>
+            ) : null}
+          </div>
         </CardContent>
       </Card>
     </div>
