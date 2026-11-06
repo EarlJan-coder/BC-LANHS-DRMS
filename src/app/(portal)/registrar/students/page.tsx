@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { DataTable } from "@/components/data-table";
 import { SectionHeading } from "@/components/section-heading";
+import { PendingLink } from "@/components/ui/pending-link";
 import { StudentRecordActions } from "@/components/student-record-actions";
 import { StudentRecordForm } from "@/components/student-record-form";
 import { ButtonLink } from "@/components/ui/button";
@@ -33,9 +33,11 @@ export default async function StudentRecordsPage() {
             key: "name",
             label: "Name",
             render: (row) => (
-              <Link href={`/registrar/students/${row.id}`} prefetch={false} className="font-medium text-brand">
-                {row.name}
-              </Link>
+              <PendingLink
+                href={`/registrar/students/${row.id}`}
+                label={row.name}
+                className="font-medium text-brand"
+              />
             ),
           },
           { key: "grade", label: "Grade level", render: (row) => row.gradeLevel },

@@ -31,6 +31,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import type { ReactNode } from "react";
 import { PendingForm } from "@/components/ui/pending-form";
+import { LinkPendingContent } from "@/components/ui/pending-link";
 import { Spinner } from "@/components/ui/spinner";
 import { ROLE_LABELS } from "@/lib/constants";
 import { navigationByRole } from "@/lib/navigation";
@@ -126,8 +127,9 @@ function SidebarAccountActions({
         onClick={onNavigate}
         className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-slate-600 transition hover:bg-rose-50 hover:text-brand"
       >
-        <KeyRound className="h-4 w-4" aria-hidden />
-        <span className="truncate">Change password</span>
+        <LinkPendingContent icon={<KeyRound className="h-4 w-4" aria-hidden />} className="gap-3">
+          <span className="truncate">Change password</span>
+        </LinkPendingContent>
       </Link>
       <button
         type="button"
@@ -186,8 +188,9 @@ export function PortalShell({ children, unreadCount }: { children: ReactNode; un
                   active ? "bg-brand text-white" : "text-slate-600 hover:bg-rose-50 hover:text-brand",
                 )}
               >
-                <Icon className="h-4 w-4" aria-hidden />
-                <span className="truncate">{item.label}</span>
+                <LinkPendingContent icon={<Icon className="h-4 w-4" aria-hidden />} className="gap-3">
+                  <span className="truncate">{item.label}</span>
+                </LinkPendingContent>
                 {item.badge && badgeLabel ? (
                   <span
                     aria-label={`${badgeLabel} unread`}
@@ -245,8 +248,9 @@ export function PortalShell({ children, unreadCount }: { children: ReactNode; un
                   active ? "bg-brand text-white" : "text-slate-600 hover:bg-rose-50 hover:text-brand",
                 )}
               >
-                <Icon className="h-4 w-4" aria-hidden />
-                <span className="truncate">{item.label}</span>
+                <LinkPendingContent icon={<Icon className="h-4 w-4" aria-hidden />} className="gap-3">
+                  <span className="truncate">{item.label}</span>
+                </LinkPendingContent>
                 {item.badge && badgeLabel ? (
                   <span
                     aria-label={`${badgeLabel} unread`}

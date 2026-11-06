@@ -9,6 +9,7 @@ export function ChangePasswordSignOut() {
   const [loading, setLoading] = useState(false);
 
   async function signOut() {
+    if (loading) return;
     setLoading(true);
     try {
       await fetch("/api/auth/logout", { method: "POST" });
@@ -20,7 +21,7 @@ export function ChangePasswordSignOut() {
 
   return (
     <Button type="button" tone="secondary" loading={loading} onClick={signOut}>
-      Sign out
+      {loading ? "Signing out…" : "Sign out"}
     </Button>
   );
 }

@@ -47,6 +47,7 @@ export function ReportDateFilter({
             type="date"
             value={from}
             max={to || undefined}
+            disabled={isPending}
             onChange={(event) => {
               const value = event.target.value;
               setFrom(value);
@@ -62,6 +63,7 @@ export function ReportDateFilter({
             type="date"
             value={to}
             min={from || undefined}
+            disabled={isPending}
             onChange={(event) => {
               const value = event.target.value;
               setTo(value);

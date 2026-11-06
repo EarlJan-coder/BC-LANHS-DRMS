@@ -2,6 +2,7 @@ import { SearchX } from "lucide-react";
 import Link from "next/link";
 import { SectionHeading } from "@/components/section-heading";
 import { Card } from "@/components/ui/card";
+import { LinkPendingContent, PendingLink } from "@/components/ui/pending-link";
 import type { SearchGroup } from "@/lib/services/portal-search";
 
 export function SearchResults({ query, groups }: { query: string; groups: SearchGroup[] }) {
@@ -49,13 +50,11 @@ export function SearchResults({ query, groups }: { query: string; groups: Search
                 </span>
               </h2>
               {group.viewAllHref ? (
-                <Link
+                <PendingLink
                   href={`${group.viewAllHref}?q=${encodeURIComponent(trimmed)}`}
-                  prefetch={false}
+                  label="View all"
                   className="shrink-0 text-xs font-medium text-brand hover:underline"
-                >
-                  View all
-                </Link>
+                />
               ) : null}
             </div>
             <ul className="divide-y divide-border">
@@ -66,12 +65,14 @@ export function SearchResults({ query, groups }: { query: string; groups: Search
                     prefetch={false}
                     className="flex items-center justify-between gap-3 px-4 py-3 transition hover:bg-rose-50/40"
                   >
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-brand">{hit.title}</span>
-                      {hit.subtitle ? (
-                        <span className="block truncate text-xs text-slate-500">{hit.subtitle}</span>
-                      ) : null}
-                    </span>
+                    <LinkPendingContent>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-brand">{hit.title}</span>
+                        {hit.subtitle ? (
+                          <span className="block truncate text-xs text-slate-500">{hit.subtitle}</span>
+                        ) : null}
+                      </span>
+                    </LinkPendingContent>
                     {hit.meta ? (
                       <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
                         {hit.meta}

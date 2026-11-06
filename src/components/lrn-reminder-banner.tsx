@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { AlertCircle, UserCog } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 
 export interface LrnReminderBannerProps {
   reason: "no_record" | "no_lrn";
@@ -23,12 +22,10 @@ export function LrnReminderBanner({ reason }: LrnReminderBannerProps) {
             <p className="text-sm text-amber-700 mt-1">{message}</p>
           </div>
         </div>
-        <Link href="/student/profile">
-          <Button tone="primary" size="sm" className="gap-1">
-            <UserCog className="h-4 w-4" aria-hidden="true" />
-            Go to profile
-          </Button>
-        </Link>
+        <ButtonLink href="/student/profile" tone="primary" size="sm" className="gap-1">
+          <UserCog className="h-4 w-4" aria-hidden="true" />
+          Go to profile
+        </ButtonLink>
       </CardContent>
     </Card>
   );

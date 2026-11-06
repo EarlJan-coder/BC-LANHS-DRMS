@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { AuthForm } from "@/components/auth-form";
 import { AppLogo } from "@/components/layout/app-logo";
+import { PendingLink } from "@/components/ui/pending-link";
 
 export default function SignUpPage() {
   return (
@@ -16,9 +16,11 @@ export default function SignUpPage() {
         <AuthForm mode="signup" />
         <p className="mt-5 text-center text-sm text-slate-600">
           Already registered?{" "}
-          <Link href="/sign-in" className="font-semibold text-brand hover:text-brand-dark">
-            Log in
-          </Link>
+          <PendingLink
+            href="/sign-in"
+            label="Log in"
+            className="font-semibold text-brand hover:text-brand-dark"
+          />
         </p>
       </div>
     </main>

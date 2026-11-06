@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
@@ -37,14 +38,19 @@ export function ChangePasswordForm({ mustChangePassword }: { mustChangePassword:
 
       if (!response.ok) {
         setError(result.error ?? "Unable to change the password right now.");
+        setLoading(false);
         return;
       }
 
-      router.replace("/dashboard");
+      // The API bumps tokenVersion and re-issues a session; sign out so the
+      // user logs in fresh with the new password (their chosen flow).
+      toast.success("Password changed — sign in with your new password.");
+      await fetch("/api/auth/logout", { method: "POST" }).catch(() => undefined);
+      // Keep the button pending through navigation; only errors clear it.
+      router.replace("/sign-in");
       router.refresh();
     } catch {
       setError("Unable to reach the server. Check your connection and try again.");
-    } finally {
       setLoading(false);
     }
   }
@@ -105,7 +111,7 @@ export function ChangePasswordForm({ mustChangePassword }: { mustChangePassword:
         ) : null}
 
         <Button type="submit" loading={loading} className="mt-1 w-full">
-          Set new password
+          {loading ? "Changing…" : "Set new password"}
         </Button>
       </form>
     </Card>

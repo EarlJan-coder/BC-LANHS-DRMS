@@ -53,16 +53,17 @@ function ConfirmDialogPanel({
     return () => window.clearTimeout(timer);
   }, [reason]);
 
-  // Escape closes the dialog.
+  // Escape closes the dialog, but not while a confirm action is in flight
+  // (same gating as the backdrop and cancel button).
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !loading) {
         onCancel();
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onCancel]);
+  }, [onCancel, loading]);
 
   const reasonRequired = Boolean(reason);
   const canConfirm = !reasonRequired || reasonValue.trim().length > 0;

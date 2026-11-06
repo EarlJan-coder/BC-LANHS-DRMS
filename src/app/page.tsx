@@ -1,9 +1,9 @@
 import { ArrowRight, Blocks, FileCheck2, ShieldCheck, UsersRound } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import { AppLogo } from "@/components/layout/app-logo";
 import { MotionReveal } from "@/components/motion-reveal";
 import { ButtonLink } from "@/components/ui/button";
+import { PendingLink } from "@/components/ui/pending-link";
 import { Card } from "@/components/ui/card";
 import { SCHOOL_NAME } from "@/lib/constants";
 
@@ -37,9 +37,11 @@ export default function Home() {
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <AppLogo />
           <nav className="hidden items-center gap-2 sm:flex">
-            <Link href="/about" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:text-brand">
-              About
-            </Link>
+            <PendingLink
+              href="/about"
+              label="About"
+              className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:text-brand"
+            />
             <ButtonLink href="/sign-in" tone="secondary">
               Login
             </ButtonLink>

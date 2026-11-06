@@ -96,6 +96,7 @@ export function AcademicSetupManager({ data }: { data: AcademicSetupData }) {
     success: string;
     resetRef?: RefObject<HTMLFormElement | null>;
   }) {
+    if (submitting !== null) return;
     const key = id ? `${entity}-${id}` : `${entity}-new`;
     setSubmitting(key);
 
@@ -228,14 +229,16 @@ function SchoolYearsPanel({
       form={
         <form
           ref={formRef}
-          action={(formData) =>
+          onSubmit={(event) => {
+            event.preventDefault();
+            const formData = new FormData(event.currentTarget);
             save({
               entity: "school-years",
               payload: schoolYearPayload(formData),
               success: "School year added.",
               resetRef: formRef,
-            })
-          }
+            });
+          }}
           className="grid gap-4"
         >
           <Field id="new-school-year-name" label="School year" name="name" placeholder="2026-2027" required />
@@ -261,14 +264,16 @@ function SchoolYearsPanel({
           rows.map((row) => (
             <form
               key={row.id}
-              action={(formData) =>
+              onSubmit={(event) => {
+                event.preventDefault();
+                const formData = new FormData(event.currentTarget);
                 save({
                   entity: "school-years",
                   id: row.id,
                   payload: schoolYearPayload(formData),
                   success: "School year updated.",
-                })
-              }
+                });
+              }}
               className="grid gap-3 px-5 py-4 lg:grid-cols-[1.2fr_150px_150px_120px_auto] lg:items-end"
             >
               <Field id={`school-year-name-${row.id}`} label="School year" name="name" defaultValue={row.name} required />
@@ -320,14 +325,16 @@ function GradeLevelsPanel({
       form={
         <form
           ref={formRef}
-          action={(formData) =>
+          onSubmit={(event) => {
+            event.preventDefault();
+            const formData = new FormData(event.currentTarget);
             save({
               entity: "grade-levels",
               payload: gradeLevelPayload(formData),
               success: "Grade level added.",
               resetRef: formRef,
-            })
-          }
+            });
+          }}
           className="grid gap-4"
         >
           <Field id="new-grade-level-name" label="Grade level" name="name" placeholder="Grade 12" required />
@@ -350,14 +357,16 @@ function GradeLevelsPanel({
           rows.map((row) => (
             <form
               key={row.id}
-              action={(formData) =>
+              onSubmit={(event) => {
+                event.preventDefault();
+                const formData = new FormData(event.currentTarget);
                 save({
                   entity: "grade-levels",
                   id: row.id,
                   payload: gradeLevelPayload(formData),
                   success: "Grade level updated.",
-                })
-              }
+                });
+              }}
               className="grid gap-3 px-5 py-4 lg:grid-cols-[1.2fr_120px_120px_120px_auto] lg:items-end"
             >
               <Field id={`grade-level-name-${row.id}`} label="Grade level" name="name" defaultValue={row.name} required />
@@ -418,14 +427,16 @@ function SectionsPanel({
       form={
         <form
           ref={formRef}
-          action={(formData) =>
+          onSubmit={(event) => {
+            event.preventDefault();
+            const formData = new FormData(event.currentTarget);
             save({
               entity: "sections",
               payload: sectionPayload(formData),
               success: "Section added.",
               resetRef: formRef,
-            })
-          }
+            });
+          }}
           className="grid gap-4"
         >
           <Field id="new-section-name" label="Section" name="name" placeholder="STEM - Aguado" required />
@@ -455,14 +466,16 @@ function SectionsPanel({
           rows.map((row) => (
             <form
               key={row.id}
-              action={(formData) =>
+              onSubmit={(event) => {
+                event.preventDefault();
+                const formData = new FormData(event.currentTarget);
                 save({
                   entity: "sections",
                   id: row.id,
                   payload: sectionPayload(formData),
                   success: "Section updated.",
-                })
-              }
+                });
+              }}
               className="grid gap-3 px-5 py-4 2xl:grid-cols-[1.1fr_220px_200px_1fr_120px_auto] 2xl:items-end"
             >
               <Field id={`section-name-${row.id}`} label="Section" name="name" defaultValue={row.name} required />
@@ -525,14 +538,16 @@ function DocumentTypesPanel({
       form={
         <form
           ref={formRef}
-          action={(formData) =>
+          onSubmit={(event) => {
+            event.preventDefault();
+            const formData = new FormData(event.currentTarget);
             save({
               entity: "document-types",
               payload: documentTypePayload(formData),
               success: "Document type added.",
               resetRef: formRef,
-            })
-          }
+            });
+          }}
           className="grid gap-4"
         >
           <Field id="new-document-type-name" label="Document type name" name="name" placeholder="Transcript of Records" required />
@@ -575,14 +590,16 @@ function DocumentTypesPanel({
           rows.map((row) => (
             <form
               key={row.id}
-              action={(formData) =>
+              onSubmit={(event) => {
+                event.preventDefault();
+                const formData = new FormData(event.currentTarget);
                 save({
                   entity: "document-types",
                   id: row.id,
                   payload: documentTypePayload(formData),
                   success: "Document type updated.",
-                })
-              }
+                });
+              }}
               className="grid gap-3 px-5 py-4 2xl:grid-cols-[1.2fr_130px_1fr_120px_120px_auto] 2xl:items-end"
             >
               <Field id={`document-type-name-${row.id}`} label="Name" name="name" defaultValue={row.name} required />

@@ -132,6 +132,7 @@ export function StudentImportUploader() {
                   type="file"
                   accept=".csv,.xls,.xlsx"
                   required
+                  disabled={busy}
                   onChange={() => {
                     setValidation(null);
                     setImportedCount(null);

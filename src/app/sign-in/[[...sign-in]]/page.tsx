@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { AuthForm } from "@/components/auth-form";
 import { AppLogo } from "@/components/layout/app-logo";
+import { PendingLink } from "@/components/ui/pending-link";
 import { sanitizeRedirectPath } from "@/lib/utils";
 
 export default async function SignInPage({
@@ -24,9 +24,11 @@ export default async function SignInPage({
         <AuthForm mode="login" next={redirectTo} />
         <p className="mt-5 text-center text-sm text-slate-600">
           New to the portal?{" "}
-          <Link href="/sign-up" className="font-semibold text-brand hover:text-brand-dark">
-            Create an account
-          </Link>
+          <PendingLink
+            href="/sign-up"
+            label="Create an account"
+            className="font-semibold text-brand hover:text-brand-dark"
+          />
         </p>
       </div>
     </main>

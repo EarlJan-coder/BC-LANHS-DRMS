@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
+import { LinkPendingContent } from "@/components/ui/pending-link";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
@@ -69,7 +70,11 @@ export function ButtonLink({
 }) {
   return (
     <Link className={cn(base, tones[tone], sizes[size], className)} prefetch={false} {...props}>
-      {children}
+      {size === "icon" ? (
+        <LinkPendingContent icon={children} />
+      ) : (
+        <LinkPendingContent>{children}</LinkPendingContent>
+      )}
     </Link>
   );
 }

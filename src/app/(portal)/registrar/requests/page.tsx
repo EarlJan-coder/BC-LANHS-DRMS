@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { DataTable } from "@/components/data-table";
 import { RequestFilterForm } from "@/components/request-filter-form";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBadge } from "@/components/status-badge";
 import { Card } from "@/components/ui/card";
+import { PendingLink } from "@/components/ui/pending-link";
 import { listDocumentRequestViews } from "@/lib/services/live-data";
 
 export default async function RegistrarRequestsPage({
@@ -51,9 +51,11 @@ export default async function RegistrarRequestsPage({
             key: "tracking",
             label: "Tracking no.",
             render: (row) => (
-              <Link href={`/registrar/requests/${row.id}`} prefetch={false} className="font-medium text-brand">
-                {row.trackingNumber}
-              </Link>
+              <PendingLink
+                href={`/registrar/requests/${row.id}`}
+                label={row.trackingNumber}
+                className="font-medium text-brand"
+              />
             ),
           },
           { key: "student", label: "Student", render: (row) => row.studentName },

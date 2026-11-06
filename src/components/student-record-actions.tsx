@@ -2,7 +2,7 @@
 
 import { Pencil, Save, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
@@ -52,8 +52,16 @@ export function StudentRecordActions({
     setEditing(true);
   }
 
-  async function onSubmit(formData: FormData) {
+  // onSubmit (not <form action>): inside a form action the `saving` state never
+  // renders while the action is in flight, so the "Saving…" label and the
+  // Close/Cancel/Edit gating would not engage during a slow request (same fix
+  // pattern as auth-form / change-password-form).
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (saving) return;
     setSaving(true);
+
+    const formData = new FormData(event.currentTarget);
 
     try {
       const response = await fetch(`/api/students/${student.id}`, {
@@ -103,7 +111,14 @@ export function StudentRecordActions({
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" tone="secondary" size="sm" onClick={openEditor} aria-label={`Edit ${student.name}`}>
+        <Button
+          type="button"
+          tone="secondary"
+          size="sm"
+          onClick={openEditor}
+          disabled={saving || deleting}
+          aria-label={`Edit ${student.name}`}
+        >
           <Pencil className="h-4 w-4" aria-hidden />
           Edit
         </Button>
@@ -113,6 +128,7 @@ export function StudentRecordActions({
           size="sm"
           onClick={() => setConfirmDeleteOpen(true)}
           loading={deleting}
+          disabled={saving || deleting}
           aria-label={`Delete ${student.name}`}
         >
           {deleting ? null : <Trash2 className="h-4 w-4" aria-hidden />}
@@ -153,14 +169,16 @@ export function StudentRecordActions({
                 tone="ghost"
                 size="icon"
                 onClick={() => setEditing(false)}
+                disabled={saving || deleting}
                 aria-label="Close edit student dialog"
               >
                 <X className="h-4 w-4" aria-hidden />
               </Button>
             </div>
 
-            <form action={onSubmit}>
-              <div className="grid max-h-[calc(100vh-14rem)] gap-4 overflow-y-auto px-5 py-5 md:grid-cols-2">
+            <form onSubmit={onSubmit}>
+              <fieldset disabled={saving} className="contents">
+                <div className="grid max-h-[calc(100vh-14rem)] gap-4 overflow-y-auto px-5 py-5 md:grid-cols-2">
                 <Field id={`edit-lrn-${student.id}`} label="LRN" name="lrn" defaultValue={student.lrn} required />
                 <Field
                   id={`edit-firstName-${student.id}`}
@@ -252,9 +270,10 @@ export function StudentRecordActions({
                   <Textarea id={`edit-address-${student.id}`} name="address" defaultValue={student.address} />
                 </div>
               </div>
+              </fieldset>
 
               <div className="flex flex-col-reverse gap-2 border-t border-border bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end">
-                <Button type="button" tone="secondary" onClick={() => setEditing(false)}>
+                <Button type="button" tone="secondary" onClick={() => setEditing(false)} disabled={saving || deleting}>
                   Cancel
                 </Button>
                 <Button type="submit" loading={saving}>
