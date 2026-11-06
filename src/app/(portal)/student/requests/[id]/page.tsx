@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBadge } from "@/components/status-badge";
 import { ButtonLink } from "@/components/ui/button";
+import { DownloadButton } from "@/components/ui/download-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDocumentRequestView, listRequestStatusHistoryViews } from "@/lib/services/live-data";
 
@@ -29,10 +30,10 @@ export default async function StudentRequestDetailsPage({
         description={request.trackingNumber}
         actions={
           <div className="flex flex-wrap gap-2">
-            <ButtonLink href={`/api/document-requests/${request.id}/slip`} download>
+            <DownloadButton href={`/api/document-requests/${request.id}/slip`} tone="primary" loadingLabel="Preparing slip…">
               <FileDown className="h-4 w-4" aria-hidden />
               Download slip
-            </ButtonLink>
+            </DownloadButton>
             <ButtonLink href="/student/requests" tone="secondary">Back to requests</ButtonLink>
           </div>
         }

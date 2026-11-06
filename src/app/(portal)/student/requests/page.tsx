@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input, Label, Select } from "@/components/ui/input";
 import { ButtonLink } from "@/components/ui/button";
+import { DownloadButton } from "@/components/ui/download-button";
 import { REQUEST_STATUSES } from "@/lib/constants";
 import { listDocumentRequestViews } from "@/lib/services/live-data";
 
@@ -85,13 +86,15 @@ export default async function MyRequestsPage({
                 >
                   <Eye className="h-4 w-4" />
                 </Link>
-                <a
+                <DownloadButton
                   href={`/api/document-requests/${row.id}/slip`}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-slate-600 hover:text-brand"
+                  tone="secondary"
+                  size="icon"
+                  className="h-9 w-9 border-border bg-transparent text-slate-600 hover:bg-transparent hover:text-brand"
                   aria-label="Download request slip"
                 >
                   <FileDown className="h-4 w-4" />
-                </a>
+                </DownloadButton>
               </div>
             ),
           },
