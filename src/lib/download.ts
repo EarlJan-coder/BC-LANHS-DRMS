@@ -30,6 +30,18 @@ export function filenameFromContentDisposition(
   return undefined;
 }
 
+/**
+ * Pick the toast message for a failed download: the server's own error body
+ * (e.g. proxy 401 "Please sign in to continue.") beats a generic status text.
+ */
+export function downloadErrorMessage(status: number, body: unknown): string {
+  const message = (body as { error?: unknown } | null)?.error;
+  if (typeof message === "string" && message) {
+    return message;
+  }
+  return `Download failed (HTTP ${status}). Please try again.`;
+}
+
 function decodeExtendedValue(value: string): string {
   try {
     return decodeURIComponent(value.trim());

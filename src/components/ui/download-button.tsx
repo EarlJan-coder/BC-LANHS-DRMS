@@ -3,7 +3,7 @@
 import { useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button, type ButtonSize, type ButtonTone } from "@/components/ui/button";
-import { filenameFromContentDisposition } from "@/lib/download";
+import { downloadErrorMessage, filenameFromContentDisposition } from "@/lib/download";
 
 /**
  * Attachment-download button with in-flight feedback.
@@ -40,7 +40,8 @@ export function DownloadButton({
     try {
       const response = await fetch(href, { credentials: "same-origin" });
       if (!response.ok) {
-        toast.error(`Download failed (HTTP ${response.status}). Please try again.`);
+        const body = await response.json().catch(() => null);
+        toast.error(downloadErrorMessage(response.status, body));
         return;
       }
       const blob = await response.blob();
@@ -54,7 +55,10 @@ export function DownloadButton({
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
-      URL.revokeObjectURL(url);
+      // Defer revocation: the browser reads the blob asynchronously (Safari,
+      // Firefox, save-as prompts), and revoking in the same tick can truncate
+      // or fail the download.
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } catch {
       toast.error("Download failed. Check your connection and try again.");
     } finally {

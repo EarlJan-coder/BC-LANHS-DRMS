@@ -90,6 +90,7 @@ function HeaderSearchForm({ role, defaultValue = "" }: { role: DashboardRole; de
             <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
           )}
           <input
+            key={defaultValue}
             type="search"
             name="q"
             defaultValue={defaultValue}

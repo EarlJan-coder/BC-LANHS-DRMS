@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { PendingForm } from "@/components/ui/pending-form";
@@ -24,7 +25,10 @@ export function RequestFilterForm({
   return (
     <PendingForm className={className}>
       {({ isPending }) => (
-        <>
+        // Keyed by the URL-derived initial values so client-side navigations
+        // that change the query (incl. history back to an unfiltered URL)
+        // remount the fields instead of leaving stale uncontrolled values.
+        <Fragment key={`${initialQuery}|${initialStatus}|${initialDocumentType}`}>
           <div className="grid gap-2">
             <Label htmlFor="q">Search</Label>
             <Input id="q" name="q" defaultValue={initialQuery} placeholder={queryPlaceholder} />
@@ -54,7 +58,7 @@ export function RequestFilterForm({
           <Button type="submit" loading={isPending}>
             {isPending ? "Applying…" : "Filter"}
           </Button>
-        </>
+        </Fragment>
       )}
     </PendingForm>
   );

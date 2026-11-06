@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { filenameFromContentDisposition } from "@/lib/download";
+import { downloadErrorMessage, filenameFromContentDisposition } from "@/lib/download";
 
 describe("filenameFromContentDisposition", () => {
   it("parses a quoted filename", () => {
@@ -58,5 +58,25 @@ describe("filenameFromContentDisposition", () => {
   it("returns undefined when the filename is only a path or empty", () => {
     assert.equal(filenameFromContentDisposition('attachment; filename=".."'), undefined);
     assert.equal(filenameFromContentDisposition('attachment; filename=""'), undefined);
+  });
+});
+
+describe("downloadErrorMessage", () => {
+  it("prefers the server's error message", () => {
+    assert.equal(
+      downloadErrorMessage(401, { error: "Please sign in to continue." }),
+      "Please sign in to continue.",
+    );
+    assert.equal(
+      downloadErrorMessage(403, { error: "Change your password before continuing." }),
+      "Change your password before continuing.",
+    );
+  });
+
+  it("falls back to a status message when the body has no usable error", () => {
+    assert.equal(downloadErrorMessage(500, null), "Download failed (HTTP 500). Please try again.");
+    assert.equal(downloadErrorMessage(502, { error: 42 }), "Download failed (HTTP 502). Please try again.");
+    assert.equal(downloadErrorMessage(404, { error: "" }), "Download failed (HTTP 404). Please try again.");
+    assert.equal(downloadErrorMessage(500, "not json"), "Download failed (HTTP 500). Please try again.");
   });
 });

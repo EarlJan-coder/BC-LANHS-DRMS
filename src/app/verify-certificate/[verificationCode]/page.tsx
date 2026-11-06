@@ -78,14 +78,23 @@ async function VerificationResult({ verificationCode }: { verificationCode: stri
 
   let blockchainResult;
   if (result.valid && result.certificateNumber) {
-    const db = getDb();
-    if (db) {
-      const cert = await db.query.certificates.findFirst({
-        where: eq(certificates.certificateNumber, result.certificateNumber),
-      });
-      if (cert) {
-        blockchainResult = await verifyCertificateOnChain(cert.id);
+    try {
+      const db = getDb();
+      if (db) {
+        const cert = await db.query.certificates.findFirst({
+          where: eq(certificates.certificateNumber, result.certificateNumber),
+        });
+        if (cert) {
+          blockchainResult = await verifyCertificateOnChain(cert.id);
+        }
       }
+    } catch {
+      // The DB verification result must survive a blockchain client failure.
+      blockchainResult = {
+        valid: false,
+        blockchainVerified: false,
+        reason: "Unable to query blockchain proof",
+      };
     }
   }
 
