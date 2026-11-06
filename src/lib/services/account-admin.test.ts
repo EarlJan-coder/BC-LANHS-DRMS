@@ -30,7 +30,20 @@ after(async () => {
 async function deleteUsers(ids: string[]) {
   if (ids.length === 0) return;
   const db = getDb();
-  await db.delete(users).where(inArray(users.id, ids));
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      await db.delete(users).where(inArray(users.id, ids));
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
+    }
+  }
+  // Cleanup is not the behavior under test, and fixture emails are run-unique,
+  // so a transient remote-DB failure here must neither fail the test run nor
+  // poison later runs. (Observed: Neon blips during cleanup failed whole runs.)
+  console.warn(`account-admin.test.ts: fixture cleanup failed for ${ids.join(", ")}:`, lastError);
 }
 
 describe("createStaffAccount (integration, local DB)", {
