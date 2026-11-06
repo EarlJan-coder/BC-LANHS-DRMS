@@ -6,6 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
 import { formatDateTime } from "@/lib/utils";
 
 export interface NotificationItem {
@@ -88,7 +89,11 @@ export function NotificationsList({ initialNotifications }: { initialNotificatio
                 notification.isRead ? "opacity-70" : ""
               }`}
             >
-              <Bell className="mt-0.5 h-5 w-5 shrink-0 text-brand" aria-hidden />
+              {busy === notification.id ? (
+                <Spinner className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
+              ) : (
+                <Bell className="mt-0.5 h-5 w-5 shrink-0 text-brand" aria-hidden />
+              )}
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-slate-900">
                   {!notification.isRead ? (

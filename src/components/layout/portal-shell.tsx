@@ -132,9 +132,10 @@ function SidebarAccountActions({
         type="button"
         onClick={onSignOut}
         disabled={signingOut}
+        aria-busy={signingOut || undefined}
         className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-slate-600 transition hover:bg-rose-50 hover:text-brand disabled:opacity-60"
       >
-        <LogOut className="h-4 w-4" aria-hidden />
+        {signingOut ? <Spinner className="h-4 w-4" /> : <LogOut className="h-4 w-4" aria-hidden />}
         <span className="truncate">{signingOut ? "Signing out..." : "Sign out"}</span>
       </button>
     </div>
