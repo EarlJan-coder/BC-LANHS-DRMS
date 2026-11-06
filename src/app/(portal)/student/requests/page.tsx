@@ -1,14 +1,12 @@
 import { Eye, FileDown } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/data-table";
+import { RequestFilterForm } from "@/components/request-filter-form";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBadge } from "@/components/status-badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input, Label, Select } from "@/components/ui/input";
 import { ButtonLink } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { DownloadButton } from "@/components/ui/download-button";
-import { REQUEST_STATUSES } from "@/lib/constants";
 import { listDocumentRequestViews } from "@/lib/services/live-data";
 
 export default async function MyRequestsPage({
@@ -37,24 +35,12 @@ export default async function MyRequestsPage({
         actions={<ButtonLink href="/student/requests/new">New request</ButtonLink>}
       />
       <Card className="mb-5 p-4">
-        <form className="grid gap-3 sm:grid-cols-[1fr_220px_auto] sm:items-end">
-          <div className="grid gap-2">
-            <Label htmlFor="q">Search</Label>
-            <Input id="q" name="q" defaultValue={filters.q ?? ""} placeholder="Tracking number, document, purpose" />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="status">Status</Label>
-            <Select id="status" name="status" defaultValue={status}>
-              <option value="">All statuses</option>
-              {REQUEST_STATUSES.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <Button type="submit">Filter</Button>
-        </form>
+        <RequestFilterForm
+          className="grid gap-3 sm:grid-cols-[1fr_220px_auto] sm:items-end"
+          queryPlaceholder="Tracking number, document, purpose"
+          initialQuery={filters.q ?? ""}
+          initialStatus={status}
+        />
       </Card>
       <DataTable
         rows={requests}

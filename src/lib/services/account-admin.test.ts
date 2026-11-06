@@ -15,6 +15,13 @@ const { userCreateSchema, passwordChangeSchema } = await import("@/lib/validator
 const { createStaffAccount, assertAdmin, resetUserPassword, changeOwnPassword } = await import("@/lib/services/account-admin");
 
 const hasDb = Boolean(process.env.DATABASE_URL);
+// Run-unique fixture tag: a crashed run can leak fixture rows, and fixed
+// emails would then deterministically block every later run (see sibling
+// test files for the same convention).
+const RUN_TAG = Date.now().toString(36).slice(-5);
+function fixtureEmail(local: string) {
+  return `${local}-${RUN_TAG}@example.com`;
+}
 
 after(async () => {
   await closeDb();
@@ -31,7 +38,7 @@ describe("createStaffAccount (integration, local DB)", {
 }, () => {
   test("createStaffAccount sets mustChangePassword and leaves the LRN empty", async () => {
     const created = await createStaffAccount({
-      email: "reg@example.com",
+      email: fixtureEmail("reg"),
       firstName: "Rina",
       lastName: "Reyes",
       role: "registrar",
@@ -50,7 +57,7 @@ describe("createStaffAccount (integration, local DB)", {
 
   test("createStaffAccount rejects a duplicate email with a 409", async () => {
     const created = await createStaffAccount({
-      email: "dup@example.com",
+      email: fixtureEmail("dup"),
       firstName: "A",
       lastName: "B",
       role: "admin",
@@ -61,7 +68,7 @@ describe("createStaffAccount (integration, local DB)", {
       await assert.rejects(
         () =>
           createStaffAccount({
-            email: "dup@example.com",
+            email: fixtureEmail("dup"),
             firstName: "C",
             lastName: "D",
             role: "registrar",
@@ -76,7 +83,7 @@ describe("createStaffAccount (integration, local DB)", {
 
   test("createStaffAccount hashes the password and never stores it", async () => {
     const created = await createStaffAccount({
-      email: "hash@example.com",
+      email: fixtureEmail("hash"),
       firstName: "H",
       lastName: "I",
       role: "registrar",
@@ -97,7 +104,7 @@ describe("resetUserPassword (integration, local DB)", {
   skip: hasDb ? false : "DATABASE_URL not configured",
 }, () => {
   test("resetUserPassword replaces the hash and re-arms mustChangePassword", async () => {
-    const created = await createStaffAccount({ email: "reset@example.com", firstName: "R", lastName: "S", role: "registrar", password: "placeholder123" });
+    const created = await createStaffAccount({ email: fixtureEmail("reset"), firstName: "R", lastName: "S", role: "registrar", password: "placeholder123" });
 
     try {
       await getDb().update(users).set({ mustChangePassword: false }).where(eq(users.id, created.id));
@@ -112,7 +119,7 @@ describe("resetUserPassword (integration, local DB)", {
   });
 
   test("resetUserPassword bumps tokenVersion so outstanding cookies are revoked", async () => {
-    const created = await createStaffAccount({ email: "rev@example.com", firstName: "R", lastName: "V", role: "registrar", password: "placeholder123" });
+    const created = await createStaffAccount({ email: fixtureEmail("rev"), firstName: "R", lastName: "V", role: "registrar", password: "placeholder123" });
 
     try {
       const before = (await getDb().query.users.findFirst({ where: eq(users.id, created.id) }))?.tokenVersion;
@@ -133,7 +140,7 @@ describe("changeOwnPassword (integration, local DB)", {
   skip: hasDb ? false : "DATABASE_URL not configured",
 }, () => {
   test("changeOwnPassword rejects a wrong current password with 401", async () => {
-    const created = await createStaffAccount({ email: "self@example.com", firstName: "S", lastName: "E", role: "registrar", password: "placeholder123" });
+    const created = await createStaffAccount({ email: fixtureEmail("self"), firstName: "S", lastName: "E", role: "registrar", password: "placeholder123" });
     try {
       await assert.rejects(() => changeOwnPassword(created.id, "not-the-password", "brandnew12345"), (e: AppError) => e.status === 401);
       const row = await getDb().query.users.findFirst({ where: eq(users.id, created.id) });
@@ -144,7 +151,7 @@ describe("changeOwnPassword (integration, local DB)", {
   });
 
   test("changeOwnPassword clears mustChangePassword and returns the bumped tokenVersion", async () => {
-    const created = await createStaffAccount({ email: "done@example.com", firstName: "D", lastName: "O", role: "registrar", password: "placeholder123" });
+    const created = await createStaffAccount({ email: fixtureEmail("done"), firstName: "D", lastName: "O", role: "registrar", password: "placeholder123" });
     try {
       const result = await changeOwnPassword(created.id, "placeholder123", "brandnew12345");
       const row = await getDb().query.users.findFirst({ where: eq(users.id, created.id) });
@@ -161,7 +168,7 @@ describe("changeOwnPassword (integration, local DB)", {
   });
 
   test("changeOwnPassword rejects when the new password matches the current one and leaves state unchanged", async () => {
-    const created = await createStaffAccount({ email: "same@example.com", firstName: "S", lastName: "A", role: "registrar", password: "placeholder123" });
+    const created = await createStaffAccount({ email: fixtureEmail("same"), firstName: "S", lastName: "A", role: "registrar", password: "placeholder123" });
     try {
       await assert.rejects(
         () => changeOwnPassword(created.id, "placeholder123", "placeholder123"),
@@ -179,7 +186,7 @@ describe("changeOwnPassword (integration, local DB)", {
 test("createStaffAccount rejects the student role at the schema boundary", () => {
   assert.throws(() =>
     userCreateSchema.parse({
-      email: "s@example.com",
+      email: fixtureEmail("s"),
       firstName: "S",
       lastName: "T",
       role: "student",
@@ -192,7 +199,7 @@ test("createStaffAccount rejects the student role at the service boundary", asyn
   await assert.rejects(
     () =>
       createStaffAccount({
-        email: "svc-student@example.com",
+        email: fixtureEmail("svc-student"),
         firstName: "S",
         lastName: "T",
         role: "student",

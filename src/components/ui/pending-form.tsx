@@ -1,7 +1,12 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useTransition, type FormEvent, type ReactNode } from "react";
+import {
+  useTransition,
+  type FormEvent,
+  type FormHTMLAttributes,
+  type ReactNode,
+} from "react";
 import { formSubmitHref } from "@/lib/pending-form";
 
 /**
@@ -17,12 +22,13 @@ export function PendingForm({
   className,
   children,
   onSubmit,
+  ...props
 }: {
   action?: string;
   className?: string;
   children: ReactNode | ((props: { isPending: boolean }) => ReactNode);
   onSubmit?: (event: FormEvent<HTMLFormElement>) => void;
-}) {
+} & Omit<FormHTMLAttributes<HTMLFormElement>, "action" | "method" | "onSubmit" | "children">) {
   const router = useRouter();
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
@@ -43,7 +49,14 @@ export function PendingForm({
   }
 
   return (
-    <form className={className} method="get" action={action ?? undefined} onSubmit={handleSubmit}>
+    <form
+      {...props}
+      className={className}
+      method="get"
+      action={action ?? undefined}
+      aria-busy={isPending || undefined}
+      onSubmit={handleSubmit}
+    >
       {typeof children === "function" ? children({ isPending }) : children}
     </form>
   );
