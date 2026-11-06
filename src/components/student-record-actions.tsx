@@ -2,7 +2,7 @@
 
 import { Pencil, Save, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
@@ -52,8 +52,16 @@ export function StudentRecordActions({
     setEditing(true);
   }
 
-  async function onSubmit(formData: FormData) {
+  // onSubmit (not <form action>): inside a form action the `saving` state never
+  // renders while the action is in flight, so the "Saving…" label and the
+  // Close/Cancel/Edit gating would not engage during a slow request (same fix
+  // pattern as auth-form / change-password-form).
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (saving) return;
     setSaving(true);
+
+    const formData = new FormData(event.currentTarget);
 
     try {
       const response = await fetch(`/api/students/${student.id}`, {
@@ -167,7 +175,7 @@ export function StudentRecordActions({
               </Button>
             </div>
 
-            <form action={onSubmit}>
+            <form onSubmit={onSubmit}>
               <div className="grid max-h-[calc(100vh-14rem)] gap-4 overflow-y-auto px-5 py-5 md:grid-cols-2">
                 <Field id={`edit-lrn-${student.id}`} label="LRN" name="lrn" defaultValue={student.lrn} required />
                 <Field
