@@ -1,88 +1,16 @@
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { getDb } from "@/db";
 import { students, users } from "@/db/schema";
 import { ensureCurrentDbUser } from "@/lib/auth";
+import { isPostgresError } from "@/lib/services/student-records";
 
 const profileUpdateSchema = z.object({
-  lrn: z.string().trim().regex(/^\d{12}$/, "Enter your 12-digit LRN."),
-  contactNumber: z.string().trim().optional(),
-  guardianName: z.string().trim().optional(),
-  address: z.string().trim().optional(),
+  contactNumber: z.string().trim().max(30).optional(),
+  guardianName: z.string().trim().max(150).optional(),
+  email: z.string().trim().toLowerCase().email("Enter a valid email address.").max(191).optional(),
 });
-
-type ProfileValues = z.infer<typeof profileUpdateSchema>;
-type CurrentDbUser = NonNullable<Awaited<ReturnType<typeof ensureCurrentDbUser>>>;
-
-function isPostgresError(error: unknown, code: string, text?: string) {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: unknown }).code === code &&
-    (!text || String((error as { message?: unknown }).message ?? "").includes(text))
-  );
-}
-
-function normalizeName(value: string) {
-  return value.trim().replace(/\s+/g, " ").toLowerCase();
-}
-
-async function hasLegacyStudentNumberColumn(db: ReturnType<typeof getDb>) {
-  const rows = await db.execute<{ exists: boolean }>(sql`
-    select exists (
-      select 1
-      from information_schema.columns
-      where table_schema = 'public'
-        and table_name = 'students'
-        and column_name = 'student_number'
-    ) as "exists"
-  `);
-
-  return Boolean(rows[0]?.exists);
-}
-
-async function createStudentProfile(db: ReturnType<typeof getDb>, user: CurrentDbUser, values: ProfileValues) {
-  if (await hasLegacyStudentNumberColumn(db)) {
-    await db.execute(sql`
-      insert into students (
-        user_id,
-        lrn,
-        student_number,
-        first_name,
-        last_name,
-        email,
-        contact_number,
-        guardian_name,
-        address
-      )
-      values (
-        ${user.id},
-        ${values.lrn},
-        ${values.lrn},
-        ${user.firstName},
-        ${user.lastName},
-        ${user.email},
-        ${values.contactNumber ?? null},
-        ${values.guardianName ?? null},
-        ${values.address ?? null}
-      )
-    `);
-    return;
-  }
-
-  await db.insert(students).values({
-    userId: user.id,
-    lrn: values.lrn,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    email: user.email,
-    contactNumber: values.contactNumber,
-    guardianName: values.guardianName,
-    address: values.address,
-  });
-}
 
 export async function PATCH(request: Request) {
   try {
@@ -97,61 +25,42 @@ export async function PATCH(request: Request) {
     const existingProfile = await db.query.students.findFirst({
       where: eq(students.userId, user.id),
     });
-    const lrnOwner = await db.query.students.findFirst({
-      where: eq(students.lrn, values.lrn),
-    });
 
-    if (lrnOwner?.userId && lrnOwner.userId !== user.id) {
-      return NextResponse.json({ error: "This LRN is already linked to another account." }, { status: 409 });
-    }
-
-    if (
-      lrnOwner &&
-      (normalizeName(lrnOwner.firstName) !== normalizeName(user.firstName) ||
-        normalizeName(lrnOwner.lastName) !== normalizeName(user.lastName))
-    ) {
+    const updatesStudentRecord = values.contactNumber !== undefined || values.guardianName !== undefined;
+    if (updatesStudentRecord && !existingProfile) {
       return NextResponse.json(
-        { error: "The name does not match the school record for this LRN. Contact the registrar to confirm your details." },
+        {
+          error:
+            "Your student record is not linked yet. Contact the registrar to update your contact number and guardian name.",
+        },
         { status: 409 },
       );
     }
 
-    const updateValues = {
-      contactNumber: values.contactNumber,
-      guardianName: values.guardianName,
-      address: values.address,
-      email: user.email,
-      updatedAt: new Date(),
-    };
+    const now = new Date();
 
-    if (existingProfile) {
-      if (lrnOwner && lrnOwner.id !== existingProfile.id) {
-        return NextResponse.json({ error: "This LRN already belongs to another student record." }, { status: 409 });
+    // One transaction: the email writes to both students and users, and the
+    // users.email unique violation must not leave a half-applied update.
+    await db.transaction(async (tx) => {
+      if (existingProfile) {
+        await tx
+          .update(students)
+          .set({
+            ...(values.contactNumber !== undefined ? { contactNumber: values.contactNumber || null } : {}),
+            ...(values.guardianName !== undefined ? { guardianName: values.guardianName || null } : {}),
+            ...(values.email !== undefined ? { email: values.email } : {}),
+            updatedAt: now,
+          })
+          .where(eq(students.id, existingProfile.id));
       }
 
-      await db
-        .update(students)
-        .set({
-          ...updateValues,
-          lrn: values.lrn,
-        })
-        .where(eq(students.id, existingProfile.id));
-    } else if (lrnOwner) {
-      await db
-        .update(students)
-        .set({
-          ...updateValues,
-          userId: user.id,
-        })
-        .where(eq(students.id, lrnOwner.id));
-    } else {
-      await createStudentProfile(db, user, values);
-    }
-
-    await db
-      .update(users)
-      .set({ lrn: values.lrn, updatedAt: new Date() })
-      .where(eq(users.id, user.id));
+      if (values.email !== undefined) {
+        await tx
+          .update(users)
+          .set({ email: values.email, updatedAt: now })
+          .where(eq(users.id, user.id));
+      }
+    });
 
     return NextResponse.json({ ok: true });
   } catch (error) {
@@ -159,19 +68,8 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: error.issues[0]?.message ?? "Invalid profile data." }, { status: 400 });
     }
 
-    if (isPostgresError(error, "23505", "students_lrn_idx")) {
-      return NextResponse.json({ error: "This LRN already belongs to another student record." }, { status: 409 });
-    }
-
-    if (isPostgresError(error, "23505", "users_lrn_idx")) {
-      return NextResponse.json({ error: "This LRN is already used by another account." }, { status: 409 });
-    }
-
-    if (isPostgresError(error, "23502", "student_number")) {
-      return NextResponse.json(
-        { error: "The database still has the old student number column. Run npm run db:migrate, then try again." },
-        { status: 409 },
-      );
+    if (isPostgresError(error, "23505", "users_email_idx")) {
+      return NextResponse.json({ error: "This email is already used by another account." }, { status: 409 });
     }
 
     return NextResponse.json(
