@@ -449,6 +449,7 @@ export async function getCurrentStudentProfile() {
       contactNumber: "Not set",
       guardian: "Not set",
       address: "Not set",
+      hasStudentRecord: false,
     } satisfies StudentProfileView;
   }
 
@@ -460,6 +461,7 @@ export async function getCurrentStudentProfile() {
     contactNumber: student.contactNumber ?? "Not set",
     guardian: student.guardianName ?? "Not set",
     address: student.address ?? "Not set",
+    hasStudentRecord: true,
   } satisfies StudentProfileView;
 }
 

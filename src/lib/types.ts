@@ -98,6 +98,7 @@ export type StudentProfileView = {
   contactNumber: string;
   guardian: string;
   address: string;
+  hasStudentRecord: boolean;
 };
 
 export type CertificateView = {
