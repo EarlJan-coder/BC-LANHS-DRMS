@@ -11,7 +11,7 @@ const { getDb, closeDb } = await import("@/db");
 const { certificates, documentRequests, documentTypes, gradeLevels, schoolYears, sections, students } = await import(
   "@/db/schema"
 );
-const { deleteDocumentType, deleteGradeLevel, deleteSchoolYear, deleteSection } = await import(
+const { deleteDocumentType, deleteGradeLevel, deleteSchoolYear, deleteSection, isForeignKeyViolation } = await import(
   "@/lib/services/academic-setup"
 );
 
@@ -19,6 +19,20 @@ const hasDb = Boolean(process.env.DATABASE_URL);
 // Run-unique fixture tag: a crashed run can leak fixture rows, and fixed
 // names would then deterministically block every later run (see sibling
 // test files for the same convention).
+
+test("isForeignKeyViolation detects Postgres 23503, including Drizzle's wrapped cause", () => {
+  assert.equal(isForeignKeyViolation({ code: "23503" }), true);
+  assert.equal(isForeignKeyViolation({ cause: { code: "23503" } }), true);
+  assert.equal(isForeignKeyViolation({ cause: { cause: { code: "23503" } } }), true);
+});
+
+test("isForeignKeyViolation rejects other errors", () => {
+  assert.equal(isForeignKeyViolation(new Error("boom")), false);
+  assert.equal(isForeignKeyViolation({ code: "22P02" }), false);
+  assert.equal(isForeignKeyViolation({ cause: { code: "22P02" } }), false);
+  assert.equal(isForeignKeyViolation(null), false);
+  assert.equal(isForeignKeyViolation(undefined), false);
+});
 const RUN_TAG = Date.now().toString(36).slice(-5);
 let fixtureSeq = 0;
 function fixtureName(local: string) {

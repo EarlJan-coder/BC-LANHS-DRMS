@@ -323,6 +323,23 @@ function formatLinkCounts(entries: Array<{ label: string; count: number }>) {
   return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
 }
 
+/**
+ * Postgres 23503 (foreign_key_violation). Drizzle wraps driver errors in
+ * DrizzleQueryError, so the code can sit on a `cause` chain.
+ */
+export function isForeignKeyViolation(error: unknown) {
+  let current: unknown = error;
+
+  while (typeof current === "object" && current !== null) {
+    if ("code" in current && (current as { code?: unknown }).code === "23503") {
+      return true;
+    }
+    current = "cause" in current ? (current as { cause?: unknown }).cause : null;
+  }
+
+  return false;
+}
+
 export async function createSchoolYear(values: SchoolYearMutation) {
   const db = getDb();
   const startsOn = parseOptionalDate(values.startsOn);
@@ -556,13 +573,23 @@ export async function deleteSchoolYear(id: string) {
     );
   }
 
-  const [deleted] = await db.delete(schoolYears).where(eq(schoolYears.id, id)).returning();
+  try {
+    const [deleted] = await db.delete(schoolYears).where(eq(schoolYears.id, id)).returning();
 
-  if (!deleted) {
-    throw new AcademicSetupError("School year not found.", 404);
+    if (!deleted) {
+      throw new AcademicSetupError("School year not found.", 404);
+    }
+
+    return deleted;
+  } catch (error) {
+    if (isForeignKeyViolation(error)) {
+      // A linked row landed between the guard and the delete: surface the
+      // refusal instead of a raw FK error.
+      throw new AcademicSetupError("This school year has linked records. Close it instead.", 409);
+    }
+
+    throw error;
   }
-
-  return deleted;
 }
 
 export async function deleteGradeLevel(id: string) {
@@ -584,13 +611,21 @@ export async function deleteGradeLevel(id: string) {
     );
   }
 
-  const [deleted] = await db.delete(gradeLevels).where(eq(gradeLevels.id, id)).returning();
+  try {
+    const [deleted] = await db.delete(gradeLevels).where(eq(gradeLevels.id, id)).returning();
 
-  if (!deleted) {
-    throw new AcademicSetupError("Grade level not found.", 404);
+    if (!deleted) {
+      throw new AcademicSetupError("Grade level not found.", 404);
+    }
+
+    return deleted;
+  } catch (error) {
+    if (isForeignKeyViolation(error)) {
+      throw new AcademicSetupError("This grade level has linked records. Deactivate it instead.", 409);
+    }
+
+    throw error;
   }
-
-  return deleted;
 }
 
 export async function deleteSection(id: string) {
@@ -608,13 +643,21 @@ export async function deleteSection(id: string) {
     );
   }
 
-  const [deleted] = await db.delete(sections).where(eq(sections.id, id)).returning();
+  try {
+    const [deleted] = await db.delete(sections).where(eq(sections.id, id)).returning();
 
-  if (!deleted) {
-    throw new AcademicSetupError("Section not found.", 404);
+    if (!deleted) {
+      throw new AcademicSetupError("Section not found.", 404);
+    }
+
+    return deleted;
+  } catch (error) {
+    if (isForeignKeyViolation(error)) {
+      throw new AcademicSetupError("This section has linked records. Deactivate it instead.", 409);
+    }
+
+    throw error;
   }
-
-  return deleted;
 }
 
 export async function deleteDocumentType(id: string) {
@@ -635,13 +678,21 @@ export async function deleteDocumentType(id: string) {
     );
   }
 
-  const [deleted] = await db.delete(documentTypes).where(eq(documentTypes.id, id)).returning();
+  try {
+    const [deleted] = await db.delete(documentTypes).where(eq(documentTypes.id, id)).returning();
 
-  if (!deleted) {
-    throw new AcademicSetupError("Document type not found.", 404);
+    if (!deleted) {
+      throw new AcademicSetupError("Document type not found.", 404);
+    }
+
+    return deleted;
+  } catch (error) {
+    if (isForeignKeyViolation(error)) {
+      throw new AcademicSetupError("This document type has linked records. Deactivate it instead.", 409);
+    }
+
+    throw error;
   }
-
-  return deleted;
 }
 
 export async function getAcademicSetupCounts() {

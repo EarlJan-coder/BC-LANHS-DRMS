@@ -21,7 +21,7 @@ import {
   sectionMutationSchema,
 } from "@/lib/validators";
 
-function handleError(error: unknown) {
+function handleError(error: unknown, fallbackMessage = "Unable to update academic setup.") {
   if (error instanceof ZodError) {
     return NextResponse.json({ error: error.issues[0]?.message ?? "Invalid academic setup data." }, { status: 400 });
   }
@@ -30,10 +30,9 @@ function handleError(error: unknown) {
     return NextResponse.json({ error: error.message }, { status: error.status });
   }
 
-  return NextResponse.json(
-    { error: error instanceof Error ? error.message : "Unable to update academic setup." },
-    { status: 500 },
-  );
+  // Never echo raw driver errors: they leak schema details to the client.
+  console.error(error);
+  return NextResponse.json({ error: fallbackMessage }, { status: 500 });
 }
 
 export async function PATCH(
@@ -101,18 +100,24 @@ export async function DELETE(
       throw new AcademicSetupError("Academic setup entity not found.", 404);
     }
 
-    await recordAuditedAction({
-      action: "academic_setup.delete",
-      actorRole: role,
-      actorUserId: user?.id,
-      entityType: auditEntityTypes[entity],
-      entityId: id,
-      referenceId: id,
-      metadata: { name: data.name },
-    });
+    try {
+      await recordAuditedAction({
+        action: "academic_setup.delete",
+        actorRole: role,
+        actorUserId: user?.id,
+        entityType: auditEntityTypes[entity],
+        entityId: id,
+        referenceId: id,
+        metadata: { name: data.name },
+      });
+    } catch (auditError) {
+      // The row is already deleted, so failing the response would claim a
+      // delete failed when it succeeded. Log for ops backfill instead.
+      console.error("academic_setup.delete audit write failed:", auditError);
+    }
 
     return NextResponse.json({ data });
   } catch (error) {
-    return handleError(error);
+    return handleError(error, "Unable to delete academic setup.");
   }
 }

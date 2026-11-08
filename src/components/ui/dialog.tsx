@@ -54,11 +54,48 @@ function ConfirmDialogPanel({
   }, [reason]);
 
   // Escape closes the dialog, but not while a confirm action is in flight
-  // (same gating as the backdrop and cancel button).
+  // (same gating as the backdrop and cancel button). Tab is trapped inside
+  // the dialog: without a trap, keyboard focus can walk out of the overlay
+  // into the surrounding page (e.g. a row's inputs and Save button when the
+  // dialog is nested in a form) and Enter there fires that form's submit
+  // while this dialog is open. The trap also makes aria-modal truthful.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape" && !loading) {
         onCancel();
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const container = dialogRef.current;
+      if (!container) {
+        return;
+      }
+
+      const focusable = Array.from(
+        container.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active: Element | null = document.activeElement;
+
+      if (event.shiftKey && (active === first || !container.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !container.contains(active))) {
+        event.preventDefault();
+        first.focus();
       }
     }
     window.addEventListener("keydown", onKeyDown);
