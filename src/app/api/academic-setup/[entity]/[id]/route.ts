@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
+import { getCurrentDbUser } from "@/lib/auth";
 import {
   AcademicSetupError,
   assertAcademicSetupAccess,
+  deleteDocumentType,
+  deleteGradeLevel,
+  deleteSchoolYear,
+  deleteSection,
   updateDocumentType,
   updateGradeLevel,
   updateSchoolYear,
   updateSection,
 } from "@/lib/services/academic-setup";
+import { recordAuditedAction } from "@/lib/services/audit-log";
 import {
   documentTypeMutationSchema,
   gradeLevelMutationSchema,
@@ -60,6 +66,52 @@ export async function PATCH(
     }
 
     throw new AcademicSetupError("Academic setup entity not found.", 404);
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+const auditEntityTypes: Record<string, string> = {
+  "school-years": "school_year",
+  "grade-levels": "grade_level",
+  sections: "section",
+  "document-types": "document_type",
+};
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ entity: string; id: string }> },
+) {
+  try {
+    const role = await assertAcademicSetupAccess();
+    const { entity, id } = await params;
+    const user = await getCurrentDbUser();
+
+    let data: { name: string };
+
+    if (entity === "school-years") {
+      data = await deleteSchoolYear(id);
+    } else if (entity === "grade-levels") {
+      data = await deleteGradeLevel(id);
+    } else if (entity === "sections") {
+      data = await deleteSection(id);
+    } else if (entity === "document-types") {
+      data = await deleteDocumentType(id);
+    } else {
+      throw new AcademicSetupError("Academic setup entity not found.", 404);
+    }
+
+    await recordAuditedAction({
+      action: "academic_setup.delete",
+      actorRole: role,
+      actorUserId: user?.id,
+      entityType: auditEntityTypes[entity],
+      entityId: id,
+      referenceId: id,
+      metadata: { name: data.name },
+    });
+
+    return NextResponse.json({ data });
   } catch (error) {
     return handleError(error);
   }
