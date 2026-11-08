@@ -99,14 +99,6 @@ export function RequestForm() {
                 <Label htmlFor="gradeLevelNeeded">Grade level needed</Label>
                 <Input id="gradeLevelNeeded" name="gradeLevelNeeded" required placeholder="Grade 12" />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="pickupMode">Preferred release mode</Label>
-                <Input id="pickupMode" value="Registrar pickup" readOnly />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="processingNote">Processing note</Label>
-                <Input id="processingNote" value="Subject to registrar validation" readOnly />
-              </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="remarks">Additional remarks</Label>
