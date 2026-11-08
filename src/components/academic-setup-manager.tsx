@@ -6,11 +6,12 @@ import { type RefObject, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DeleteSetupAction, type AcademicSetupEntity } from "@/components/academic-setup-delete-action";
 import { Input, Label, Select } from "@/components/ui/input";
 import type { AcademicSetupData } from "@/lib/services/academic-setup";
 import { cn } from "@/lib/utils";
 
-type Entity = "school-years" | "grade-levels" | "sections" | "document-types";
+type Entity = AcademicSetupEntity;
 type Panel = Entity;
 
 const panelOptions: Array<{
@@ -283,17 +284,20 @@ function SchoolYearsPanel({
                 <StatusPill active={row.isActive} activeLabel="Active" inactiveLabel="Closed" />
                 <CheckboxField id={`school-year-active-${row.id}`} name="isActive" label="Active" defaultChecked={row.isActive} />
               </div>
-              <Button
-                type="submit"
-                tone="secondary"
-                loading={submitting === `school-years-${row.id}`}
-                disabled={submitting !== null}
-              >
-                {submitting === `school-years-${row.id}` ? null : (
-                  <Save className="h-4 w-4" aria-hidden />
-                )}
-                {submitting === `school-years-${row.id}` ? "Saving…" : "Save"}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="submit"
+                  tone="secondary"
+                  loading={submitting === `school-years-${row.id}`}
+                  disabled={submitting !== null}
+                >
+                  {submitting === `school-years-${row.id}` ? null : (
+                    <Save className="h-4 w-4" aria-hidden />
+                  )}
+                  {submitting === `school-years-${row.id}` ? "Saving…" : "Save"}
+                </Button>
+                <DeleteSetupAction entity="school-years" id={row.id} name={row.name} />
+              </div>
             </form>
           ))
         )
@@ -381,17 +385,20 @@ function GradeLevelsPanel({
                 <StatusPill active={row.isActive} activeLabel="Active" inactiveLabel="Inactive" />
                 <CheckboxField id={`grade-level-active-${row.id}`} name="isActive" label="Active" defaultChecked={row.isActive} />
               </div>
-              <Button
-                type="submit"
-                tone="secondary"
-                loading={submitting === `grade-levels-${row.id}`}
-                disabled={submitting !== null}
-              >
-                {submitting === `grade-levels-${row.id}` ? null : (
-                  <Save className="h-4 w-4" aria-hidden />
-                )}
-                {submitting === `grade-levels-${row.id}` ? "Saving…" : "Save"}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="submit"
+                  tone="secondary"
+                  loading={submitting === `grade-levels-${row.id}`}
+                  disabled={submitting !== null}
+                >
+                  {submitting === `grade-levels-${row.id}` ? null : (
+                    <Save className="h-4 w-4" aria-hidden />
+                  )}
+                  {submitting === `grade-levels-${row.id}` ? "Saving…" : "Save"}
+                </Button>
+                <DeleteSetupAction entity="grade-levels" id={row.id} name={row.name} />
+              </div>
             </form>
           ))
         )
@@ -496,17 +503,20 @@ function SectionsPanel({
                 <StatusPill active={row.isActive} activeLabel="Active" inactiveLabel="Inactive" />
                 <CheckboxField id={`section-active-${row.id}`} name="isActive" label="Active" defaultChecked={row.isActive} />
               </div>
-              <Button
-                type="submit"
-                tone="secondary"
-                loading={submitting === `sections-${row.id}`}
-                disabled={submitting !== null}
-              >
-                {submitting === `sections-${row.id}` ? null : (
-                  <Save className="h-4 w-4" aria-hidden />
-                )}
-                {submitting === `sections-${row.id}` ? "Saving…" : "Save"}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="submit"
+                  tone="secondary"
+                  loading={submitting === `sections-${row.id}`}
+                  disabled={submitting !== null}
+                >
+                  {submitting === `sections-${row.id}` ? null : (
+                    <Save className="h-4 w-4" aria-hidden />
+                  )}
+                  {submitting === `sections-${row.id}` ? "Saving…" : "Save"}
+                </Button>
+                <DeleteSetupAction entity="sections" id={row.id} name={row.name} />
+              </div>
             </form>
           ))
         )
@@ -620,17 +630,20 @@ function DocumentTypesPanel({
                 <StatusPill active={row.isActive} activeLabel="Active" inactiveLabel="Inactive" />
                 <CheckboxField id={`document-type-active-${row.id}`} name="isActive" label="Active" defaultChecked={row.isActive} />
               </div>
-              <Button
-                type="submit"
-                tone="secondary"
-                loading={submitting === `document-types-${row.id}`}
-                disabled={submitting !== null}
-              >
-                {submitting === `document-types-${row.id}` ? null : (
-                  <Save className="h-4 w-4" aria-hidden />
-                )}
-                {submitting === `document-types-${row.id}` ? "Saving…" : "Save"}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="submit"
+                  tone="secondary"
+                  loading={submitting === `document-types-${row.id}`}
+                  disabled={submitting !== null}
+                >
+                  {submitting === `document-types-${row.id}` ? null : (
+                    <Save className="h-4 w-4" aria-hidden />
+                  )}
+                  {submitting === `document-types-${row.id}` ? "Saving…" : "Save"}
+                </Button>
+                <DeleteSetupAction entity="document-types" id={row.id} name={row.name} />
+              </div>
             </form>
           ))
         )
