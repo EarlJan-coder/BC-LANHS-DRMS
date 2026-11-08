@@ -1,7 +1,7 @@
 import { and, count, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import type { z } from "zod";
 import { getDb } from "@/db";
-import { documentTypes, gradeLevels, schoolYears, sections } from "@/db/schema";
+import { certificates, documentRequests, documentTypes, gradeLevels, schoolYears, sections, students } from "@/db/schema";
 import { getCurrentRole } from "@/lib/auth";
 import { AppError, formatDate } from "@/lib/utils";
 import {
@@ -307,6 +307,22 @@ async function ensureUniqueDocumentTypeName(name: string, currentId?: string) {
   }
 }
 
+function formatLinkCounts(entries: Array<{ label: string; count: number }>) {
+  const parts = entries
+    .filter((entry) => entry.count > 0)
+    .map((entry) => `${entry.count} ${entry.label}${entry.count === 1 ? "" : "s"}`);
+
+  if (parts.length <= 1) {
+    return parts[0] ?? "";
+  }
+
+  if (parts.length === 2) {
+    return `${parts[0]} and ${parts[1]}`;
+  }
+
+  return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+}
+
 export async function createSchoolYear(values: SchoolYearMutation) {
   const db = getDb();
   const startsOn = parseOptionalDate(values.startsOn);
@@ -517,6 +533,115 @@ export async function updateDocumentType(id: string, values: DocumentTypeMutatio
   }
 
   return updated;
+}
+
+export async function deleteSchoolYear(id: string) {
+  const db = getDb();
+  const [sectionCount, studentCount, certificateCount] = await Promise.all([
+    db.select({ value: count() }).from(sections).where(eq(sections.schoolYearId, id)),
+    db.select({ value: count() }).from(students).where(eq(students.schoolYearId, id)),
+    db.select({ value: count() }).from(certificates).where(eq(certificates.schoolYearId, id)),
+  ]);
+
+  const links = formatLinkCounts([
+    { label: "section", count: Number(sectionCount[0]?.value ?? 0) },
+    { label: "student", count: Number(studentCount[0]?.value ?? 0) },
+    { label: "certificate", count: Number(certificateCount[0]?.value ?? 0) },
+  ]);
+
+  if (links) {
+    throw new AcademicSetupError(
+      `This school year has ${links} linked to it. Close it instead.`,
+      409,
+    );
+  }
+
+  const [deleted] = await db.delete(schoolYears).where(eq(schoolYears.id, id)).returning();
+
+  if (!deleted) {
+    throw new AcademicSetupError("School year not found.", 404);
+  }
+
+  return deleted;
+}
+
+export async function deleteGradeLevel(id: string) {
+  const db = getDb();
+  const [sectionCount, studentCount] = await Promise.all([
+    db.select({ value: count() }).from(sections).where(eq(sections.gradeLevelId, id)),
+    db.select({ value: count() }).from(students).where(eq(students.gradeLevelId, id)),
+  ]);
+
+  const links = formatLinkCounts([
+    { label: "section", count: Number(sectionCount[0]?.value ?? 0) },
+    { label: "student", count: Number(studentCount[0]?.value ?? 0) },
+  ]);
+
+  if (links) {
+    throw new AcademicSetupError(
+      `This grade level has ${links} linked to it. Deactivate it instead.`,
+      409,
+    );
+  }
+
+  const [deleted] = await db.delete(gradeLevels).where(eq(gradeLevels.id, id)).returning();
+
+  if (!deleted) {
+    throw new AcademicSetupError("Grade level not found.", 404);
+  }
+
+  return deleted;
+}
+
+export async function deleteSection(id: string) {
+  const db = getDb();
+  const [studentCount] = await db.select({ value: count() }).from(students).where(eq(students.sectionId, id));
+
+  const links = formatLinkCounts([
+    { label: "student", count: Number(studentCount?.value ?? 0) },
+  ]);
+
+  if (links) {
+    throw new AcademicSetupError(
+      `This section has ${links} linked to it. Deactivate it instead.`,
+      409,
+    );
+  }
+
+  const [deleted] = await db.delete(sections).where(eq(sections.id, id)).returning();
+
+  if (!deleted) {
+    throw new AcademicSetupError("Section not found.", 404);
+  }
+
+  return deleted;
+}
+
+export async function deleteDocumentType(id: string) {
+  const db = getDb();
+  const [requestCount] = await db
+    .select({ value: count() })
+    .from(documentRequests)
+    .where(eq(documentRequests.documentTypeId, id));
+
+  const links = formatLinkCounts([
+    { label: "document request", count: Number(requestCount?.value ?? 0) },
+  ]);
+
+  if (links) {
+    throw new AcademicSetupError(
+      `This document type has ${links} linked to it. Deactivate it instead.`,
+      409,
+    );
+  }
+
+  const [deleted] = await db.delete(documentTypes).where(eq(documentTypes.id, id)).returning();
+
+  if (!deleted) {
+    throw new AcademicSetupError("Document type not found.", 404);
+  }
+
+  return deleted;
 }
 
 export async function getAcademicSetupCounts() {
