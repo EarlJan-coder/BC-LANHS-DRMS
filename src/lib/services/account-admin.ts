@@ -57,6 +57,7 @@ export async function createStaffAccount(input: {
         firstName: input.firstName,
         lastName: input.lastName,
         role: input.role,
+        registrationStatus: "approved",
         passwordHash,
         mustChangePassword: true,
         tokenVersion: 0,

@@ -49,7 +49,7 @@ async function deleteUsers(ids: string[]) {
 describe("createStaffAccount (integration, local DB)", {
   skip: hasDb ? false : "DATABASE_URL not configured",
 }, () => {
-  test("createStaffAccount sets mustChangePassword and leaves the LRN empty", async () => {
+  test("createStaffAccount approves staff accounts, requires a password change, and leaves the LRN empty", async () => {
     const created = await createStaffAccount({
       email: fixtureEmail("reg"),
       firstName: "Rina",
@@ -63,6 +63,7 @@ describe("createStaffAccount (integration, local DB)", {
       assert.equal(row?.mustChangePassword, true);
       assert.equal(row?.lrn, null);
       assert.equal(row?.role, "registrar");
+      assert.equal(row?.registrationStatus, "approved");
     } finally {
       await deleteUsers([created.id]);
     }
