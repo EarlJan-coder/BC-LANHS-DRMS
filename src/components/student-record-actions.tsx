@@ -2,18 +2,12 @@
 
 import { Pencil, Save, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import type { StudentView } from "@/lib/types";
-
-type Option = {
-  id: string;
-  name: string;
-  gradeLevelId?: string | null;
-};
 
 const statusOptions = [
   { value: "enrolled", label: "Enrolled" },
@@ -22,35 +16,12 @@ const statusOptions = [
   { value: "inactive", label: "Inactive" },
 ];
 
-export function StudentRecordActions({
-  student,
-  gradeLevels,
-  sections,
-}: {
-  student: StudentView;
-  gradeLevels: Option[];
-  sections: Option[];
-}) {
+export function StudentRecordActions({ student }: { student: StudentView }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [selectedGradeLevelId, setSelectedGradeLevelId] = useState(student.gradeLevelId);
-  const [selectedSectionId, setSelectedSectionId] = useState(student.sectionId);
-  const filteredSections = useMemo(
-    () =>
-      selectedGradeLevelId
-        ? sections.filter((section) => !section.gradeLevelId || section.gradeLevelId === selectedGradeLevelId)
-        : [],
-    [sections, selectedGradeLevelId],
-  );
-
-  function openEditor() {
-    setSelectedGradeLevelId(student.gradeLevelId);
-    setSelectedSectionId(student.sectionId);
-    setEditing(true);
-  }
 
   // onSubmit (not <form action>): inside a form action the `saving` state never
   // renders while the action is in flight, so the "Saving…" label and the
@@ -115,7 +86,7 @@ export function StudentRecordActions({
           type="button"
           tone="secondary"
           size="sm"
-          onClick={openEditor}
+          onClick={() => setEditing(true)}
           disabled={saving || deleting}
           aria-label={`Edit ${student.name}`}
         >
@@ -139,7 +110,7 @@ export function StudentRecordActions({
       <ConfirmDialog
         open={confirmDeleteOpen}
         title="Delete this student record?"
-        message="Records with linked grades, requests, or certificates cannot be deleted."
+        message="Records with linked requests or certificates cannot be deleted."
         confirmLabel="Delete"
         tone="danger"
         loading={deleting}
@@ -179,97 +150,49 @@ export function StudentRecordActions({
             <form onSubmit={onSubmit}>
               <fieldset disabled={saving} className="contents">
                 <div className="grid max-h-[calc(100vh-14rem)] gap-4 overflow-y-auto px-5 py-5 md:grid-cols-2">
-                <Field id={`edit-lrn-${student.id}`} label="LRN" name="lrn" defaultValue={student.lrn} required />
-                <Field
-                  id={`edit-firstName-${student.id}`}
-                  label="First name"
-                  name="firstName"
-                  defaultValue={student.firstName}
-                  required
-                />
-                <Field
-                  id={`edit-middleName-${student.id}`}
-                  label="Middle name"
-                  name="middleName"
-                  defaultValue={student.middleName}
-                />
-                <Field
-                  id={`edit-lastName-${student.id}`}
-                  label="Last name"
-                  name="lastName"
-                  defaultValue={student.lastName}
-                  required
-                />
-                <Field id={`edit-suffix-${student.id}`} label="Suffix" name="suffix" defaultValue={student.suffix} />
-                <div className="grid gap-2">
-                  <Label htmlFor={`edit-gradeLevelId-${student.id}`}>Grade level</Label>
-                  <Select
-                    id={`edit-gradeLevelId-${student.id}`}
-                    name="gradeLevelId"
-                    value={selectedGradeLevelId}
-                    onChange={(event) => {
-                      setSelectedGradeLevelId(event.target.value);
-                      setSelectedSectionId("");
-                    }}
-                  >
-                    <option value="">Not assigned</option>
-                    {gradeLevels.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.name}
-                      </option>
-                    ))}
-                  </Select>
+                  <Field id={`edit-lrn-${student.id}`} label="LRN" name="lrn" defaultValue={student.lrn} required />
+                  <Field
+                    id={`edit-firstName-${student.id}`}
+                    label="First name"
+                    name="firstName"
+                    defaultValue={student.firstName}
+                    required
+                  />
+                  <Field
+                    id={`edit-middleName-${student.id}`}
+                    label="Middle name"
+                    name="middleName"
+                    defaultValue={student.middleName}
+                  />
+                  <Field
+                    id={`edit-lastName-${student.id}`}
+                    label="Last name"
+                    name="lastName"
+                    defaultValue={student.lastName}
+                    required
+                  />
+                  <Field id={`edit-suffix-${student.id}`} label="Suffix" name="suffix" defaultValue={student.suffix} />
+                  <Field
+                    id={`edit-contactNumber-${student.id}`}
+                    label="Contact number"
+                    name="contactNumber"
+                    defaultValue={student.contactNumber}
+                  />
+                  <div className="grid gap-2">
+                    <Label htmlFor={`edit-enrollmentStatus-${student.id}`}>Status</Label>
+                    <Select id={`edit-enrollmentStatus-${student.id}`} name="enrollmentStatus" defaultValue={student.status}>
+                      {statusOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div className="grid gap-2 md:col-span-2">
+                    <Label htmlFor={`edit-address-${student.id}`}>Address</Label>
+                    <Textarea id={`edit-address-${student.id}`} name="address" defaultValue={student.address} />
+                  </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor={`edit-sectionId-${student.id}`}>Section</Label>
-                  <Select
-                    id={`edit-sectionId-${student.id}`}
-                    name="sectionId"
-                    value={selectedSectionId}
-                    onChange={(event) => setSelectedSectionId(event.target.value)}
-                    disabled={!selectedGradeLevelId}
-                  >
-                    <option value="">{selectedGradeLevelId ? "Not assigned" : "Select a grade level first"}</option>
-                    {filteredSections.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.name}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                <Field
-                  id={`edit-contactNumber-${student.id}`}
-                  label="Contact number"
-                  name="contactNumber"
-                  defaultValue={student.contactNumber}
-                />
-                <Field
-                  id={`edit-guardianName-${student.id}`}
-                  label="Guardian name"
-                  name="guardianName"
-                  defaultValue={student.guardianName}
-                />
-                <Field
-                  id={`edit-guardianContact-${student.id}`}
-                  label="Guardian contact"
-                  name="guardianContact"
-                  defaultValue={student.guardianContact}
-                />
-                <div className="grid gap-2">
-                  <Label htmlFor={`edit-enrollmentStatus-${student.id}`}>Status</Label>
-                  <Select id={`edit-enrollmentStatus-${student.id}`} name="enrollmentStatus" defaultValue={student.status}>
-                    {statusOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                <div className="grid gap-2 md:col-span-2">
-                  <Label htmlFor={`edit-address-${student.id}`}>Address</Label>
-                  <Textarea id={`edit-address-${student.id}`} name="address" defaultValue={student.address} />
-                </div>
-              </div>
               </fieldset>
 
               <div className="flex flex-col-reverse gap-2 border-t border-border bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end">

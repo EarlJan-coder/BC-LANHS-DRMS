@@ -3,7 +3,6 @@ import {
   listAuditTrailViews,
   listDocumentRequestViews,
   listDocumentTypeViews,
-  listSectionViews,
   listStudentViews,
   listUserViews,
 } from "@/lib/services/live-data";
@@ -116,11 +115,11 @@ export async function searchPortal(role: DashboardRole, rawQuery: string): Promi
           hit: {
             id: student.id,
             title: student.name,
-            subtitle: `LRN ${student.lrn} · ${student.gradeLevel} · ${student.section}`,
+            subtitle: `LRN ${student.lrn}`,
             meta: student.status,
             href: `/registrar/students/${student.id}`,
           },
-          haystack: [student.name, student.lrn, student.gradeLevel, student.section, student.status],
+          haystack: [student.name, student.lrn, student.status],
         })),
         query,
       ),
@@ -165,10 +164,9 @@ export async function searchPortal(role: DashboardRole, rawQuery: string): Promi
     ];
   }
 
-  const [users, documentTypes, sections, auditTrail] = await Promise.all([
+  const [users, documentTypes, auditTrail] = await Promise.all([
     listUserViews(),
     listDocumentTypeViews(),
-    listSectionViews(),
     listAuditTrailViews(),
   ]);
 
@@ -202,22 +200,6 @@ export async function searchPortal(role: DashboardRole, rawQuery: string): Promi
           href: "/admin/document-types",
         },
         haystack: [documentType.name, documentType.code],
-      })),
-      query,
-    ),
-    buildGroup(
-      "sections",
-      "Sections",
-      "/admin/sections",
-      sections.map((section) => ({
-        hit: {
-          id: section.id,
-          title: section.name,
-          subtitle: `${section.gradeLevel} · Adviser ${section.adviserName}`,
-          meta: section.status,
-          href: "/admin/sections",
-        },
-        haystack: [section.name, section.gradeLevel, section.adviserName, section.schoolYear],
       })),
       query,
     ),

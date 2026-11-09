@@ -1,16 +1,7 @@
 import { createRequire } from "node:module";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import {
-  documentRequests,
-  documentTypes,
-  gradeLevels,
-  requestStatusHistory,
-  schoolYears,
-  sections,
-  students,
-  users,
-} from "../src/db/schema";
+import { documentRequests, documentTypes, requestStatusHistory, students, users } from "../src/db/schema";
 import { DOCUMENT_TYPES } from "../src/lib/constants";
 
 const require = createRequire(import.meta.url);
@@ -47,33 +38,6 @@ async function main() {
   const passwordHash = await bcrypt.hash(seedPassword, 12);
 
   try {
-    await db.insert(schoolYears).values({ name: "2026-2027", isActive: true }).onConflictDoNothing();
-
-    const levelValues = [
-      { name: "Grade 7", order: 7 },
-      { name: "Grade 8", order: 8 },
-      { name: "Grade 9", order: 9 },
-      { name: "Grade 10", order: 10 },
-      { name: "Grade 11", order: 11 },
-      { name: "Grade 12", order: 12 },
-    ];
-
-    await db.insert(gradeLevels).values(levelValues).onConflictDoNothing();
-
-    const grade12 = await db.query.gradeLevels.findFirst({
-      where: eq(gradeLevels.name, "Grade 12"),
-    });
-
-    if (grade12) {
-      await db
-        .insert(sections)
-        .values([
-          { name: "STEM - Aguado", gradeLevelId: grade12.id, adviserName: "Ms. Elena Garcia" },
-          { name: "HUMSS - Rizal", gradeLevelId: grade12.id, adviserName: "Mr. Noel Ramos" },
-        ])
-        .onConflictDoNothing();
-    }
-
     await db
       .insert(documentTypes)
       .values(
@@ -98,6 +62,7 @@ async function main() {
           lastName: "Administrator",
           role: "admin",
           status: "active",
+          registrationStatus: "approved",
         },
         {
           lrn: "222222222222",
@@ -107,6 +72,7 @@ async function main() {
           lastName: "Registrar",
           role: "registrar",
           status: "active",
+          registrationStatus: "approved",
         },
         {
           lrn: "123456789012",
@@ -116,18 +82,18 @@ async function main() {
           lastName: "Santos",
           role: "student",
           status: "active",
+          registrationStatus: "approved",
         },
       ])
       .onConflictDoNothing();
 
-    const schoolYear = await db.query.schoolYears.findFirst({ where: eq(schoolYears.name, "2026-2027") });
     const registrar = await db.query.users.findFirst({ where: eq(users.email, "registrar@lanhs.edu.ph") });
     const studentUser = await db.query.users.findFirst({ where: eq(users.email, "student@lanhs.edu.ph") });
-    const certificateType = await db.query.documentTypes.findFirst({ where: eq(documentTypes.name, "Good Moral Certificate") });
-    const grade12Level = await db.query.gradeLevels.findFirst({ where: eq(gradeLevels.name, "Grade 12") });
-    const stemSection = await db.query.sections.findFirst({ where: eq(sections.name, "STEM - Aguado") });
+    const certificateType = await db.query.documentTypes.findFirst({
+      where: eq(documentTypes.name, "Good Moral Certificate"),
+    });
 
-    if (studentUser && grade12Level && stemSection && schoolYear) {
+    if (studentUser) {
       await db
         .insert(students)
         .values({
@@ -140,11 +106,6 @@ async function main() {
           email: "student@lanhs.edu.ph",
           contactNumber: "09170000001",
           address: "Luis Aguado community",
-          guardianName: "Elena Santos",
-          guardianContact: "09170000002",
-          gradeLevelId: grade12Level.id,
-          sectionId: stemSection.id,
-          schoolYearId: schoolYear.id,
           studentType: "current",
           status: "enrolled",
           enrollmentStatus: "enrolled",

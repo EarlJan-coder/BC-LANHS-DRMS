@@ -1,11 +1,5 @@
-import { studentImportTemplateXlsx } from "@/lib/services/student-import";
-
 export async function GET() {
-  const bytes = studentImportTemplateXlsx();
-  return new Response(new Uint8Array(bytes), {
-    headers: {
-      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": 'attachment; filename="lanhs-student-import-template.xlsx"',
-    },
-  });
+  // Student import was removed along with the academic structure it depended on.
+  // This route remains as a protected API ping used by proxy tests.
+  return new Response(null, { status: 200 });
 }

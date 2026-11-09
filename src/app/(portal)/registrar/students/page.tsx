@@ -4,10 +4,10 @@ import { PendingLink } from "@/components/ui/pending-link";
 import { StudentRecordActions } from "@/components/student-record-actions";
 import { StudentRecordForm } from "@/components/student-record-form";
 import { ButtonLink } from "@/components/ui/button";
-import { getStudentRecordFormOptions, listStudentViews } from "@/lib/services/live-data";
+import { listStudentViews } from "@/lib/services/live-data";
 
 export default async function StudentRecordsPage() {
-  const [students, options] = await Promise.all([listStudentViews(), getStudentRecordFormOptions()]);
+  const students = await listStudentViews();
 
   return (
     <div>
@@ -15,14 +15,11 @@ export default async function StudentRecordsPage() {
         title="Student records"
         description="Search and validate student and alumni records by LRN."
         actions={
-          <>
-            <ButtonLink href="/registrar/students/import">Import students</ButtonLink>
-            <ButtonLink href="/registrar/reports" tone="secondary">Export report</ButtonLink>
-          </>
+          <ButtonLink href="/registrar/reports" tone="secondary">Export report</ButtonLink>
         }
       />
       <div className="mb-6">
-        <StudentRecordForm gradeLevels={options.gradeLevels} sections={options.sections} />
+        <StudentRecordForm />
       </div>
       <DataTable
         rows={students}
@@ -40,15 +37,11 @@ export default async function StudentRecordsPage() {
               />
             ),
           },
-          { key: "grade", label: "Grade level", render: (row) => row.gradeLevel },
-          { key: "section", label: "Section", render: (row) => row.section },
           { key: "status", label: "Status", render: (row) => row.status },
           {
             key: "actions",
             label: "Actions",
-            render: (row) => (
-              <StudentRecordActions student={row} gradeLevels={options.gradeLevels} sections={options.sections} />
-            ),
+            render: (row) => <StudentRecordActions student={row} />,
           },
         ]}
       />

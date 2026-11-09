@@ -1,4 +1,4 @@
-import { count, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { count, desc, eq, inArray, or } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   auditLogs,
@@ -6,11 +6,8 @@ import {
   certificates,
   documentRequests,
   documentTypes,
-  gradeLevels,
   notifications,
   requestStatusHistory,
-  schoolYears,
-  sections,
   students,
   users,
   type RequestStatus,
@@ -21,8 +18,6 @@ import type {
   AuditTrailView,
   DocumentRequestView,
   DocumentTypeView,
-  GradeLevelView,
-  SchoolYearView,
   StatCard,
   StudentProfileView,
   StudentView,
@@ -277,18 +272,10 @@ export async function listStudentViews() {
       lastName: students.lastName,
       suffix: students.suffix,
       contactNumber: students.contactNumber,
-      guardianName: students.guardianName,
-      guardianContact: students.guardianContact,
       address: students.address,
-      gradeLevelId: students.gradeLevelId,
-      gradeLevel: gradeLevels.name,
-      sectionId: students.sectionId,
-      section: sections.name,
       enrollmentStatus: students.enrollmentStatus,
     })
     .from(students)
-    .leftJoin(gradeLevels, eq(students.gradeLevelId, gradeLevels.id))
-    .leftJoin(sections, eq(students.sectionId, sections.id))
     .orderBy(desc(students.createdAt))
     .limit(100);
 
@@ -302,13 +289,7 @@ export async function listStudentViews() {
     suffix: row.suffix ?? "",
     name: [row.firstName, row.middleName, row.lastName, row.suffix].filter(Boolean).join(" "),
     contactNumber: row.contactNumber ?? "",
-    guardianName: row.guardianName ?? "",
-    guardianContact: row.guardianContact ?? "",
     address: row.address ?? "",
-    gradeLevelId: row.gradeLevelId ?? "",
-    gradeLevel: row.gradeLevel ?? "Not assigned",
-    sectionId: row.sectionId ?? "",
-    section: row.section ?? "Not assigned",
     status: row.enrollmentStatus,
   }));
 }
@@ -326,15 +307,9 @@ export async function getStudentDetailView(id: string) {
       email: students.email,
       contactNumber: students.contactNumber,
       address: students.address,
-      gradeLevel: gradeLevels.name,
-      section: sections.name,
-      schoolYear: schoolYears.name,
       status: students.status,
     })
     .from(students)
-    .leftJoin(gradeLevels, eq(students.gradeLevelId, gradeLevels.id))
-    .leftJoin(sections, eq(students.sectionId, sections.id))
-    .leftJoin(schoolYears, eq(students.schoolYearId, schoolYears.id))
     .where(eq(students.id, id))
     .limit(1);
 
@@ -365,9 +340,6 @@ export async function getStudentDetailView(id: string) {
       email: student.email ?? "Not set",
       contactNumber: student.contactNumber ?? "Not set",
       address: student.address ?? "Not set",
-      gradeLevel: student.gradeLevel ?? "Not assigned",
-      section: student.section ?? "Not assigned",
-      schoolYear: student.schoolYear ?? "Not assigned",
       status: student.status,
     },
     requests,
@@ -377,38 +349,6 @@ export async function getStudentDetailView(id: string) {
       certificateType: certificate.certificateType,
       verificationCode: certificate.verificationCode,
       generatedAt: formatDate(certificate.generatedAt),
-    })),
-  };
-}
-
-export async function getStudentRecordFormOptions() {
-  const db = getDb();
-  const [gradeLevelRows, sectionRows] = await Promise.all([
-    db
-      .select({
-        id: gradeLevels.id,
-        name: gradeLevels.name,
-      })
-      .from(gradeLevels)
-      .orderBy(gradeLevels.order),
-    db
-      .select({
-        id: sections.id,
-        name: sections.name,
-        gradeLevelId: sections.gradeLevelId,
-        gradeLevelName: gradeLevels.name,
-      })
-      .from(sections)
-      .leftJoin(gradeLevels, eq(sections.gradeLevelId, gradeLevels.id))
-      .orderBy(sections.name),
-  ]);
-
-  return {
-    gradeLevels: gradeLevelRows,
-    sections: sectionRows.map((section) => ({
-      id: section.id,
-      name: section.gradeLevelName ? `${section.gradeLevelName} - ${section.name}` : section.name,
-      gradeLevelId: section.gradeLevelId,
     })),
   };
 }
@@ -427,14 +367,9 @@ export async function getCurrentStudentProfile() {
       suffix: students.suffix,
       lrn: students.lrn,
       contactNumber: students.contactNumber,
-      guardianName: students.guardianName,
       address: students.address,
-      gradeLevel: gradeLevels.name,
-      section: sections.name,
     })
     .from(students)
-    .leftJoin(gradeLevels, eq(students.gradeLevelId, gradeLevels.id))
-    .leftJoin(sections, eq(students.sectionId, sections.id))
     .where(eq(students.userId, profile.userId))
     .limit(1);
 
@@ -445,9 +380,7 @@ export async function getCurrentStudentProfile() {
       name: `${profile.firstName} ${profile.lastName}`,
       email: profile.email,
       lrn: "No student profile linked",
-      gradeAndSection: "No student profile linked",
       contactNumber: "Not set",
-      guardian: "Not set",
       address: "Not set",
       hasStudentRecord: false,
     } satisfies StudentProfileView;
@@ -457,9 +390,7 @@ export async function getCurrentStudentProfile() {
     name: [student.firstName, student.middleName, student.lastName, student.suffix].filter(Boolean).join(" "),
     email: profile.email,
     lrn: student.lrn,
-    gradeAndSection: [student.gradeLevel, student.section].filter(Boolean).join(", ") || "Not assigned",
     contactNumber: student.contactNumber ?? "Not set",
-    guardian: student.guardianName ?? "Not set",
     address: student.address ?? "Not set",
     hasStudentRecord: true,
   } satisfies StudentProfileView;
@@ -511,67 +442,6 @@ export async function listDocumentTypeViews() {
     name: row.name,
     code: row.code,
     processingDays: row.processingDays,
-    status: row.isActive ? "Active" : "Inactive",
-  }));
-}
-
-export async function listSchoolYearViews() {
-  const db = getDb();
-  const rows = await db.select().from(schoolYears).orderBy(desc(schoolYears.createdAt));
-
-  return rows.map<SchoolYearView>((row) => ({
-    id: row.id,
-    name: row.name,
-    startsOn: formatDate(row.startsOn),
-    endsOn: formatDate(row.endsOn),
-    status: row.isActive ? "Active" : "Closed",
-  }));
-}
-
-export async function listGradeLevelViews() {
-  const db = getDb();
-  const rows = await db
-    .select({
-      id: gradeLevels.id,
-      gradeLevel: gradeLevels.name,
-      status: gradeLevels.isActive,
-      sections: sql<number>`cast(count(${sections.id}) as int)`,
-    })
-    .from(gradeLevels)
-    .leftJoin(sections, eq(gradeLevels.id, sections.gradeLevelId))
-    .groupBy(gradeLevels.id)
-    .orderBy(gradeLevels.order);
-
-  return rows.map<GradeLevelView>((row) => ({
-    id: row.id,
-    gradeLevel: row.gradeLevel,
-    sections: String(row.sections),
-    status: row.status ? "Active" : "Inactive",
-  }));
-}
-
-export async function listSectionViews() {
-  const db = getDb();
-  const rows = await db
-    .select({
-      id: sections.id,
-      name: sections.name,
-      adviserName: sections.adviserName,
-      gradeLevel: gradeLevels.name,
-      schoolYear: schoolYears.name,
-      isActive: sections.isActive,
-    })
-    .from(sections)
-    .leftJoin(gradeLevels, eq(sections.gradeLevelId, gradeLevels.id))
-    .leftJoin(schoolYears, eq(sections.schoolYearId, schoolYears.id))
-    .orderBy(sections.name);
-
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    gradeLevel: row.gradeLevel ?? "Not assigned",
-    schoolYear: row.schoolYear ?? "Any active year",
-    adviserName: row.adviserName ?? "Not set",
     status: row.isActive ? "Active" : "Inactive",
   }));
 }

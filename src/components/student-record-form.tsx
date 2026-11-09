@@ -8,26 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
 
-type Option = {
-  id: string;
-  name: string;
-  gradeLevelId?: string | null;
-};
-
-export function StudentRecordForm({
-  gradeLevels,
-  sections,
-}: {
-  gradeLevels: Option[];
-  sections: Option[];
-}) {
+export function StudentRecordForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [selectedGradeLevelId, setSelectedGradeLevelId] = useState("");
-  const [selectedSectionId, setSelectedSectionId] = useState("");
-  const filteredSections = selectedGradeLevelId
-    ? sections.filter((section) => !section.gradeLevelId || section.gradeLevelId === selectedGradeLevelId)
-    : [];
 
   // onSubmit (not <form action>): form actions suppress mid-flight state and
   // auto-reset uncontrolled fields on completion (same fix as auth-form).
@@ -71,45 +54,7 @@ export function StudentRecordForm({
           <Field label="Middle name" name="middleName" />
           <Field label="Last name" name="lastName" required />
           <Field label="Suffix" name="suffix" />
-          <div className="grid gap-2">
-            <Label htmlFor="gradeLevelId">Grade level</Label>
-            <Select
-              id="gradeLevelId"
-              name="gradeLevelId"
-              value={selectedGradeLevelId}
-              onChange={(event) => {
-                setSelectedGradeLevelId(event.target.value);
-                setSelectedSectionId("");
-              }}
-            >
-              <option value="">Not assigned</option>
-              {gradeLevels.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="sectionId">Section</Label>
-            <Select
-              id="sectionId"
-              name="sectionId"
-              value={selectedSectionId}
-              onChange={(event) => setSelectedSectionId(event.target.value)}
-              disabled={!selectedGradeLevelId}
-            >
-              <option value="">{selectedGradeLevelId ? "Not assigned" : "Select a grade level first"}</option>
-              {filteredSections.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.name}
-                </option>
-              ))}
-            </Select>
-          </div>
           <Field label="Contact number" name="contactNumber" />
-          <Field label="Guardian name" name="guardianName" />
-          <Field label="Guardian contact" name="guardianContact" />
           <div className="grid gap-2">
             <Label htmlFor="enrollmentStatus">Status</Label>
             <Select id="enrollmentStatus" name="enrollmentStatus" defaultValue="enrolled">

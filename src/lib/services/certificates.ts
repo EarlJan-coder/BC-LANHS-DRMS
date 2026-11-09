@@ -7,10 +7,7 @@ import {
   certificates,
   documentRequests,
   documentTypes,
-  gradeLevels,
   notifications,
-  schoolYears,
-  sections,
   students,
   users,
 } from "@/db/schema";
@@ -232,15 +229,7 @@ export async function generateCertificate(input: unknown) {
       })
     : undefined;
   const certificateType = values.certificateType ?? docType?.name ?? "School Certificate";
-  const schoolYear =
-    (values.schoolYearId
-      ? await db.query.schoolYears.findFirst({ where: eq(schoolYears.id, values.schoolYearId) })
-      : undefined) ??
-    (request?.schoolYearNeeded
-      ? await db.query.schoolYears.findFirst({ where: eq(schoolYears.name, request.schoolYearNeeded) })
-      : undefined) ??
-    (student.schoolYearId ? await db.query.schoolYears.findFirst({ where: eq(schoolYears.id, student.schoolYearId) }) : undefined) ??
-    (await db.query.schoolYears.findFirst({ where: eq(schoolYears.isActive, true) }));
+  const schoolYear = request?.schoolYearNeeded ?? "";
 
   const code = verificationCode();
   const verifyUrl = `${appUrl()}/verify-certificate/${code}`;
@@ -251,7 +240,6 @@ export async function generateCertificate(input: unknown) {
       requestId: request?.id,
       studentId: student.id,
       certificateType,
-      schoolYearId: schoolYear?.id,
       verificationCode: code,
       qrCodeData: verifyUrl,
       generatedBy: actor?.id,
@@ -277,12 +265,12 @@ export async function generateCertificate(input: unknown) {
     metadata: {
       requestId: request?.id,
       documentType: certificateType,
-      schoolYear: schoolYear?.name,
+      schoolYear,
     },
     hashMetadata: {
       certificateNumber: created.certificateNumber,
       studentId: student.id,
-      schoolYear: schoolYear?.name ?? "",
+      schoolYear,
     },
     eventType: "CERTIFICATE_ISSUED",
     previousRecordHash: ZERO_HASH,
@@ -345,7 +333,6 @@ export async function listCertificateViews(limit = 100): Promise<CertificateView
       verificationCode: certificates.verificationCode,
       blockchainTxHash: certificates.blockchainTxHash,
       generatedAt: certificates.generatedAt,
-      schoolYear: schoolYears.name,
       firstName: students.firstName,
       middleName: students.middleName,
       lastName: students.lastName,
@@ -353,7 +340,6 @@ export async function listCertificateViews(limit = 100): Promise<CertificateView
     })
     .from(certificates)
     .leftJoin(students, eq(certificates.studentId, students.id))
-    .leftJoin(schoolYears, eq(certificates.schoolYearId, schoolYears.id))
     .orderBy(desc(certificates.createdAt))
     .limit(limit);
 
@@ -362,7 +348,7 @@ export async function listCertificateViews(limit = 100): Promise<CertificateView
     certificateNumber: row.certificateNumber,
     certificateType: row.certificateType,
     studentName: [row.firstName, row.middleName, row.lastName, row.suffix].filter(Boolean).join(" ") || "Unknown student",
-    schoolYear: row.schoolYear ?? "Not set",
+    schoolYear: "Not set",
     verificationCode: row.verificationCode,
     verificationUrl: `${appUrl()}/verify-certificate/${row.verificationCode}`,
     blockchainStatus: row.blockchainTxHash ? "submitted" : "pending",
@@ -446,7 +432,6 @@ async function loadCertificateDisplayRow(certificateId: string) {
       certificateType: certificates.certificateType,
       qrCodeData: certificates.qrCodeData,
       generatedAt: certificates.generatedAt,
-      schoolYear: schoolYears.name,
       lrn: students.lrn,
       trackingNumber: documentRequests.trackingNumber,
       requestPurpose: documentRequests.purpose,
@@ -456,8 +441,6 @@ async function loadCertificateDisplayRow(certificateId: string) {
       middleName: students.middleName,
       lastName: students.lastName,
       suffix: students.suffix,
-      gradeLevel: gradeLevels.name,
-      section: sections.name,
       overrideStudentName: certificates.overrideStudentName,
       overrideGradeLevel: certificates.overrideGradeLevel,
       overrideSection: certificates.overrideSection,
@@ -468,10 +451,7 @@ async function loadCertificateDisplayRow(certificateId: string) {
     })
     .from(certificates)
     .leftJoin(students, eq(certificates.studentId, students.id))
-    .leftJoin(gradeLevels, eq(students.gradeLevelId, gradeLevels.id))
-    .leftJoin(sections, eq(students.sectionId, sections.id))
     .leftJoin(documentRequests, eq(certificates.requestId, documentRequests.id))
-    .leftJoin(schoolYears, eq(certificates.schoolYearId, schoolYears.id))
     .where(eq(certificates.id, certificateId))
     .limit(1);
 
@@ -486,8 +466,8 @@ function toDisplayRow(row: CertificateDisplayDbRow): CertificateDisplayRow {
     middleName: row.middleName,
     lastName: row.lastName,
     suffix: row.suffix,
-    gradeLevel: row.gradeLevel ?? row.requestGradeLevelNeeded,
-    section: row.section,
+    gradeLevel: row.requestGradeLevelNeeded,
+    section: null,
     requestPurpose: row.requestPurpose,
     generatedAt: row.generatedAt,
     overrideStudentName: row.overrideStudentName,
@@ -583,10 +563,6 @@ export async function updateCertificateOverrides(certificateId: string, input: u
     .set({ ...updates, updatedAt: new Date() })
     .where(eq(certificates.id, certificateId));
 
-  const schoolYear = existing.schoolYearId
-    ? await db.query.schoolYears.findFirst({ where: eq(schoolYears.id, existing.schoolYearId) })
-    : undefined;
-
   // Overrides change only the printed PDF content. The canonical hash metadata
   // stays identical to issuance, so the record hash is logged unchanged and the
   // certificate's verification hash is not recomputed.
@@ -602,7 +578,7 @@ export async function updateCertificateOverrides(certificateId: string, input: u
     hashMetadata: {
       certificateNumber: existing.certificateNumber,
       studentId: existing.studentId ?? "",
-      schoolYear: schoolYear?.name ?? "",
+      schoolYear: "",
     },
     previousRecordHash: existing.recordHash ?? ZERO_HASH,
   });
@@ -623,7 +599,7 @@ export async function generateCertificatePdf(certificateId: string) {
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   const logo = await embedSchoolLogo(pdf);
   const name = display.name;
-  const schoolYear = certificate.schoolYear ?? certificate.requestSchoolYearNeeded ?? "Not set";
+  const schoolYear = certificate.requestSchoolYearNeeded ?? "Not set";
   const gradeLevel = display.gradeLevel || "Not set";
   const section = display.section || "Not set";
   const purpose = display.purpose || "school record validation";
@@ -694,10 +670,6 @@ export async function reissueCertificate(certificateId: string, reason?: string)
 
   const previousHash = existing.recordHash ?? ZERO_HASH;
 
-  const schoolYear = existing.schoolYearId
-    ? await db.query.schoolYears.findFirst({ where: eq(schoolYears.id, existing.schoolYearId) })
-    : undefined;
-
   const audit = await recordAuditedAction({
     referenceType: "certificate",
     referenceId: existing.certificateNumber,
@@ -713,7 +685,7 @@ export async function reissueCertificate(certificateId: string, reason?: string)
     hashMetadata: {
       certificateNumber: existing.certificateNumber,
       studentId: existing.studentId ?? "",
-      schoolYear: schoolYear?.name ?? "",
+      schoolYear: "",
     },
     eventType: "CERTIFICATE_REISSUED",
     previousRecordHash: previousHash,
@@ -751,10 +723,6 @@ export async function voidCertificate(certificateId: string, reason: string) {
 
   const previousHash = existing.recordHash ?? ZERO_HASH;
 
-  const schoolYear = existing.schoolYearId
-    ? await db.query.schoolYears.findFirst({ where: eq(schoolYears.id, existing.schoolYearId) })
-    : undefined;
-
   const audit = await recordAuditedAction({
     referenceType: "certificate",
     referenceId: existing.certificateNumber,
@@ -770,7 +738,7 @@ export async function voidCertificate(certificateId: string, reason: string) {
     hashMetadata: {
       certificateNumber: existing.certificateNumber,
       studentId: existing.studentId ?? "",
-      schoolYear: schoolYear?.name ?? "",
+      schoolYear: "",
     },
     eventType: "CERTIFICATE_VOIDED",
     previousRecordHash: previousHash,

@@ -243,6 +243,21 @@ async function main() {
 
     const pendingDataDeletes: PendingDataDelete[] = [];
 
+    if (pendingTags.has("0014_windy_exodus")) {
+      let academicRows = 0;
+      for (const table of ["school_years", "grade_levels", "sections"]) {
+        if (existingTables.has(table)) {
+          const rows = await sql.unsafe(`SELECT count(*)::int AS count FROM "${table}"`);
+          academicRows += rows[0].count;
+        }
+      }
+      pendingDataDeletes.push({
+        migration: "0014_windy_exodus.sql",
+        statement: 'DROP TABLE "school_years", "grade_levels", "sections"',
+        affectedRows: academicRows,
+      });
+    }
+
     if (pendingTags.has("0006_peaceful_mindworm") && existingTables.has("users")) {
       const rows = await sql`SELECT count(*)::int AS count FROM users`;
       pendingDataDeletes.push({

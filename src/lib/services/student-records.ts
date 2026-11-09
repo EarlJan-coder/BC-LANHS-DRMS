@@ -1,7 +1,7 @@
 import { count, eq, sql } from "drizzle-orm";
 import type { z } from "zod";
 import { getDb } from "@/db";
-import { certificates, documentRequests, gradeLevels, sections, students } from "@/db/schema";
+import { certificates, documentRequests, students } from "@/db/schema";
 import { getCurrentRole } from "@/lib/auth";
 import { AppError } from "@/lib/utils";
 import { studentRecordSchema } from "@/lib/validators";
@@ -85,29 +85,6 @@ async function ensureStudentRecordReferences(values: StudentRecordValues, curren
   if (existing && existing.id !== currentStudentId) {
     throw new StudentRecordError("This LRN already belongs to another student record.", 409);
   }
-
-  if (values.sectionId && !values.gradeLevelId) {
-    throw new StudentRecordError("Select a grade level before choosing a section.");
-  }
-
-  const [gradeLevel, section] = await Promise.all([
-    values.gradeLevelId
-      ? db.query.gradeLevels.findFirst({ where: eq(gradeLevels.id, values.gradeLevelId) })
-      : Promise.resolve(null),
-    values.sectionId ? db.query.sections.findFirst({ where: eq(sections.id, values.sectionId) }) : Promise.resolve(null),
-  ]);
-
-  if (values.gradeLevelId && !gradeLevel) {
-    throw new StudentRecordError("Select an existing grade level.");
-  }
-
-  if (values.sectionId && !section) {
-    throw new StudentRecordError("Select an existing section.");
-  }
-
-  if (values.gradeLevelId && section?.gradeLevelId && section.gradeLevelId !== values.gradeLevelId) {
-    throw new StudentRecordError("The selected section does not belong to the selected grade level.");
-  }
 }
 
 export async function createStudentRecord(values: StudentRecordValues) {
@@ -124,11 +101,7 @@ export async function createStudentRecord(values: StudentRecordValues) {
         last_name,
         suffix,
         contact_number,
-        guardian_name,
-        guardian_contact,
         address,
-        grade_level_id,
-        section_id,
         status,
         enrollment_status
       )
@@ -140,11 +113,7 @@ export async function createStudentRecord(values: StudentRecordValues) {
         ${values.lastName},
         ${optionalText(values.suffix)},
         ${optionalText(values.contactNumber)},
-        ${optionalText(values.guardianName)},
-        ${optionalText(values.guardianContact)},
         ${optionalText(values.address)},
-        ${values.gradeLevelId || null},
-        ${values.sectionId || null},
         cast(${values.enrollmentStatus} as student_status),
         ${values.enrollmentStatus}
       )
@@ -163,11 +132,7 @@ export async function createStudentRecord(values: StudentRecordValues) {
       lastName: values.lastName,
       suffix: optionalText(values.suffix) ?? undefined,
       contactNumber: optionalText(values.contactNumber) ?? undefined,
-      guardianName: optionalText(values.guardianName) ?? undefined,
-      guardianContact: optionalText(values.guardianContact) ?? undefined,
       address: optionalText(values.address) ?? undefined,
-      gradeLevelId: values.gradeLevelId || undefined,
-      sectionId: values.sectionId || undefined,
       status: values.enrollmentStatus,
       enrollmentStatus: values.enrollmentStatus,
     })
@@ -197,11 +162,7 @@ export async function updateStudentRecord(id: string, values: StudentRecordValue
         last_name = ${values.lastName},
         suffix = ${optionalText(values.suffix)},
         contact_number = ${optionalText(values.contactNumber)},
-        guardian_name = ${optionalText(values.guardianName)},
-        guardian_contact = ${optionalText(values.guardianContact)},
         address = ${optionalText(values.address)},
-        grade_level_id = ${values.gradeLevelId || null},
-        section_id = ${values.sectionId || null},
         status = cast(${values.enrollmentStatus} as student_status),
         enrollment_status = ${values.enrollmentStatus},
         updated_at = now()
@@ -225,11 +186,7 @@ export async function updateStudentRecord(id: string, values: StudentRecordValue
       lastName: values.lastName,
       suffix: optionalText(values.suffix),
       contactNumber: optionalText(values.contactNumber),
-      guardianName: optionalText(values.guardianName),
-      guardianContact: optionalText(values.guardianContact),
       address: optionalText(values.address),
-      gradeLevelId: values.gradeLevelId || null,
-      sectionId: values.sectionId || null,
       status: values.enrollmentStatus,
       enrollmentStatus: values.enrollmentStatus,
       updatedAt: new Date(),

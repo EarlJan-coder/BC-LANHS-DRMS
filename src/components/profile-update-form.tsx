@@ -10,13 +10,11 @@ import { Input, Label } from "@/components/ui/input";
 export function ProfileUpdateForm({
   email,
   contactNumber,
-  guardian,
   hasStudentRecord,
   triggerClassName,
 }: {
   email: string;
   contactNumber: string;
-  guardian: string;
   hasStudentRecord: boolean;
   triggerClassName?: string;
 }) {
@@ -37,7 +35,6 @@ export function ProfileUpdateForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contactNumber: formData.get("contactNumber") ?? undefined,
-          guardianName: formData.get("guardianName") ?? undefined,
           email: formData.get("email") ?? undefined,
         }),
       });
@@ -108,18 +105,9 @@ export function ProfileUpdateForm({
                       disabled={!hasStudentRecord}
                     />
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="profile-guardianName">Guardian name</Label>
-                    <Input
-                      id="profile-guardianName"
-                      name="guardianName"
-                      defaultValue={editableValue(guardian)}
-                      disabled={!hasStudentRecord}
-                    />
-                  </div>
                   {!hasStudentRecord ? (
                     <p className="text-sm text-slate-500">
-                      Contact the registrar to link your student record before updating contact number and guardian name.
+                      Contact the registrar to link your student record before updating your contact number.
                     </p>
                   ) : null}
                   <div className="grid gap-2">

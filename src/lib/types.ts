@@ -47,13 +47,7 @@ export type StudentView = {
   suffix: string;
   name: string;
   contactNumber: string;
-  guardianName: string;
-  guardianContact: string;
   address: string;
-  gradeLevelId: string;
-  gradeLevel: string;
-  sectionId: string;
-  section: string;
   status: string;
 };
 
@@ -75,28 +69,11 @@ export type DocumentTypeView = {
   status: string;
 };
 
-export type SchoolYearView = {
-  id: string;
-  name: string;
-  startsOn: string;
-  endsOn: string;
-  status: string;
-};
-
-export type GradeLevelView = {
-  id: string;
-  gradeLevel: string;
-  sections: string;
-  status: string;
-};
-
 export type StudentProfileView = {
   name: string;
   email: string;
   lrn: string;
-  gradeAndSection: string;
   contactNumber: string;
-  guardian: string;
   address: string;
   hasStudentRecord: boolean;
 };
