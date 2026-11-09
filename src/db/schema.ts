@@ -17,6 +17,7 @@ import {
 
 export const userRoleEnum = pgEnum("user_role", ["student", "registrar", "admin"]);
 export const accountStatusEnum = pgEnum("account_status", ["active", "inactive", "suspended"]);
+export const registrationStatusEnum = pgEnum("registration_status", ["pending", "approved", "declined"]);
 export const studentTypeEnum = pgEnum("student_type", ["current", "alumni", "transferee"]);
 export const studentStatusEnum = pgEnum("student_status", ["enrolled", "alumni", "transferred", "inactive"]);
 export const requestStatusEnum = pgEnum("request_status", [
@@ -50,6 +51,7 @@ export const users = pgTable(
     lastName: varchar("last_name", { length: 100 }).notNull(),
     role: userRoleEnum("role").notNull().default("student"),
     status: accountStatusEnum("status").notNull().default("active"),
+    registrationStatus: registrationStatusEnum("registration_status").notNull().default("pending"),
     isActive: boolean("is_active").notNull().default(true),
     tokenVersion: integer("token_version").notNull().default(0),
     mustChangePassword: boolean("must_change_password").notNull().default(false),
@@ -61,52 +63,6 @@ export const users = pgTable(
     uniqueIndex("users_lrn_idx").on(table.lrn),
     index("users_role_idx").on(table.role),
     index("users_status_idx").on(table.status),
-  ],
-);
-
-export const schoolYears = pgTable(
-  "school_years",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    name: varchar("name", { length: 30 }).notNull(),
-    startsOn: timestamp("starts_on", { withTimezone: true }),
-    endsOn: timestamp("ends_on", { withTimezone: true }),
-    isActive: boolean("is_active").notNull().default(false),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [uniqueIndex("school_years_name_idx").on(table.name)],
-);
-
-export const gradeLevels = pgTable(
-  "grade_levels",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    name: varchar("name", { length: 40 }).notNull(),
-    order: integer("order").notNull().default(0),
-    isActive: boolean("is_active").notNull().default(true),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [uniqueIndex("grade_levels_name_idx").on(table.name)],
-);
-
-export const sections = pgTable(
-  "sections",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    name: varchar("name", { length: 80 }).notNull(),
-    gradeLevelId: uuid("grade_level_id").references(() => gradeLevels.id),
-    schoolYearId: uuid("school_year_id").references(() => schoolYears.id),
-    adviserName: varchar("adviser_name", { length: 150 }),
-    isActive: boolean("is_active").notNull().default(true),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    index("sections_grade_level_id_idx").on(table.gradeLevelId),
-    index("sections_school_year_id_idx").on(table.schoolYearId),
-    uniqueIndex("sections_grade_level_year_name_idx").on(table.gradeLevelId, table.schoolYearId, table.name),
   ],
 );
 
@@ -125,11 +81,6 @@ export const students = pgTable(
     email: varchar("email", { length: 191 }),
     contactNumber: varchar("contact_number", { length: 30 }),
     address: text("address"),
-    guardianName: varchar("guardian_name", { length: 150 }),
-    guardianContact: varchar("guardian_contact", { length: 30 }),
-    gradeLevelId: uuid("grade_level_id").references(() => gradeLevels.id),
-    sectionId: uuid("section_id").references(() => sections.id),
-    schoolYearId: uuid("school_year_id").references(() => schoolYears.id),
     studentType: studentTypeEnum("student_type").notNull().default("current"),
     status: studentStatusEnum("status").notNull().default("enrolled"),
     enrollmentStatus: varchar("enrollment_status", { length: 40 }).notNull().default("enrolled"),
@@ -139,8 +90,6 @@ export const students = pgTable(
   (table) => [
     uniqueIndex("students_lrn_idx").on(table.lrn),
     index("students_user_id_idx").on(table.userId),
-    index("students_grade_level_idx").on(table.gradeLevelId),
-    index("students_section_idx").on(table.sectionId),
   ],
 );
 
@@ -187,6 +136,7 @@ export const documentRequests = pgTable(
     purpose: text("purpose").notNull(),
     schoolYearNeeded: varchar("school_year_needed", { length: 40 }),
     gradeLevelNeeded: varchar("grade_level_needed", { length: 40 }),
+    sectionNeeded: varchar("section_needed", { length: 40 }),
     remarks: text("remarks"),
     status: requestStatusEnum("status").notNull().default("pending"),
     registrarRemarks: text("registrar_remarks"),
@@ -232,7 +182,6 @@ export const certificates = pgTable(
     requestId: uuid("request_id").references(() => documentRequests.id),
     studentId: uuid("student_id").references(() => students.id),
     certificateType: varchar("certificate_type", { length: 120 }).notNull(),
-    schoolYearId: uuid("school_year_id").references(() => schoolYears.id),
     pdfUrl: text("pdf_url"),
     verificationCode: varchar("verification_code", { length: 80 }).notNull(),
     qrCodeData: text("qr_code_data").notNull(),
@@ -273,6 +222,8 @@ export const notifications = pgTable(
     type: notificationTypeEnum("type").notNull().default("system"),
     title: varchar("title", { length: 160 }).notNull(),
     message: text("message").notNull(),
+    referenceType: varchar("reference_type", { length: 40 }),
+    referenceId: varchar("reference_id", { length: 80 }),
     isRead: boolean("is_read").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -346,18 +297,6 @@ export const studentsRelations = relations(students, ({ one, many }) => ({
     fields: [students.userId],
     references: [users.id],
   }),
-  gradeLevel: one(gradeLevels, {
-    fields: [students.gradeLevelId],
-    references: [gradeLevels.id],
-  }),
-  section: one(sections, {
-    fields: [students.sectionId],
-    references: [sections.id],
-  }),
-  schoolYear: one(schoolYears, {
-    fields: [students.schoolYearId],
-    references: [schoolYears.id],
-  }),
   requests: many(documentRequests),
   certificates: many(certificates),
 }));
@@ -383,10 +322,6 @@ export const certificatesRelations = relations(certificates, ({ one }) => ({
   request: one(documentRequests, {
     fields: [certificates.requestId],
     references: [documentRequests.id],
-  }),
-  schoolYear: one(schoolYears, {
-    fields: [certificates.schoolYearId],
-    references: [schoolYears.id],
   }),
 }));
 

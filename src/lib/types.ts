@@ -8,6 +8,15 @@ export type StatCard = {
 };
 
 export type DashboardRole = "student" | "registrar" | "admin";
+export type RegistrationStatus = "pending" | "approved" | "declined";
+
+export type PendingRegistrationView = {
+  id: string;
+  name: string;
+  email: string;
+  lrn: string;
+  createdAt: string;
+};
 
 export type DocumentRequestView = {
   id: string;
@@ -40,21 +49,19 @@ export type AuditTrailView = {
 export type StudentView = {
   id: string;
   accountLinked: boolean;
+  registrationStatus: RegistrationStatus;
   lrn: string;
   firstName: string;
   middleName: string;
   lastName: string;
   suffix: string;
   name: string;
+  email: string;
+  phone: string;
   contactNumber: string;
-  guardianName: string;
-  guardianContact: string;
   address: string;
-  gradeLevelId: string;
-  gradeLevel: string;
-  sectionId: string;
-  section: string;
   status: string;
+  hasLinkedRecords: boolean;
 };
 
 export type UserView = {
@@ -71,22 +78,11 @@ export type DocumentTypeView = {
   id: string;
   name: string;
   code: string;
+  description: string;
+  requirements: string[];
   processingDays: number;
-  status: string;
-};
-
-export type SchoolYearView = {
-  id: string;
-  name: string;
-  startsOn: string;
-  endsOn: string;
-  status: string;
-};
-
-export type GradeLevelView = {
-  id: string;
-  gradeLevel: string;
-  sections: string;
+  fee: number;
+  isActive: boolean;
   status: string;
 };
 
@@ -94,9 +90,7 @@ export type StudentProfileView = {
   name: string;
   email: string;
   lrn: string;
-  gradeAndSection: string;
   contactNumber: string;
-  guardian: string;
   address: string;
   hasStudentRecord: boolean;
 };

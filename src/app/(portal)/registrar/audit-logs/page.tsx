@@ -1,9 +1,12 @@
 import { DataTable } from "@/components/data-table";
 import { SectionHeading } from "@/components/section-heading";
 import { listAuditTrailViews } from "@/lib/services/live-data";
+import { Pagination } from "@/components/ui/pagination";
+import { parsePage } from "@/lib/pagination";
 
-export default async function RegistrarAuditLogsPage() {
-  const auditTrail = await listAuditTrailViews();
+export default async function RegistrarAuditLogsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const page = parsePage((await searchParams).page);
+  const auditTrail = await listAuditTrailViews({ page });
 
   return (
     <div>
@@ -12,7 +15,7 @@ export default async function RegistrarAuditLogsPage() {
         description="Important registrar actions are recorded locally and mirrored to blockchain audit proofs when configured."
       />
       <DataTable
-        rows={auditTrail}
+        rows={auditTrail.rows}
         emptyMessage="No audit records found yet."
         columns={[
           { key: "action", label: "Action", render: (row) => row.action },
@@ -23,6 +26,7 @@ export default async function RegistrarAuditLogsPage() {
           { key: "created", label: "Created", render: (row) => row.createdAt },
         ]}
       />
+      <Pagination page={auditTrail.page} totalPages={Math.ceil(auditTrail.total / auditTrail.pageSize)} basePath="/registrar/audit-logs" total={auditTrail.total} pageSize={auditTrail.pageSize} />
     </div>
   );
 }

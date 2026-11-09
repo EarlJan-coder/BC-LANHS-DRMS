@@ -6,7 +6,6 @@ import {
   certificates,
   documentRequests,
   documentTypes,
-  gradeLevels,
   students,
 } from "@/db/schema";
 import { SCHOOL_NAME } from "@/lib/constants";
@@ -25,6 +24,7 @@ import {
 } from "@/lib/services/pdf-brand";
 import { drawTable, type TableColumn } from "@/lib/services/pdf-table";
 import { statusLabel, formatDateTime } from "@/lib/utils";
+import { paginateRows, PAGE_SIZE } from "@/lib/pagination";
 
 export const REPORT_KEYS = [
   "request-summary",
@@ -52,6 +52,8 @@ export type ReportData = {
   total: number;
   columns: TableColumn[];
   rows: string[][];
+  page?: number;
+  pageSize?: number;
 };
 
 const REPORT_META: Record<
@@ -264,11 +266,10 @@ export async function getReportData(key: ReportKey, range: ReportRange): Promise
     ]);
   } else {
     columns = [
-      { header: "LRN", width: 110 },
-      { header: "Student", width: 150 },
-      { header: "Grade", width: 80 },
-      { header: "Status", width: 85 },
-      { header: "Added", width: 70, align: "right" },
+      { header: "LRN", width: 140 },
+      { header: "Student", width: 180 },
+      { header: "Status", width: 100 },
+      { header: "Added", width: 80, align: "right" },
     ];
     const conditions = rangeFilters(students.createdAt, range);
     const records = await db
@@ -278,19 +279,16 @@ export async function getReportData(key: ReportKey, range: ReportRange): Promise
         studentMiddleName: students.middleName,
         studentLastName: students.lastName,
         studentSuffix: students.suffix,
-        gradeName: gradeLevels.name,
         status: students.status,
         createdAt: students.createdAt,
       })
       .from(students)
-      .leftJoin(gradeLevels, eq(students.gradeLevelId, gradeLevels.id))
       .where(conditions.length ? and(...conditions) : undefined)
       .orderBy(desc(students.createdAt));
 
     rows = records.map((row) => [
       row.lrn,
       personName(row),
-      row.gradeName ?? "\u2014",
       humanStatus(row.status),
       row.createdAt.toISOString().slice(0, 10),
     ]);
@@ -309,8 +307,12 @@ export async function getReportData(key: ReportKey, range: ReportRange): Promise
   };
 }
 
-export async function listReports(range: ReportRange): Promise<ReportData[]> {
-  return Promise.all(REPORT_KEYS.map((key) => getReportData(key, range)));
+export async function listReports(range: ReportRange, pages: Partial<Record<ReportKey, number>> = {}): Promise<ReportData[]> {
+  const reports = await Promise.all(REPORT_KEYS.map((key) => getReportData(key, range)));
+  return reports.map((report) => {
+    const paged = paginateRows(report.rows, pages[report.key] ?? 1, PAGE_SIZE);
+    return { ...report, rows: paged.rows, page: paged.page, pageSize: paged.pageSize };
+  });
 }
 
 // PDF layout constants (A4 to match the documents interface).

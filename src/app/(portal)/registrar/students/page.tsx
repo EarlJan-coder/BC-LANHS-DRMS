@@ -1,32 +1,28 @@
 import { DataTable } from "@/components/data-table";
 import { SectionHeading } from "@/components/section-heading";
 import { PendingLink } from "@/components/ui/pending-link";
-import { StudentRecordActions } from "@/components/student-record-actions";
-import { StudentRecordForm } from "@/components/student-record-form";
+import { StudentRecordModal } from "@/components/student-record-modal";
 import { ButtonLink } from "@/components/ui/button";
-import { getStudentRecordFormOptions, listStudentViews } from "@/lib/services/live-data";
+import { listStudentViews } from "@/lib/services/live-data";
+import { Pagination } from "@/components/ui/pagination";
+import { parsePage } from "@/lib/pagination";
 
-export default async function StudentRecordsPage() {
-  const [students, options] = await Promise.all([listStudentViews(), getStudentRecordFormOptions()]);
+export default async function StudentRecordsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const page = parsePage((await searchParams).page);
+  const students = await listStudentViews({ page });
 
   return (
     <div>
       <SectionHeading
         title="Student records"
-        description="Search and validate student and alumni records by LRN."
+        description="Review student accounts and records by LRN."
         actions={
-          <>
-            <ButtonLink href="/registrar/students/import">Import students</ButtonLink>
-            <ButtonLink href="/registrar/reports" tone="secondary">Export report</ButtonLink>
-          </>
+          <ButtonLink href="/registrar/reports" tone="secondary">Export report</ButtonLink>
         }
       />
-      <div className="mb-6">
-        <StudentRecordForm gradeLevels={options.gradeLevels} sections={options.sections} />
-      </div>
       <DataTable
-        rows={students}
-        emptyMessage="No student records found. Add records or import source data first."
+        rows={students.rows}
+        emptyMessage="No student records found. Students can register from the sign-up page."
         columns={[
           { key: "lrn", label: "LRN", render: (row) => row.lrn },
           {
@@ -40,18 +36,18 @@ export default async function StudentRecordsPage() {
               />
             ),
           },
-          { key: "grade", label: "Grade level", render: (row) => row.gradeLevel },
-          { key: "section", label: "Section", render: (row) => row.section },
+          { key: "email", label: "Email", render: (row) => row.email || "Not set" },
+          { key: "phone", label: "Phone", render: (row) => row.phone || "Not set" },
+          { key: "account", label: "Account", render: (row) => row.registrationStatus[0].toUpperCase() + row.registrationStatus.slice(1) },
           { key: "status", label: "Status", render: (row) => row.status },
           {
-            key: "actions",
-            label: "Actions",
-            render: (row) => (
-              <StudentRecordActions student={row} gradeLevels={options.gradeLevels} sections={options.sections} />
-            ),
+            key: "view",
+            label: "View",
+            render: (row) => <StudentRecordModal student={row} />,
           },
         ]}
       />
+      <Pagination page={students.page} totalPages={Math.ceil(students.total / students.pageSize)} basePath="/registrar/students" total={students.total} pageSize={students.pageSize} />
     </div>
   );
 }

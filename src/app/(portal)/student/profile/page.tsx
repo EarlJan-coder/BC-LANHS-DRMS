@@ -18,10 +18,6 @@ export default async function StudentProfilePage() {
             <h2 className="text-2xl font-semibold text-white">{profile.name}</h2>
             {profile.hasStudentRecord ? (
               <p className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-rose-100">
-                <span>{profile.gradeAndSection}</span>
-                <span aria-hidden className="text-white/40">
-                  |
-                </span>
                 <span className="font-mono">LRN {profile.lrn}</span>
               </p>
             ) : (
@@ -31,7 +27,6 @@ export default async function StudentProfilePage() {
           <ProfileUpdateForm
             email={profile.email}
             contactNumber={profile.contactNumber}
-            guardian={profile.guardian}
             hasStudentRecord={profile.hasStudentRecord}
             triggerClassName="border-transparent bg-white text-brand hover:bg-rose-50"
           />
@@ -46,21 +41,20 @@ export default async function StudentProfilePage() {
               <SectionIcon tone="brand">
                 <Phone className="h-4 w-4" aria-hidden />
               </SectionIcon>
-              <CardTitle>Contact &amp; Guardian</CardTitle>
+              <CardTitle>Contact</CardTitle>
               <span className="ml-auto rounded-full bg-brand-soft px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-brand">
                 Editable
               </span>
             </div>
           </CardHeader>
           <CardContent>
-            <dl className="grid gap-4 sm:grid-cols-3">
+            <dl className="grid gap-4 sm:grid-cols-2">
               <Field label="Contact number" value={profile.contactNumber} />
-              <Field label="Guardian name" value={profile.guardian} />
               <Field label="Email" value={profile.email} />
             </dl>
             {profile.hasStudentRecord ? null : (
               <p className="mt-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-brand-dark">
-                Contact the registrar to link your student record before updating contact number and guardian name.
+                Contact the registrar to link your student record before updating your contact number.
               </p>
             )}
           </CardContent>
@@ -77,9 +71,8 @@ export default async function StudentProfilePage() {
           </CardHeader>
           <CardContent>
             {profile.hasStudentRecord ? (
-              <dl className="grid gap-4 sm:grid-cols-2">
+              <dl className="grid gap-4 sm:grid-cols-1">
                 <Field label="LRN" value={profile.lrn} />
-                <Field label="Grade and section" value={profile.gradeAndSection} />
               </dl>
             ) : (
               <p className="text-sm text-slate-500">No student profile linked.</p>

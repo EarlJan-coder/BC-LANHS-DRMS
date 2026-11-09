@@ -8,24 +8,22 @@ import { Card } from "@/components/ui/card";
 import { DownloadButton } from "@/components/ui/download-button";
 import { PendingLink } from "@/components/ui/pending-link";
 import { listDocumentRequestViews } from "@/lib/services/live-data";
+import { Pagination } from "@/components/ui/pagination";
+import { parsePage } from "@/lib/pagination";
+import { REQUEST_STATUSES } from "@/lib/constants";
+import type { RequestStatus } from "@/db/schema";
 
 export default async function MyRequestsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; page?: string }>;
 }) {
   const filters = await searchParams;
   const q = (filters.q ?? "").toLowerCase();
-  const status = filters.status ?? "";
-  const requests = (await listDocumentRequestViews({ currentUserOnly: true })).filter((request) => {
-    const matchesQuery =
-      !q ||
-      request.trackingNumber.toLowerCase().includes(q) ||
-      request.documentType.toLowerCase().includes(q) ||
-      request.purpose.toLowerCase().includes(q);
-    const matchesStatus = !status || request.status === status;
-    return matchesQuery && matchesStatus;
-  });
+  const requestedStatus = filters.status ?? "";
+  const status = REQUEST_STATUSES.some((item) => item.value === requestedStatus) ? requestedStatus as RequestStatus : "";
+  const page = parsePage(filters.page);
+  const paged = await listDocumentRequestViews({ currentUserOnly: true, page, q, status: status || undefined });
 
   return (
     <div>
@@ -43,7 +41,7 @@ export default async function MyRequestsPage({
         />
       </Card>
       <DataTable
-        rows={requests}
+        rows={paged.rows}
         emptyMessage="You have not submitted a document request yet."
         columns={[
           {
@@ -87,6 +85,7 @@ export default async function MyRequestsPage({
           },
         ]}
       />
+      <Pagination page={paged.page} totalPages={Math.ceil(paged.total / paged.pageSize)} basePath="/student/requests" total={paged.total} pageSize={paged.pageSize} query={{ q: filters.q, status }} />
     </div>
   );
 }

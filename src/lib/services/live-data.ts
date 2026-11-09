@@ -1,4 +1,5 @@
-import { count, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   auditLogs,
@@ -6,11 +7,8 @@ import {
   certificates,
   documentRequests,
   documentTypes,
-  gradeLevels,
   notifications,
   requestStatusHistory,
-  schoolYears,
-  sections,
   students,
   users,
   type RequestStatus,
@@ -21,14 +19,15 @@ import type {
   AuditTrailView,
   DocumentRequestView,
   DocumentTypeView,
-  GradeLevelView,
-  SchoolYearView,
   StatCard,
   StudentProfileView,
   StudentView,
   UserView,
 } from "@/lib/types";
 import { formatDate, formatDateTime } from "@/lib/utils";
+import { makePaged, PAGE_SIZE, type Paged } from "@/lib/pagination";
+
+type PageOptions = { page: number; pageSize?: number };
 
 function studentName(row: {
   studentFirstName: string | null;
@@ -48,6 +47,92 @@ function studentName(row: {
 
   const user = [row.userFirstName, row.userLastName].filter(Boolean).join(" ");
   return user || "Unlinked student";
+}
+
+type DocumentRequestDbRow = {
+  id: string;
+  trackingNumber: string;
+  purpose: string;
+  status: RequestStatus;
+  createdAt: Date;
+  updatedAt: Date;
+  schoolYearNeeded: string | null;
+  gradeLevelNeeded: string | null;
+  remarks: string | null;
+  registrarRemarks: string | null;
+  documentType: string | null;
+  lrn: string | null;
+  studentFirstName: string | null;
+  studentMiddleName: string | null;
+  studentLastName: string | null;
+  studentSuffix: string | null;
+  userFirstName: string | null;
+  userLastName: string | null;
+};
+
+const documentRequestSelection = {
+  id: documentRequests.id,
+  trackingNumber: documentRequests.trackingNumber,
+  purpose: documentRequests.purpose,
+  status: documentRequests.status,
+  createdAt: documentRequests.createdAt,
+  updatedAt: documentRequests.updatedAt,
+  schoolYearNeeded: documentRequests.schoolYearNeeded,
+  gradeLevelNeeded: documentRequests.gradeLevelNeeded,
+  remarks: documentRequests.remarks,
+  registrarRemarks: documentRequests.registrarRemarks,
+  documentType: documentTypes.name,
+  lrn: students.lrn,
+  studentFirstName: students.firstName,
+  studentMiddleName: students.middleName,
+  studentLastName: students.lastName,
+  studentSuffix: students.suffix,
+  userFirstName: users.firstName,
+  userLastName: users.lastName,
+};
+
+function mapDocumentRequestView(
+  row: DocumentRequestDbRow,
+  blockchainStatus: DocumentRequestView["blockchainStatus"] = "pending",
+): DocumentRequestView {
+  return {
+    id: row.id,
+    trackingNumber: row.trackingNumber,
+    lrn: row.lrn ?? undefined,
+    studentName: studentName(row),
+    documentType: row.documentType ?? "Unconfigured document type",
+    purpose: row.purpose,
+    schoolYearNeeded: row.schoolYearNeeded ?? "Not set",
+    gradeLevelNeeded: row.gradeLevelNeeded ?? "Not set",
+    remarks: row.remarks ?? "None",
+    registrarRemarks: row.registrarRemarks ?? "None",
+    status: row.status,
+    requestedAt: formatDate(row.createdAt),
+    updatedAt: formatDate(row.updatedAt),
+    blockchainStatus,
+  };
+}
+
+async function latestBlockchainStatuses(references: string[]) {
+  const db = getDb();
+  const rows = references.length > 0
+    ? await db
+      .select({
+        referenceId: blockchainAuditLogs.referenceId,
+        blockchainStatus: blockchainAuditLogs.blockchainStatus,
+      })
+      .from(blockchainAuditLogs)
+      .where(inArray(blockchainAuditLogs.referenceId, references))
+      .orderBy(desc(blockchainAuditLogs.createdAt))
+    : [];
+
+  const statuses = new Map<string, DocumentRequestView["blockchainStatus"]>();
+  for (const row of rows) {
+    if (!statuses.has(row.referenceId) && row.blockchainStatus !== "not_required") {
+      statuses.set(row.referenceId, row.blockchainStatus);
+    }
+  }
+  return statuses;
 }
 
 async function currentRequestScope() {
@@ -84,83 +169,81 @@ async function requestStatusCounts(whereClause?: ReturnType<typeof eq>) {
   );
 }
 
-export async function listDocumentRequestViews(options: { currentUserOnly?: boolean; limit?: number } = {}) {
+export function listDocumentRequestViews(options: { currentUserOnly?: boolean; q?: string; status?: RequestStatus; documentType?: string } & PageOptions): Promise<Paged<DocumentRequestView>>;
+export function listDocumentRequestViews(options?: { currentUserOnly?: boolean; limit?: number; all?: true; q?: string; status?: RequestStatus; documentType?: string }): Promise<DocumentRequestView[]>;
+export async function listDocumentRequestViews(options: { currentUserOnly?: boolean; limit?: number; all?: true; page?: number; pageSize?: number; q?: string; status?: RequestStatus; documentType?: string } = {}): Promise<DocumentRequestView[] | Paged<DocumentRequestView>> {
   const db = getDb();
-  const whereClause = options.currentUserOnly ? await currentRequestScope() : undefined;
-  const limit = options.limit ?? 50;
-
-  const rows = await db
-    .select({
-      id: documentRequests.id,
-      trackingNumber: documentRequests.trackingNumber,
-      purpose: documentRequests.purpose,
-      status: documentRequests.status,
-      createdAt: documentRequests.createdAt,
-      updatedAt: documentRequests.updatedAt,
-      schoolYearNeeded: documentRequests.schoolYearNeeded,
-      gradeLevelNeeded: documentRequests.gradeLevelNeeded,
-      remarks: documentRequests.remarks,
-      registrarRemarks: documentRequests.registrarRemarks,
-      documentType: documentTypes.name,
-      lrn: students.lrn,
-      studentFirstName: students.firstName,
-      studentMiddleName: students.middleName,
-      studentLastName: students.lastName,
-      studentSuffix: students.suffix,
-      userFirstName: users.firstName,
-      userLastName: users.lastName,
-    })
+  const conditions: SQL[] = [];
+  if (options.currentUserOnly) {
+    const scope = await currentRequestScope();
+    if (scope) conditions.push(scope);
+  }
+  if (options.status) conditions.push(eq(documentRequests.status, options.status));
+  if (options.documentType?.trim()) conditions.push(ilike(documentTypes.name, `%${options.documentType.trim()}%`));
+  const query = options.q?.trim();
+  if (query) {
+    const pattern = `%${query}%`;
+    const textMatch = or(
+      ilike(documentRequests.trackingNumber, pattern),
+      ilike(documentRequests.purpose, pattern),
+      ilike(students.lrn, pattern),
+      ilike(documentTypes.name, pattern),
+      ilike(sql`concat_ws(' ', ${students.firstName}, ${students.middleName}, ${students.lastName}, ${students.suffix}, ${users.firstName}, ${users.lastName})`, pattern),
+    );
+    if (textMatch) conditions.push(textMatch);
+  }
+  const whereClause = conditions.length ? and(...conditions) : undefined;
+  const baseQuery = db
+    .select(documentRequestSelection)
     .from(documentRequests)
     .leftJoin(documentTypes, eq(documentRequests.documentTypeId, documentTypes.id))
     .leftJoin(students, eq(documentRequests.studentId, students.id))
     .leftJoin(users, eq(documentRequests.requestedByUserId, users.id))
     .where(whereClause)
-    .orderBy(desc(documentRequests.createdAt))
-    .limit(limit);
+    .orderBy(desc(documentRequests.createdAt));
 
-  const references = rows.map((row) => row.trackingNumber);
-  const blockchainRows =
-    references.length > 0
-      ? await db
-        .select({
-          referenceId: blockchainAuditLogs.referenceId,
-          blockchainStatus: blockchainAuditLogs.blockchainStatus,
-          createdAt: blockchainAuditLogs.createdAt,
-        })
-        .from(blockchainAuditLogs)
-        .where(inArray(blockchainAuditLogs.referenceId, references))
-        .orderBy(desc(blockchainAuditLogs.createdAt))
-      : [];
-
-  const latestBlockchainStatus = new Map<string, DocumentRequestView["blockchainStatus"]>();
-  for (const row of blockchainRows) {
-    const status = row.blockchainStatus;
-    if (!latestBlockchainStatus.has(row.referenceId) && status !== "not_required") {
-      latestBlockchainStatus.set(row.referenceId, status);
-    }
+  let total = 0;
+  let rows: Awaited<typeof baseQuery>;
+  if (options.page !== undefined) {
+    const [countRow] = await db
+      .select({ value: count() })
+      .from(documentRequests)
+      .leftJoin(documentTypes, eq(documentRequests.documentTypeId, documentTypes.id))
+      .leftJoin(students, eq(documentRequests.studentId, students.id))
+      .leftJoin(users, eq(documentRequests.requestedByUserId, users.id))
+      .where(whereClause);
+    total = Number(countRow?.value ?? 0);
+    const pageSize = options.pageSize ?? PAGE_SIZE;
+    const page = makePaged([], total, options.page, pageSize).page;
+    rows = await baseQuery.limit(pageSize).offset((page - 1) * pageSize);
+  } else if (options.all) {
+    rows = await baseQuery;
+  } else {
+    rows = await baseQuery.limit(options.limit ?? 50);
   }
 
-  return rows.map<DocumentRequestView>((row) => ({
-    id: row.id,
-    trackingNumber: row.trackingNumber,
-    lrn: row.lrn ?? undefined,
-    studentName: studentName(row),
-    documentType: row.documentType ?? "Unconfigured document type",
-    purpose: row.purpose,
-    schoolYearNeeded: row.schoolYearNeeded ?? "Not set",
-    gradeLevelNeeded: row.gradeLevelNeeded ?? "Not set",
-    remarks: row.remarks ?? "None",
-    registrarRemarks: row.registrarRemarks ?? "None",
-    status: row.status,
-    requestedAt: formatDate(row.createdAt),
-    updatedAt: formatDate(row.updatedAt),
-    blockchainStatus: latestBlockchainStatus.get(row.trackingNumber) ?? "pending",
-  }));
+  const latestStatuses = await latestBlockchainStatuses(rows.map((row) => row.trackingNumber));
+  const views = rows.map((row) => mapDocumentRequestView(row, latestStatuses.get(row.trackingNumber) ?? "pending"));
+  if (options.page !== undefined) return makePaged(views, total, options.page, options.pageSize);
+  return views;
 }
 
 export async function getDocumentRequestView(id: string, currentUserOnly = false) {
-  const rows = await listDocumentRequestViews({ currentUserOnly, limit: 100 });
-  return rows.find((row) => row.id === id || row.trackingNumber === id) ?? null;
+  const db = getDb();
+  const scope = currentUserOnly ? await currentRequestScope() : undefined;
+  const identity = or(eq(documentRequests.id, id), eq(documentRequests.trackingNumber, id));
+  const rows = await db
+    .select(documentRequestSelection)
+    .from(documentRequests)
+    .leftJoin(documentTypes, eq(documentRequests.documentTypeId, documentTypes.id))
+    .leftJoin(students, eq(documentRequests.studentId, students.id))
+    .leftJoin(users, eq(documentRequests.requestedByUserId, users.id))
+    .where(scope ? and(identity, scope) : identity)
+    .limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  const statuses = await latestBlockchainStatuses([row.trackingNumber]);
+  return mapDocumentRequestView(row, statuses.get(row.trackingNumber) ?? "pending");
 }
 
 export async function listRequestStatusHistoryViews(requestId: string) {
@@ -265,7 +348,66 @@ export async function getAdminDashboardData() {
   };
 }
 
-export async function listStudentViews() {
+export function listStudentViews(options: PageOptions): Promise<Paged<StudentView>>;
+export function listStudentViews(options?: { all?: true }): Promise<StudentView[]>;
+export async function listStudentViews(options: PageOptions | { all?: true } = {}): Promise<StudentView[] | Paged<StudentView>> {
+  const db = getDb();
+  const baseQuery = db
+    .select({
+      id: students.id,
+      userId: students.userId,
+      lrn: students.lrn,
+      firstName: students.firstName,
+      middleName: students.middleName,
+      lastName: students.lastName,
+      suffix: students.suffix,
+      email: students.email,
+      userEmail: users.email,
+      registrationStatus: users.registrationStatus,
+      contactNumber: students.contactNumber,
+      address: students.address,
+      enrollmentStatus: students.enrollmentStatus,
+      hasLinkedRecords: sql<boolean>`exists (select 1 from document_requests where document_requests.student_id = ${students.id}) or exists (select 1 from certificates where certificates.student_id = ${students.id})`,
+    })
+    .from(students)
+    .leftJoin(users, eq(students.userId, users.id))
+    .orderBy(desc(students.createdAt));
+  let rows: Awaited<typeof baseQuery>;
+  let total = 0;
+  if ("page" in options) {
+    const [row] = await db.select({ value: count() }).from(students);
+    total = Number(row?.value ?? 0);
+    const pageSize = options.pageSize ?? PAGE_SIZE;
+    const page = makePaged([], total, options.page, pageSize).page;
+    rows = await baseQuery.limit(pageSize).offset((page - 1) * pageSize);
+  } else if (options.all) {
+    rows = await baseQuery;
+  } else {
+    rows = await baseQuery.limit(100);
+  }
+
+  const views = rows.map<StudentView>((row) => ({
+    id: row.id,
+    accountLinked: Boolean(row.userId),
+    registrationStatus: row.registrationStatus ?? "pending",
+    lrn: row.lrn,
+    firstName: row.firstName,
+    middleName: row.middleName ?? "",
+    lastName: row.lastName,
+    suffix: row.suffix ?? "",
+    name: [row.firstName, row.middleName, row.lastName, row.suffix].filter(Boolean).join(" "),
+    email: row.email ?? row.userEmail ?? "",
+    phone: row.contactNumber ?? "",
+    contactNumber: row.contactNumber ?? "",
+    address: row.address ?? "",
+    status: row.enrollmentStatus,
+    hasLinkedRecords: row.hasLinkedRecords,
+  }));
+  if ("page" in options) return makePaged(views, total, options.page, options.pageSize);
+  return views;
+}
+
+export async function getStudentDetailView(id: string) {
   const db = getDb();
   const rows = await db
     .select({
@@ -276,65 +418,14 @@ export async function listStudentViews() {
       middleName: students.middleName,
       lastName: students.lastName,
       suffix: students.suffix,
-      contactNumber: students.contactNumber,
-      guardianName: students.guardianName,
-      guardianContact: students.guardianContact,
-      address: students.address,
-      gradeLevelId: students.gradeLevelId,
-      gradeLevel: gradeLevels.name,
-      sectionId: students.sectionId,
-      section: sections.name,
-      enrollmentStatus: students.enrollmentStatus,
-    })
-    .from(students)
-    .leftJoin(gradeLevels, eq(students.gradeLevelId, gradeLevels.id))
-    .leftJoin(sections, eq(students.sectionId, sections.id))
-    .orderBy(desc(students.createdAt))
-    .limit(100);
-
-  return rows.map<StudentView>((row) => ({
-    id: row.id,
-    accountLinked: Boolean(row.userId),
-    lrn: row.lrn,
-    firstName: row.firstName,
-    middleName: row.middleName ?? "",
-    lastName: row.lastName,
-    suffix: row.suffix ?? "",
-    name: [row.firstName, row.middleName, row.lastName, row.suffix].filter(Boolean).join(" "),
-    contactNumber: row.contactNumber ?? "",
-    guardianName: row.guardianName ?? "",
-    guardianContact: row.guardianContact ?? "",
-    address: row.address ?? "",
-    gradeLevelId: row.gradeLevelId ?? "",
-    gradeLevel: row.gradeLevel ?? "Not assigned",
-    sectionId: row.sectionId ?? "",
-    section: row.section ?? "Not assigned",
-    status: row.enrollmentStatus,
-  }));
-}
-
-export async function getStudentDetailView(id: string) {
-  const db = getDb();
-  const rows = await db
-    .select({
-      id: students.id,
-      lrn: students.lrn,
-      firstName: students.firstName,
-      middleName: students.middleName,
-      lastName: students.lastName,
-      suffix: students.suffix,
       email: students.email,
+      userEmail: users.email,
       contactNumber: students.contactNumber,
       address: students.address,
-      gradeLevel: gradeLevels.name,
-      section: sections.name,
-      schoolYear: schoolYears.name,
       status: students.status,
     })
     .from(students)
-    .leftJoin(gradeLevels, eq(students.gradeLevelId, gradeLevels.id))
-    .leftJoin(sections, eq(students.sectionId, sections.id))
-    .leftJoin(schoolYears, eq(students.schoolYearId, schoolYears.id))
+    .leftJoin(users, eq(students.userId, users.id))
     .where(eq(students.id, id))
     .limit(1);
 
@@ -343,7 +434,19 @@ export async function getStudentDetailView(id: string) {
     return null;
   }
 
-  const requests = await listDocumentRequestViews({ limit: 200 }).then((items) => items.filter((item) => item.lrn === student.lrn));
+  const requestScope = student.userId
+    ? or(eq(documentRequests.studentId, student.id), eq(documentRequests.requestedByUserId, student.userId))
+    : eq(documentRequests.studentId, student.id);
+  const requestRows = await db
+    .select(documentRequestSelection)
+    .from(documentRequests)
+    .leftJoin(documentTypes, eq(documentRequests.documentTypeId, documentTypes.id))
+    .leftJoin(students, eq(documentRequests.studentId, students.id))
+    .leftJoin(users, eq(documentRequests.requestedByUserId, users.id))
+    .where(requestScope)
+    .orderBy(desc(documentRequests.createdAt));
+  const requestStatuses = await latestBlockchainStatuses(requestRows.map((row) => row.trackingNumber));
+  const requests = requestRows.map((row) => mapDocumentRequestView(row, requestStatuses.get(row.trackingNumber) ?? "pending"));
 
   const certificateRows = await db
     .select({
@@ -362,12 +465,9 @@ export async function getStudentDetailView(id: string) {
       id: student.id,
       lrn: student.lrn,
       name: [student.firstName, student.middleName, student.lastName, student.suffix].filter(Boolean).join(" "),
-      email: student.email ?? "Not set",
+      email: student.email ?? student.userEmail ?? "Not set",
       contactNumber: student.contactNumber ?? "Not set",
       address: student.address ?? "Not set",
-      gradeLevel: student.gradeLevel ?? "Not assigned",
-      section: student.section ?? "Not assigned",
-      schoolYear: student.schoolYear ?? "Not assigned",
       status: student.status,
     },
     requests,
@@ -377,38 +477,6 @@ export async function getStudentDetailView(id: string) {
       certificateType: certificate.certificateType,
       verificationCode: certificate.verificationCode,
       generatedAt: formatDate(certificate.generatedAt),
-    })),
-  };
-}
-
-export async function getStudentRecordFormOptions() {
-  const db = getDb();
-  const [gradeLevelRows, sectionRows] = await Promise.all([
-    db
-      .select({
-        id: gradeLevels.id,
-        name: gradeLevels.name,
-      })
-      .from(gradeLevels)
-      .orderBy(gradeLevels.order),
-    db
-      .select({
-        id: sections.id,
-        name: sections.name,
-        gradeLevelId: sections.gradeLevelId,
-        gradeLevelName: gradeLevels.name,
-      })
-      .from(sections)
-      .leftJoin(gradeLevels, eq(sections.gradeLevelId, gradeLevels.id))
-      .orderBy(sections.name),
-  ]);
-
-  return {
-    gradeLevels: gradeLevelRows,
-    sections: sectionRows.map((section) => ({
-      id: section.id,
-      name: section.gradeLevelName ? `${section.gradeLevelName} - ${section.name}` : section.name,
-      gradeLevelId: section.gradeLevelId,
     })),
   };
 }
@@ -427,14 +495,9 @@ export async function getCurrentStudentProfile() {
       suffix: students.suffix,
       lrn: students.lrn,
       contactNumber: students.contactNumber,
-      guardianName: students.guardianName,
       address: students.address,
-      gradeLevel: gradeLevels.name,
-      section: sections.name,
     })
     .from(students)
-    .leftJoin(gradeLevels, eq(students.gradeLevelId, gradeLevels.id))
-    .leftJoin(sections, eq(students.sectionId, sections.id))
     .where(eq(students.userId, profile.userId))
     .limit(1);
 
@@ -445,9 +508,7 @@ export async function getCurrentStudentProfile() {
       name: `${profile.firstName} ${profile.lastName}`,
       email: profile.email,
       lrn: "No student profile linked",
-      gradeAndSection: "No student profile linked",
       contactNumber: "Not set",
-      guardian: "Not set",
       address: "Not set",
       hasStudentRecord: false,
     } satisfies StudentProfileView;
@@ -457,9 +518,7 @@ export async function getCurrentStudentProfile() {
     name: [student.firstName, student.middleName, student.lastName, student.suffix].filter(Boolean).join(" "),
     email: profile.email,
     lrn: student.lrn,
-    gradeAndSection: [student.gradeLevel, student.section].filter(Boolean).join(", ") || "Not assigned",
     contactNumber: student.contactNumber ?? "Not set",
-    guardian: student.guardianName ?? "Not set",
     address: student.address ?? "Not set",
     hasStudentRecord: true,
   } satisfies StudentProfileView;
@@ -487,11 +546,26 @@ export async function listCurrentUserNotifications(limit = 20) {
     .limit(limit);
 }
 
-export async function listUserViews() {
+export function listUserViews(options: PageOptions): Promise<Paged<UserView>>;
+export function listUserViews(options?: { all?: true }): Promise<UserView[]>;
+export async function listUserViews(options: PageOptions | { all?: true } = {}): Promise<UserView[] | Paged<UserView>> {
   const db = getDb();
-  const rows = await db.select().from(users).orderBy(desc(users.createdAt)).limit(100);
+  const baseQuery = db.select().from(users).orderBy(desc(users.createdAt));
+  let rows: Awaited<typeof baseQuery>;
+  let total = 0;
+  if ("page" in options) {
+    const [row] = await db.select({ value: count() }).from(users);
+    total = Number(row?.value ?? 0);
+    const pageSize = options.pageSize ?? PAGE_SIZE;
+    const page = makePaged([], total, options.page, pageSize).page;
+    rows = await baseQuery.limit(pageSize).offset((page - 1) * pageSize);
+  } else if (options.all) {
+    rows = await baseQuery;
+  } else {
+    rows = await baseQuery.limit(100);
+  }
 
-  return rows.map<UserView>((row) => ({
+  const views = rows.map<UserView>((row) => ({
     id: row.id,
     name: `${row.firstName} ${row.lastName}`,
     email: row.email,
@@ -500,6 +574,8 @@ export async function listUserViews() {
     status: row.status === "active" && row.isActive ? "Active" : row.status,
     rawStatus: row.status,
   }));
+  if ("page" in options) return makePaged(views, total, options.page, options.pageSize);
+  return views;
 }
 
 export async function listDocumentTypeViews() {
@@ -510,91 +586,49 @@ export async function listDocumentTypeViews() {
     id: row.id,
     name: row.name,
     code: row.code,
+    description: row.description ?? "",
+    requirements: row.requirements,
     processingDays: row.processingDays,
+    fee: Number(row.fee),
+    isActive: row.isActive,
     status: row.isActive ? "Active" : "Inactive",
   }));
 }
 
-export async function listSchoolYearViews() {
+export function listAuditTrailViews(options: PageOptions): Promise<Paged<AuditTrailView>>;
+export function listAuditTrailViews(options?: number | { all?: true }): Promise<AuditTrailView[]>;
+export async function listAuditTrailViews(options: number | PageOptions | { all?: true } = 50): Promise<AuditTrailView[] | Paged<AuditTrailView>> {
   const db = getDb();
-  const rows = await db.select().from(schoolYears).orderBy(desc(schoolYears.createdAt));
-
-  return rows.map<SchoolYearView>((row) => ({
-    id: row.id,
-    name: row.name,
-    startsOn: formatDate(row.startsOn),
-    endsOn: formatDate(row.endsOn),
-    status: row.isActive ? "Active" : "Closed",
-  }));
-}
-
-export async function listGradeLevelViews() {
-  const db = getDb();
-  const rows = await db
-    .select({
-      id: gradeLevels.id,
-      gradeLevel: gradeLevels.name,
-      status: gradeLevels.isActive,
-      sections: sql<number>`cast(count(${sections.id}) as int)`,
-    })
-    .from(gradeLevels)
-    .leftJoin(sections, eq(gradeLevels.id, sections.gradeLevelId))
-    .groupBy(gradeLevels.id)
-    .orderBy(gradeLevels.order);
-
-  return rows.map<GradeLevelView>((row) => ({
-    id: row.id,
-    gradeLevel: row.gradeLevel,
-    sections: String(row.sections),
-    status: row.status ? "Active" : "Inactive",
-  }));
-}
-
-export async function listSectionViews() {
-  const db = getDb();
-  const rows = await db
-    .select({
-      id: sections.id,
-      name: sections.name,
-      adviserName: sections.adviserName,
-      gradeLevel: gradeLevels.name,
-      schoolYear: schoolYears.name,
-      isActive: sections.isActive,
-    })
-    .from(sections)
-    .leftJoin(gradeLevels, eq(sections.gradeLevelId, gradeLevels.id))
-    .leftJoin(schoolYears, eq(sections.schoolYearId, schoolYears.id))
-    .orderBy(sections.name);
-
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    gradeLevel: row.gradeLevel ?? "Not assigned",
-    schoolYear: row.schoolYear ?? "Any active year",
-    adviserName: row.adviserName ?? "Not set",
-    status: row.isActive ? "Active" : "Inactive",
-  }));
-}
-
-export async function listAuditTrailViews(limit = 50) {
-  const db = getDb();
-  const rows = await db
-    .select({
-      id: blockchainAuditLogs.id,
-      action: blockchainAuditLogs.action,
-      referenceId: blockchainAuditLogs.referenceId,
-      actorRole: blockchainAuditLogs.actorRole,
-      hash: blockchainAuditLogs.recordHash,
-      status: blockchainAuditLogs.blockchainStatus,
-      transactionHash: blockchainAuditLogs.blockchainTxHash,
-      createdAt: blockchainAuditLogs.createdAt,
-    })
-    .from(blockchainAuditLogs)
-    .orderBy(desc(blockchainAuditLogs.createdAt))
-    .limit(limit);
-
-  if (rows.length > 0) {
-    return rows.map<AuditTrailView>((row) => ({
+  const pageOptions = typeof options === "object" && "page" in options ? options : undefined;
+  const all = typeof options === "object" && "all" in options && options.all;
+  const limit = typeof options === "number" ? options : 50;
+  const [blockchainCount] = await db.select({ value: count() }).from(blockchainAuditLogs);
+  if (Number(blockchainCount?.value ?? 0) > 0) {
+    const total = Number(blockchainCount.value);
+    const baseQuery = db
+      .select({
+        id: blockchainAuditLogs.id,
+        action: blockchainAuditLogs.action,
+        referenceId: blockchainAuditLogs.referenceId,
+        actorRole: blockchainAuditLogs.actorRole,
+        hash: blockchainAuditLogs.recordHash,
+        status: blockchainAuditLogs.blockchainStatus,
+        transactionHash: blockchainAuditLogs.blockchainTxHash,
+        createdAt: blockchainAuditLogs.createdAt,
+      })
+      .from(blockchainAuditLogs)
+      .orderBy(desc(blockchainAuditLogs.createdAt));
+    let rows: Awaited<typeof baseQuery>;
+    if (pageOptions) {
+      const pageSize = pageOptions.pageSize ?? PAGE_SIZE;
+      const page = makePaged([], total, pageOptions.page, pageSize).page;
+      rows = await baseQuery.limit(pageSize).offset((page - 1) * pageSize);
+    } else if (all) {
+      rows = await baseQuery;
+    } else {
+      rows = await baseQuery.limit(limit);
+    }
+    const views = rows.map<AuditTrailView>((row) => ({
       id: row.id,
       action: row.action,
       referenceId: row.referenceId,
@@ -604,9 +638,13 @@ export async function listAuditTrailViews(limit = 50) {
       transactionHash: row.transactionHash ?? "Pending",
       createdAt: formatDateTime(row.createdAt),
     }));
+    if (pageOptions) return makePaged(views, total, pageOptions.page, pageOptions.pageSize);
+    return all ? views : views.slice(0, limit);
   }
 
-  const localRows = await db
+  const [localCount] = await db.select({ value: count() }).from(auditLogs);
+  const total = Number(localCount?.value ?? 0);
+  const localQuery = db
     .select({
       id: auditLogs.id,
       action: auditLogs.action,
@@ -616,10 +654,19 @@ export async function listAuditTrailViews(limit = 50) {
       createdAt: auditLogs.createdAt,
     })
     .from(auditLogs)
-    .orderBy(desc(auditLogs.createdAt))
-    .limit(limit);
+    .orderBy(desc(auditLogs.createdAt));
+  let localRows: Awaited<typeof localQuery>;
+  if (pageOptions) {
+    const pageSize = pageOptions.pageSize ?? PAGE_SIZE;
+    const page = makePaged([], total, pageOptions.page, pageSize).page;
+    localRows = await localQuery.limit(pageSize).offset((page - 1) * pageSize);
+  } else if (all) {
+    localRows = await localQuery;
+  } else {
+    localRows = await localQuery.limit(limit);
+  }
 
-  return localRows.map<AuditTrailView>((row) => ({
+  const views = localRows.map<AuditTrailView>((row) => ({
     id: row.id,
     action: row.action,
     referenceId: row.referenceId,
@@ -629,6 +676,8 @@ export async function listAuditTrailViews(limit = 50) {
     transactionHash: "Pending",
     createdAt: formatDateTime(row.createdAt),
   }));
+  if (pageOptions) return makePaged(views, total, pageOptions.page, pageOptions.pageSize);
+  return all ? views : views.slice(0, limit);
 }
 
 export async function getReportSummaryCards() {

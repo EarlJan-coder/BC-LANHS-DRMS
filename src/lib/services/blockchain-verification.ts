@@ -1,5 +1,5 @@
 import { getDb } from "@/db";
-import { certificates, schoolYears } from "@/db/schema";
+import { certificates } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { buildCanonicalCertificate } from "@/lib/audit/canonical";
 import { createRecordHashFromCanonical } from "@/lib/audit/hash";
@@ -43,12 +43,11 @@ export async function verifyCertificateOnChain(certificateId: string): Promise<V
     return { valid: false, blockchainVerified: false, reason: "No student linked to certificate" };
   }
 
-  // Get school year name
-  let schoolYearName = "";
-  if (cert.schoolYearId) {
-    const schoolYear = await db.query.schoolYears.findFirst({ where: eq(schoolYears.id, cert.schoolYearId) });
-    schoolYearName = schoolYear?.name ?? "";
-  }
+  // The school_year_id column was removed in the migration that dropped
+  // academic structure, so the canonical hash is recomputed with an empty
+  // school year. Existing certificates issued before the drop will not match
+  // their original on-chain hash unless they are reissued.
+  const schoolYearName = "";
 
   // Build canonical certificate
   const canonical = buildCanonicalCertificate({

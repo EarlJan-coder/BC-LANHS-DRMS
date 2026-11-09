@@ -123,6 +123,7 @@ async function main() {
           lastName,
           passwordHash,
           role: "admin",
+          registrationStatus: "approved",
           status: "active",
           isActive: true,
         })

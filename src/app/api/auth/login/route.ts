@@ -41,6 +41,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Email/LRN or password is incorrect." }, { status: 401 });
     }
 
+    if (user.registrationStatus === "pending") {
+      return NextResponse.json({ error: "Your registration is still pending approval." }, { status: 403 });
+    }
+
+    if (user.registrationStatus === "declined") {
+      return NextResponse.json({ error: "Your registration was declined. Contact the registrar." }, { status: 403 });
+    }
+
     await clearLoginAttempts(request, identifier);
     await startSession(user.id, user.tokenVersion);
     return NextResponse.json({ ok: true });

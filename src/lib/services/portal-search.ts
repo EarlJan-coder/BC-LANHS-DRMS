@@ -3,12 +3,12 @@ import {
   listAuditTrailViews,
   listDocumentRequestViews,
   listDocumentTypeViews,
-  listSectionViews,
   listStudentViews,
   listUserViews,
 } from "@/lib/services/live-data";
 import type { DashboardRole } from "@/lib/types";
 import { statusLabel } from "@/lib/utils";
+import { PAGE_SIZE } from "@/lib/pagination";
 
 export type SearchHit = {
   id: string;
@@ -24,9 +24,9 @@ export type SearchGroup = {
   viewAllHref?: string;
   hits: SearchHit[];
   total: number;
+  page: number;
+  pageSize: number;
 };
-
-const HITS_PER_GROUP = 5;
 
 type Candidate = {
   hit: SearchHit;
@@ -39,21 +39,26 @@ function buildGroup(
   viewAllHref: string | undefined,
   candidates: Candidate[],
   query: string,
+  page: number,
 ): SearchGroup {
   const matched = candidates.filter((candidate) =>
     candidate.haystack.some((value) => (value ?? "").toLowerCase().includes(query)),
   );
+  const pageSize = PAGE_SIZE;
+  const safePage = Math.min(Math.max(1, page), Math.max(1, Math.ceil(matched.length / pageSize)));
 
   return {
     key,
     label,
     viewAllHref,
-    hits: matched.slice(0, HITS_PER_GROUP).map((candidate) => candidate.hit),
+    hits: matched.slice((safePage - 1) * pageSize, safePage * pageSize).map((candidate) => candidate.hit),
     total: matched.length,
+    page: safePage,
+    pageSize,
   };
 }
 
-export async function searchPortal(role: DashboardRole, rawQuery: string): Promise<SearchGroup[]> {
+export async function searchPortal(role: DashboardRole, rawQuery: string, pages: Record<string, number> = {}): Promise<SearchGroup[]> {
   const query = rawQuery.trim().toLowerCase();
 
   if (!query) {
@@ -61,7 +66,7 @@ export async function searchPortal(role: DashboardRole, rawQuery: string): Promi
   }
 
   if (role === "student") {
-    const requests = await listDocumentRequestViews({ currentUserOnly: true });
+    const requests = await listDocumentRequestViews({ currentUserOnly: true, all: true });
 
     return [
       buildGroup(
@@ -79,16 +84,17 @@ export async function searchPortal(role: DashboardRole, rawQuery: string): Promi
           haystack: [request.trackingNumber, request.documentType, request.purpose, request.studentName, request.lrn],
         })),
         query,
+        pages.requests ?? 1,
       ),
     ];
   }
 
   if (role === "registrar") {
     const [requests, students, certificates, auditTrail] = await Promise.all([
-      listDocumentRequestViews(),
-      listStudentViews(),
-      listCertificateViews(),
-      listAuditTrailViews(),
+      listDocumentRequestViews({ all: true }),
+      listStudentViews({ all: true }),
+      listCertificateViews({ all: true }),
+      listAuditTrailViews({ all: true }),
     ]);
 
     return [
@@ -107,6 +113,7 @@ export async function searchPortal(role: DashboardRole, rawQuery: string): Promi
           haystack: [request.trackingNumber, request.documentType, request.purpose, request.studentName, request.lrn],
         })),
         query,
+        pages.requests ?? 1,
       ),
       buildGroup(
         "students",
@@ -116,13 +123,14 @@ export async function searchPortal(role: DashboardRole, rawQuery: string): Promi
           hit: {
             id: student.id,
             title: student.name,
-            subtitle: `LRN ${student.lrn} · ${student.gradeLevel} · ${student.section}`,
+            subtitle: `LRN ${student.lrn}`,
             meta: student.status,
             href: `/registrar/students/${student.id}`,
           },
-          haystack: [student.name, student.lrn, student.gradeLevel, student.section, student.status],
+          haystack: [student.name, student.lrn, student.status],
         })),
         query,
+        pages.students ?? 1,
       ),
       buildGroup(
         "certificates",
@@ -145,6 +153,7 @@ export async function searchPortal(role: DashboardRole, rawQuery: string): Promi
           ],
         })),
         query,
+        pages.certificates ?? 1,
       ),
       buildGroup(
         "audit",
@@ -161,15 +170,15 @@ export async function searchPortal(role: DashboardRole, rawQuery: string): Promi
           haystack: [entry.action, entry.referenceId, entry.hash, entry.transactionHash, entry.actorRole],
         })),
         query,
+        pages.audit ?? 1,
       ),
     ];
   }
 
-  const [users, documentTypes, sections, auditTrail] = await Promise.all([
-    listUserViews(),
+  const [users, documentTypes, auditTrail] = await Promise.all([
+    listUserViews({ all: true }),
     listDocumentTypeViews(),
-    listSectionViews(),
-    listAuditTrailViews(),
+    listAuditTrailViews({ all: true }),
   ]);
 
   return [
@@ -188,6 +197,7 @@ export async function searchPortal(role: DashboardRole, rawQuery: string): Promi
         haystack: [user.name, user.email, user.role],
       })),
       query,
+      pages.users ?? 1,
     ),
     buildGroup(
       "document-types",
@@ -204,22 +214,7 @@ export async function searchPortal(role: DashboardRole, rawQuery: string): Promi
         haystack: [documentType.name, documentType.code],
       })),
       query,
-    ),
-    buildGroup(
-      "sections",
-      "Sections",
-      "/admin/sections",
-      sections.map((section) => ({
-        hit: {
-          id: section.id,
-          title: section.name,
-          subtitle: `${section.gradeLevel} · Adviser ${section.adviserName}`,
-          meta: section.status,
-          href: "/admin/sections",
-        },
-        haystack: [section.name, section.gradeLevel, section.adviserName, section.schoolYear],
-      })),
-      query,
+      pages["document-types"] ?? 1,
     ),
     buildGroup(
       "blockchain",
@@ -236,6 +231,7 @@ export async function searchPortal(role: DashboardRole, rawQuery: string): Promi
         haystack: [entry.action, entry.referenceId, entry.hash, entry.transactionHash, entry.actorRole],
       })),
       query,
+      pages.blockchain ?? 1,
     ),
   ];
 }

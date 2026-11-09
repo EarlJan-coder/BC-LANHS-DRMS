@@ -71,3 +71,43 @@ export async function sendWorkflowEmail(input: {
     }),
   });
 }
+
+export async function sendRegistrationDecisionEmail(input: {
+  to: string;
+  studentName: string;
+  decision: "approved" | "declined";
+  note: string;
+}) {
+  const content = buildRegistrationDecisionEmailContent(input);
+  return sendRequestNotificationEmail({ to: input.to, ...content });
+}
+
+export function buildRegistrationDecisionEmailContent(input: {
+  studentName: string;
+  decision: "approved" | "declined";
+  note: string;
+}) {
+  const outcome = input.decision === "approved" ? "approved" : "declined";
+  const instructions =
+    input.decision === "approved"
+      ? "You may now sign in to LANHS DRMS using the email or LRN and password you registered with."
+      : "Please contact the registrar if you have questions about this decision.";
+
+  const message = [
+    `Good day ${input.studentName},`,
+    "",
+    `Your student registration has been ${outcome}.`,
+    "",
+    `Registrar note: ${input.note.trim()}`,
+    "",
+    instructions,
+    "",
+    `${SCHOOL_NAME} Registrar`,
+    `${APP_NAME} - Student Records and Document Request Management System`,
+  ].join("\n");
+
+  return {
+    subject: `LANHS DRMS registration ${outcome}`,
+    message,
+  };
+}

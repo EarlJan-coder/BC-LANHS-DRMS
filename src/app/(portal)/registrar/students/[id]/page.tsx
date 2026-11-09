@@ -35,9 +35,6 @@ export default async function RegistrarStudentDetailsPage({
         <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Detail label="LRN" value={data.profile.lrn} />
           <Detail label="Status" value={data.profile.status} />
-          <Detail label="Grade level" value={data.profile.gradeLevel} />
-          <Detail label="Section" value={data.profile.section} />
-          <Detail label="School year" value={data.profile.schoolYear} />
           <Detail label="Email" value={data.profile.email} />
           <Detail label="Contact" value={data.profile.contactNumber} />
           <Detail label="Address" value={data.profile.address} />

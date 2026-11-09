@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
+import { NotificationDetailModal, type NotificationDetail } from "@/components/notification-detail-modal";
+import type { UserRole } from "@/db/schema";
 import { formatDateTime } from "@/lib/utils";
 
 export interface NotificationItem {
@@ -17,32 +19,44 @@ export interface NotificationItem {
   createdAt: string;
 }
 
-export function NotificationsList({ initialNotifications }: { initialNotifications: NotificationItem[] }) {
+export function NotificationsList({
+  initialNotifications,
+  viewerRole,
+}: {
+  initialNotifications: NotificationItem[];
+  viewerRole: UserRole;
+}) {
   const router = useRouter();
   const [notifications, setNotifications] = useState(initialNotifications);
   const [busy, setBusy] = useState<string | "all" | null>(null);
+  const [detail, setDetail] = useState<NotificationDetail | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const hasUnread = notifications.some((notification) => !notification.isRead);
 
-  async function markOneRead(id: string) {
-    const target = notifications.find((notification) => notification.id === id);
-    if (!target || target.isRead) {
-      return;
-    }
-
-    setBusy(id);
+  async function openNotification(target: NotificationItem) {
+    if (busy) return;
+    setBusy(target.id);
     try {
-      const response = await fetch(`/api/notifications/${id}`, { method: "PATCH" });
-      if (!response.ok) {
-        toast.error("Unable to update notification.");
+      const detailsResponse = await fetch(`/api/notifications/${target.id}/details`);
+      const detailsResult = await detailsResponse.json();
+      if (!detailsResponse.ok) {
+        toast.error(detailsResult.error ?? "Unable to load notification details.");
         return;
       }
-      setNotifications((current) =>
-        current.map((notification) => (notification.id === id ? { ...notification, isRead: true } : notification)),
-      );
-      // Badge lives in the server layout — refresh it.
-      router.refresh();
+      setSelectedId(target.id);
+      setDetail(detailsResult.data as NotificationDetail);
+
+      if (!target.isRead) {
+        const response = await fetch(`/api/notifications/${target.id}`, { method: "PATCH" });
+        if (!response.ok) {
+          toast.error("Notification details opened, but it could not be marked as read.");
+          return;
+        }
+        setNotifications((current) => current.map((item) => item.id === target.id ? { ...item, isRead: true } : item));
+        router.refresh();
+      }
     } catch {
-      toast.error("Unable to update notification. Check your connection and try again.");
+      toast.error("Unable to open notification. Check your connection and try again.");
     } finally {
       setBusy(null);
     }
@@ -82,9 +96,9 @@ export function NotificationsList({ initialNotifications }: { initialNotificatio
             <button
               key={notification.id}
               type="button"
-              onClick={() => markOneRead(notification.id)}
-              disabled={busy !== null || notification.isRead}
-              aria-label={`Mark "${notification.title}" as read`}
+              onClick={() => openNotification(notification)}
+              disabled={busy !== null}
+              aria-label={`Open notification: ${notification.title}`}
               className={`flex w-full items-start gap-3 rounded-lg border border-border bg-white p-4 text-left transition hover:bg-rose-50 disabled:cursor-default disabled:hover:bg-white ${
                 notification.isRead ? "opacity-70" : ""
               }`}
@@ -108,6 +122,20 @@ export function NotificationsList({ initialNotifications }: { initialNotificatio
           ))
         )}
       </div>
+      <NotificationDetailModal
+        key={selectedId ?? "none"}
+        detail={detail}
+        viewerRole={viewerRole}
+        onClose={() => {
+          setDetail(null);
+          setSelectedId(null);
+        }}
+        onDecisionComplete={() => {
+          setDetail(null);
+          setSelectedId(null);
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

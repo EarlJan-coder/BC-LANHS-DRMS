@@ -133,6 +133,7 @@ export async function createDocumentRequest(input: unknown) {
         purpose: values.purpose,
         schoolYearNeeded: values.schoolYearNeeded,
         gradeLevelNeeded: values.gradeLevelNeeded,
+        sectionNeeded: values.sectionNeeded,
         remarks: values.remarks,
         status: "pending",
       })
@@ -152,7 +153,9 @@ export async function createDocumentRequest(input: unknown) {
         userId: user.id,
         type: "request",
         title: "Document request submitted",
-        message: `Your request ${trackingNumber} was submitted and is pending registrar review.`,
+        message: "Request · Pending",
+        referenceType: "document_request",
+        referenceId: trackingNumber,
       });
     }
 
@@ -184,6 +187,7 @@ export async function createDocumentRequest(input: unknown) {
       status: "pending",
       schoolYearNeeded: values.schoolYearNeeded,
       gradeLevelNeeded: values.gradeLevelNeeded,
+      sectionNeeded: values.sectionNeeded,
     },
     hashMetadata: {
       documentType: values.documentType,
@@ -479,7 +483,9 @@ export async function updateDocumentRequestStatus(requestId: string, input: unkn
         userId: existing.requestedByUserId,
         type: "request",
         title: "Document request status updated",
-        message: `${referenceId} is now ${values.status.replaceAll("_", " ")}.`,
+        message: `Request · ${values.status.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase())}`,
+        referenceType: "document_request",
+        referenceId,
       });
     }
 

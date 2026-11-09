@@ -10,16 +10,22 @@ export async function getCurrentDbUser() {
     return null;
   }
 
-  const token = (await cookies()).get(SESSION_COOKIE)?.value;
-  if (!token) {
-    return null;
-  }
-
   try {
+    const token = (await cookies()).get(SESSION_COOKIE)?.value;
+    if (!token) {
+      return null;
+    }
+
     const session = await verifySessionToken(token);
     const user = await db.query.users.findFirst({ where: eq(users.id, session.sub) });
 
-    if (!user || !user.isActive || user.status !== "active" || !isSessionValidForUser(session, user)) {
+    if (
+      !user ||
+      !user.isActive ||
+      user.status !== "active" ||
+      user.registrationStatus !== "approved" ||
+      !isSessionValidForUser(session, user)
+    ) {
       return null;
     }
 

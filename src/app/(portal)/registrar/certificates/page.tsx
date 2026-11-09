@@ -5,9 +5,12 @@ import { ButtonLink } from "@/components/ui/button";
 import { DownloadButton } from "@/components/ui/download-button";
 import { PendingLink } from "@/components/ui/pending-link";
 import { listCertificateViews } from "@/lib/services/certificates";
+import { Pagination } from "@/components/ui/pagination";
+import { parsePage } from "@/lib/pagination";
 
-export default async function CertificatesPage() {
-  const certificates = await listCertificateViews();
+export default async function CertificatesPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const page = parsePage((await searchParams).page);
+  const certificates = await listCertificateViews({ page });
 
   return (
     <div>
@@ -16,7 +19,7 @@ export default async function CertificatesPage() {
         description="Generated school document PDFs, QR verification links, and blockchain proof status."
       />
       <DataTable
-        rows={certificates}
+        rows={certificates.rows}
         emptyMessage="No certificates have been generated yet."
         columns={[
           {
@@ -50,6 +53,7 @@ export default async function CertificatesPage() {
           },
         ]}
       />
+      <Pagination page={certificates.page} totalPages={Math.ceil(certificates.total / certificates.pageSize)} basePath="/registrar/certificates" total={certificates.total} pageSize={certificates.pageSize} />
     </div>
   );
 }

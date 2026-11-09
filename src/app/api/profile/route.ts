@@ -8,7 +8,6 @@ import { isPostgresError } from "@/lib/services/student-records";
 
 const profileUpdateSchema = z.object({
   contactNumber: z.string().trim().max(30).optional(),
-  guardianName: z.string().trim().max(150).optional(),
   email: z.string().trim().toLowerCase().email("Enter a valid email address.").max(191).optional(),
 });
 
@@ -26,12 +25,11 @@ export async function PATCH(request: Request) {
       where: eq(students.userId, user.id),
     });
 
-    const updatesStudentRecord = values.contactNumber !== undefined || values.guardianName !== undefined;
+    const updatesStudentRecord = values.contactNumber !== undefined;
     if (updatesStudentRecord && !existingProfile) {
       return NextResponse.json(
         {
-          error:
-            "Your student record is not linked yet. Contact the registrar to update your contact number and guardian name.",
+          error: "Your student record is not linked yet. Contact the registrar to update your contact number.",
         },
         { status: 409 },
       );
@@ -47,7 +45,6 @@ export async function PATCH(request: Request) {
           .update(students)
           .set({
             ...(values.contactNumber !== undefined ? { contactNumber: values.contactNumber || null } : {}),
-            ...(values.guardianName !== undefined ? { guardianName: values.guardianName || null } : {}),
             ...(values.email !== undefined ? { email: values.email } : {}),
             updatedAt: now,
           })
