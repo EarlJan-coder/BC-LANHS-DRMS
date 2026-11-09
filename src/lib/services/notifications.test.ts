@@ -39,7 +39,7 @@ async function createFixtureUser(overrides: {
       passwordHash: "test-hash",
       firstName: "Notif",
       lastName: "Fixture",
-      role: overrides.role ?? "registrar",
+      role: overrides.role ?? "student",
       isActive: overrides.isActive ?? true,
       status: overrides.status ?? "active",
     })

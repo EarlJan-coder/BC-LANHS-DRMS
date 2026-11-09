@@ -163,7 +163,7 @@ describe("registration decisions and fan-out (integration, local DB)", { skip: h
     }
   });
 
-  it("new registration notifies every active registrar and admin", async () => {
+  it("new registration notifies every active registrar and admin regardless of registration status", async () => {
     const student = await createUser("student");
     const registrar = await createUser("registrar", "approved");
     const admin = await createUser("admin", "approved");
@@ -174,7 +174,7 @@ describe("registration decisions and fan-out (integration, local DB)", { skip: h
       const recipients = created.map((row) => row.userId).filter((id): id is string => id !== null);
       assert.ok(recipients.includes(registrar.id));
       assert.ok(recipients.includes(admin.id));
-      assert.ok(!recipients.includes(pendingRegistrar.id));
+      assert.ok(recipients.includes(pendingRegistrar.id));
 
       const fixtureRows = await getDb()
         .select()
@@ -182,7 +182,7 @@ describe("registration decisions and fan-out (integration, local DB)", { skip: h
         .where(inArray(notifications.userId, ids));
       assert.deepEqual(
         fixtureRows.map((row) => row.userId).sort(),
-        [registrar.id, admin.id].sort(),
+        [registrar.id, admin.id, pendingRegistrar.id].sort(),
       );
       assert.ok(fixtureRows.every((row) => row.referenceType === "registration" && row.referenceId === student.id));
       assert.ok(fixtureRows.every((row) => row.message === "Registration · Pending"));

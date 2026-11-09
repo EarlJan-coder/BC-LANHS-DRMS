@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { users, type UserRole } from "@/db/schema";
 import { SESSION_COOKIE, isSessionValidForUser, verifySessionToken } from "@/lib/session-token";
 import { AppError } from "@/lib/utils";
+import { canAccessWithRegistrationStatus } from "@/lib/registration-access";
 
 export async function getCurrentDbUser() {
   if (!db) {
@@ -23,7 +24,7 @@ export async function getCurrentDbUser() {
       !user ||
       !user.isActive ||
       user.status !== "active" ||
-      user.registrationStatus !== "approved" ||
+      !canAccessWithRegistrationStatus(user.role, user.registrationStatus) ||
       !isSessionValidForUser(session, user)
     ) {
       return null;
