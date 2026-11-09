@@ -18,6 +18,9 @@ const protectedPrefixes = [
   "/api/audit",
   "/api/blockchain",
   "/api/reports",
+  "/api/registrations",
+  "/api/notifications",
+  "/api/document-types",
 ];
 
 const passwordChangeAllowlist = ["/change-password", "/api/profile/password", "/api/auth/logout"];
@@ -43,7 +46,13 @@ export async function proxy(request: NextRequest) {
       if (db) {
         const user = await db.query.users.findFirst({ where: eq(users.id, session.sub) });
 
-        if (user && user.isActive && user.status === "active" && isSessionValidForUser(session, user)) {
+        if (
+          user &&
+          user.isActive &&
+          user.status === "active" &&
+          user.registrationStatus === "approved" &&
+          isSessionValidForUser(session, user)
+        ) {
           if (user.mustChangePassword && !passwordChangeAllowlist.includes(request.nextUrl.pathname)) {
             return request.nextUrl.pathname.startsWith("/api/")
               ? NextResponse.json({ error: "Change your password before continuing." }, { status: 403 })
@@ -84,5 +93,8 @@ export const config = {
     "/api/audit/:path*",
     "/api/blockchain/:path*",
     "/api/reports/:path*",
+    "/api/registrations/:path*",
+    "/api/notifications/:path*",
+    "/api/document-types/:path*",
   ],
 };

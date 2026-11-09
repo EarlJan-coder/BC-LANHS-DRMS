@@ -5,27 +5,23 @@ import { StatusBadge } from "@/components/status-badge";
 import { Card } from "@/components/ui/card";
 import { PendingLink } from "@/components/ui/pending-link";
 import { listDocumentRequestViews } from "@/lib/services/live-data";
+import { Pagination } from "@/components/ui/pagination";
+import { parsePage } from "@/lib/pagination";
+import { REQUEST_STATUSES } from "@/lib/constants";
+import type { RequestStatus } from "@/db/schema";
 
 export default async function RegistrarRequestsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; documentType?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; documentType?: string; page?: string }>;
 }) {
   const filters = await searchParams;
   const q = (filters.q ?? "").toLowerCase();
-  const status = filters.status ?? "";
-  const documentType = (filters.documentType ?? "").toLowerCase();
-  const requests = (await listDocumentRequestViews()).filter((request) => {
-    const matchesQuery =
-      !q ||
-      request.trackingNumber.toLowerCase().includes(q) ||
-      request.studentName.toLowerCase().includes(q) ||
-      (request.lrn ?? "").toLowerCase().includes(q) ||
-      request.documentType.toLowerCase().includes(q);
-    const matchesStatus = !status || request.status === status;
-    const matchesDocument = !documentType || request.documentType.toLowerCase().includes(documentType);
-    return matchesQuery && matchesStatus && matchesDocument;
-  });
+  const requestedStatus = filters.status ?? "";
+  const status = REQUEST_STATUSES.some((item) => item.value === requestedStatus) ? requestedStatus as RequestStatus : "";
+  const documentType = filters.documentType ?? "";
+  const page = parsePage(filters.page);
+  const paged = await listDocumentRequestViews({ page, q, status: status || undefined, documentType });
 
   return (
     <div>
@@ -44,7 +40,7 @@ export default async function RegistrarRequestsPage({
         />
       </Card>
       <DataTable
-        rows={requests}
+        rows={paged.rows}
         emptyMessage="No document requests have been submitted yet."
         columns={[
           {
@@ -65,6 +61,7 @@ export default async function RegistrarRequestsPage({
           { key: "blockchain", label: "Chain", render: (row) => row.blockchainStatus },
         ]}
       />
+      <Pagination page={paged.page} totalPages={Math.ceil(paged.total / paged.pageSize)} basePath="/registrar/requests" total={paged.total} pageSize={paged.pageSize} query={{ q: filters.q, status, documentType: filters.documentType }} />
     </div>
   );
 }

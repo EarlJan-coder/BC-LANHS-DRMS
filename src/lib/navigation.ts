@@ -14,6 +14,7 @@ export const navigationByRole: Record<
   registrar: [
     { label: "Dashboard", href: "/registrar/dashboard", icon: "LayoutDashboard" },
     { label: "Requests", href: "/registrar/requests", icon: "Inbox" },
+    { label: "Registrations", href: "/registrar/registrations", icon: "UserRoundCheck" },
     { label: "Notifications", href: "/registrar/notifications", icon: "Bell", badge: true },
     { label: "Student records", href: "/registrar/students", icon: "GraduationCap" },
     { label: "Certificates", href: "/registrar/certificates", icon: "FileBadge" },
@@ -22,6 +23,8 @@ export const navigationByRole: Record<
   ],
   admin: [
     { label: "Dashboard", href: "/admin/dashboard", icon: "LayoutDashboard" },
+    { label: "Registrations", href: "/admin/registrations", icon: "UserRoundCheck" },
+    { label: "Notifications", href: "/admin/notifications", icon: "Bell", badge: true },
     { label: "Users", href: "/admin/users", icon: "Users" },
     { label: "Document types", href: "/admin/document-types", icon: "FileText" },
     { label: "Blockchain trail", href: "/admin/blockchain", icon: "Blocks" },

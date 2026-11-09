@@ -39,6 +39,7 @@ export function RequestForm() {
           purpose: formData.get("purpose"),
           schoolYearNeeded: formData.get("schoolYearNeeded"),
           gradeLevelNeeded: formData.get("gradeLevelNeeded"),
+          sectionNeeded: formData.get("sectionNeeded"),
           remarks: formData.get("remarks"),
         }),
       });
@@ -98,6 +99,10 @@ export function RequestForm() {
               <div className="grid gap-2">
                 <Label htmlFor="gradeLevelNeeded">Grade level needed</Label>
                 <Input id="gradeLevelNeeded" name="gradeLevelNeeded" required placeholder="Grade 12" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="sectionNeeded">Section <span className="font-normal text-slate-500">(optional)</span></Label>
+                <Input id="sectionNeeded" name="sectionNeeded" maxLength={40} placeholder="e.g. Mabini" />
               </div>
             </div>
             <div className="grid gap-2">

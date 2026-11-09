@@ -3,12 +3,12 @@ import assert from "node:assert/strict";
 import { buildNewRequestNotification, formatUnreadCount } from "@/lib/notifications";
 
 describe("buildNewRequestNotification", () => {
-  it("builds a 'request' notification naming the tracking number and document type", () => {
+  it("builds a keyword-only request notification", () => {
     const payload = buildNewRequestNotification("LANHS-2026-0001", "Form 137");
 
     assert.equal(payload.type, "request");
     assert.equal(payload.title, "New document request submitted");
-    assert.equal(payload.message, "LANHS-2026-0001 (Form 137) is awaiting registrar review.");
+    assert.equal(payload.message, "Request · Pending");
   });
 });
 

@@ -1,7 +1,7 @@
-import { count, eq, sql } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import type { z } from "zod";
 import { getDb } from "@/db";
-import { certificates, documentRequests, students } from "@/db/schema";
+import { certificates, documentRequests, students, users } from "@/db/schema";
 import { getCurrentRole } from "@/lib/auth";
 import { AppError } from "@/lib/utils";
 import { studentRecordSchema } from "@/lib/validators";
@@ -14,8 +14,6 @@ export class StudentRecordError extends AppError {
 }
 
 export type StudentRecordValues = z.infer<typeof studentRecordSchema>;
-
-type StudentRecordDb = ReturnType<typeof getDb>;
 
 export function postgresCause(error: unknown) {
   if (!error || typeof error !== "object") {
@@ -62,20 +60,6 @@ function optionalText(value?: string) {
   return value?.trim() || null;
 }
 
-async function hasLegacyStudentNumberColumn(db: StudentRecordDb) {
-  const rows = await db.execute<{ exists: boolean }>(sql`
-    select exists (
-      select 1
-      from information_schema.columns
-      where table_schema = 'public'
-        and table_name = 'students'
-        and column_name = 'student_number'
-    ) as "exists"
-  `);
-
-  return Boolean(rows[0]?.exists);
-}
-
 async function ensureStudentRecordReferences(values: StudentRecordValues, currentStudentId?: string) {
   const db = getDb();
   const existing = await db.query.students.findFirst({
@@ -87,63 +71,13 @@ async function ensureStudentRecordReferences(values: StudentRecordValues, curren
   }
 }
 
-export async function createStudentRecord(values: StudentRecordValues) {
-  const db = getDb();
-  await ensureStudentRecordReferences(values);
-
-  if (await hasLegacyStudentNumberColumn(db)) {
-    const rows = await db.execute<{ id: string }>(sql`
-      insert into students (
-        lrn,
-        student_number,
-        first_name,
-        middle_name,
-        last_name,
-        suffix,
-        contact_number,
-        address,
-        status,
-        enrollment_status
-      )
-      values (
-        ${values.lrn},
-        ${values.lrn},
-        ${values.firstName},
-        ${optionalText(values.middleName)},
-        ${values.lastName},
-        ${optionalText(values.suffix)},
-        ${optionalText(values.contactNumber)},
-        ${optionalText(values.address)},
-        cast(${values.enrollmentStatus} as student_status),
-        ${values.enrollmentStatus}
-      )
-      returning id
-    `);
-
-    return rows[0];
-  }
-
-  const [created] = await db
-    .insert(students)
-    .values({
-      lrn: values.lrn,
-      firstName: values.firstName,
-      middleName: optionalText(values.middleName) ?? undefined,
-      lastName: values.lastName,
-      suffix: optionalText(values.suffix) ?? undefined,
-      contactNumber: optionalText(values.contactNumber) ?? undefined,
-      address: optionalText(values.address) ?? undefined,
-      status: values.enrollmentStatus,
-      enrollmentStatus: values.enrollmentStatus,
-    })
-    .returning({ id: students.id });
-
-  return created;
-}
-
 export async function updateStudentRecord(id: string, values: StudentRecordValues) {
   const db = getDb();
-  const [existing] = await db.select({ id: students.id }).from(students).where(eq(students.id, id)).limit(1);
+  const [existing] = await db
+    .select({ id: students.id, userId: students.userId, email: students.email })
+    .from(students)
+    .where(eq(students.id, id))
+    .limit(1);
 
   if (!existing) {
     throw new StudentRecordError("Student record not found.", 404);
@@ -151,54 +85,51 @@ export async function updateStudentRecord(id: string, values: StudentRecordValue
 
   await ensureStudentRecordReferences(values, id);
 
-  if (await hasLegacyStudentNumberColumn(db)) {
-    const rows = await db.execute<{ id: string }>(sql`
-      update students
-      set
-        lrn = ${values.lrn},
-        student_number = ${values.lrn},
-        first_name = ${values.firstName},
-        middle_name = ${optionalText(values.middleName)},
-        last_name = ${values.lastName},
-        suffix = ${optionalText(values.suffix)},
-        contact_number = ${optionalText(values.contactNumber)},
-        address = ${optionalText(values.address)},
-        status = cast(${values.enrollmentStatus} as student_status),
-        enrollment_status = ${values.enrollmentStatus},
-        updated_at = now()
-      where id = ${id}
-      returning id
-    `);
+  return db.transaction(async (tx) => {
+    const linkedUser = existing.userId
+      ? await tx.query.users.findFirst({ where: eq(users.id, existing.userId) })
+      : null;
 
-    if (!rows[0]) {
-      throw new StudentRecordError("Student record not found.", 404);
+    if (existing.userId && !linkedUser) {
+      throw new StudentRecordError("The linked account could not be found.", 409);
     }
 
-    return rows[0];
-  }
+    const nextEmail = values.email?.trim() || linkedUser?.email || existing.email || null;
+    if (linkedUser) {
+      await tx
+        .update(users)
+        .set({
+          lrn: values.lrn,
+          email: nextEmail ?? linkedUser.email,
+          firstName: values.firstName,
+          middleName: optionalText(values.middleName),
+          lastName: values.lastName,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, linkedUser.id));
+    }
 
-  const [updated] = await db
-    .update(students)
-    .set({
-      lrn: values.lrn,
-      firstName: values.firstName,
-      middleName: optionalText(values.middleName),
-      lastName: values.lastName,
-      suffix: optionalText(values.suffix),
-      contactNumber: optionalText(values.contactNumber),
-      address: optionalText(values.address),
-      status: values.enrollmentStatus,
-      enrollmentStatus: values.enrollmentStatus,
-      updatedAt: new Date(),
-    })
-    .where(eq(students.id, id))
-    .returning({ id: students.id });
+    const [updated] = await tx
+      .update(students)
+      .set({
+        lrn: values.lrn,
+        firstName: values.firstName,
+        middleName: optionalText(values.middleName),
+        lastName: values.lastName,
+        suffix: optionalText(values.suffix),
+        email: nextEmail,
+        contactNumber: optionalText(values.contactNumber),
+        address: optionalText(values.address),
+        status: values.enrollmentStatus,
+        enrollmentStatus: values.enrollmentStatus,
+        updatedAt: new Date(),
+      })
+      .where(eq(students.id, id))
+      .returning({ id: students.id });
 
-  if (!updated) {
-    throw new StudentRecordError("Student record not found.", 404);
-  }
-
-  return updated;
+    if (!updated) throw new StudentRecordError("Student record not found.", 404);
+    return updated;
+  });
 }
 
 export async function deleteStudentRecord(id: string) {

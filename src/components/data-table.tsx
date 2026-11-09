@@ -11,10 +11,12 @@ export function DataTable<T>({
   columns,
   rows,
   emptyMessage = "No records found.",
+  renderRow,
 }: {
   columns: TableColumn<T>[];
   rows: T[];
   emptyMessage?: string;
+  renderRow?: (row: T, index: number) => ReactNode;
 }) {
   return (
     <Card className="overflow-hidden">
@@ -37,15 +39,19 @@ export function DataTable<T>({
                 </td>
               </tr>
             ) : (
-              rows.map((row, index) => (
-                <tr key={index} className="hover:bg-rose-50/40">
-                  {columns.map((column) => (
-                    <td key={column.key} className="whitespace-nowrap px-4 py-3 text-slate-700">
-                      {column.render(row)}
-                    </td>
-                  ))}
-                </tr>
-              ))
+              rows.map((row, index) =>
+                renderRow ? (
+                  renderRow(row, index)
+                ) : (
+                  <tr key={index} className="hover:bg-rose-50/40">
+                    {columns.map((column) => (
+                      <td key={column.key} className="whitespace-nowrap px-4 py-3 text-slate-700">
+                        {column.render(row)}
+                      </td>
+                    ))}
+                  </tr>
+                ),
+              )
             )}
           </tbody>
         </table>

@@ -3,9 +3,10 @@ import Link from "next/link";
 import { SectionHeading } from "@/components/section-heading";
 import { Card } from "@/components/ui/card";
 import { LinkPendingContent, PendingLink } from "@/components/ui/pending-link";
+import { Pagination } from "@/components/ui/pagination";
 import type { SearchGroup } from "@/lib/services/portal-search";
 
-export function SearchResults({ query, groups }: { query: string; groups: SearchGroup[] }) {
+export function SearchResults({ query, groups, searchPath }: { query: string; groups: SearchGroup[]; searchPath: string }) {
   const trimmed = query.trim();
 
   if (!trimmed) {
@@ -20,6 +21,9 @@ export function SearchResults({ query, groups }: { query: string; groups: Search
   }
 
   const withHits = groups.filter((group) => group.total > 0);
+  const pageQuery = Object.fromEntries(
+    groups.map((group) => [`page-${group.key}`, group.page > 1 ? String(group.page) : undefined]),
+  );
 
   if (withHits.length === 0) {
     return (
@@ -82,6 +86,17 @@ export function SearchResults({ query, groups }: { query: string; groups: Search
                 </li>
               ))}
             </ul>
+            <div className="px-4 pb-4">
+              <Pagination
+                page={group.page}
+                totalPages={Math.ceil(group.total / group.pageSize)}
+                pageSize={group.pageSize}
+                total={group.total}
+                basePath={searchPath}
+                pageParam={`page-${group.key}`}
+                query={{ q: trimmed, ...pageQuery }}
+              />
+            </div>
           </Card>
         ))}
       </div>

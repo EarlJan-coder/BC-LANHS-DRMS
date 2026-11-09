@@ -6,6 +6,7 @@ export const documentRequestSchema = z.object({
   purpose: z.string().min(10, "Please describe the request purpose in at least 10 characters."),
   schoolYearNeeded: z.string().min(1, "School year needed is required."),
   gradeLevelNeeded: z.string().min(1, "Grade level needed is required."),
+  sectionNeeded: z.string().trim().max(40, "Section must be 40 characters or fewer.").optional().default(""),
   remarks: z.string().optional(),
 });
 
@@ -22,14 +23,16 @@ export const studentRecordSchema = z.object({
   middleName: z.string().trim().optional(),
   lastName: z.string().trim().min(1, "Last name is required."),
   suffix: z.string().trim().optional(),
+  email: z.union([z.string().trim().email("Enter a valid email address.").max(191), z.literal("")]).optional(),
   contactNumber: z.string().trim().optional(),
   address: z.string().trim().optional(),
   enrollmentStatus: z.enum(["enrolled", "alumni", "transferred", "inactive"]).default("enrolled"),
+  registrationStatus: z.enum(["pending", "approved", "declined"]).optional(),
+  registrationNote: z.string().trim().max(2000).optional(),
 });
 
 export const certificateGenerateSchema = z.object({
-  requestId: z.string().uuid().optional(),
-  studentId: z.string().uuid().optional(),
+  requestId: z.string().uuid(),
   certificateType: z.string().min(2).optional(),
 });
 
@@ -83,6 +86,11 @@ export const userCreateSchema = z.object({
 
 export const userPasswordResetSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters.").max(72),
+});
+
+export const registrationDecisionSchema = z.object({
+  decision: z.enum(["approved", "declined"]),
+  note: z.string().trim().min(1, "A note is required.").max(2000, "The note must be 2,000 characters or fewer."),
 });
 
 export const passwordChangeSchema = z.object({

@@ -1,24 +1,22 @@
 import bcrypt from "bcryptjs";
-import { and, eq, isNull, or } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { getDb } from "@/db";
 import { students, users } from "@/db/schema";
 import { checkAuthRateLimit } from "@/lib/auth-rate-limit";
-import { startSession } from "@/lib/session";
-import { assertSessionSecretConfigured } from "@/lib/session-token";
+import { fanOutNewRegistrationNotification } from "@/lib/services/notifications";
 
 const signupSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email address.").max(191),
   lrn: z.string().trim().regex(/^\d{12}$/, "Enter your 12-digit LRN."),
   firstName: z.string().trim().min(1, "First name is required.").max(100),
+  middleName: z.string().trim().max(100).optional(),
   lastName: z.string().trim().min(1, "Last name is required.").max(100),
+  phone: z.string().trim().max(30).optional(),
+  address: z.string().trim().max(2000).optional(),
   password: z.string().min(8, "Password must be at least 8 characters.").max(72),
 });
-
-function normalizedName(value: string) {
-  return value.trim().replace(/\s+/g, " ").toLowerCase();
-}
 
 function postgresCode(error: unknown) {
   return typeof error === "object" && error !== null && "code" in error
@@ -33,8 +31,6 @@ export async function POST(request: Request) {
     if (new TextEncoder().encode(values.password).byteLength > 72) {
       return NextResponse.json({ error: "Password must be 72 bytes or fewer." }, { status: 400 });
     }
-
-    assertSessionSecretConfigured();
 
     // Signup previously had no limit and could be scripted to probe LRNs.
     // The LRN is the enumerated value, so it keys the credential bucket.
@@ -62,22 +58,6 @@ export async function POST(request: Request) {
         throw new Error("EMAIL_OR_LRN_EXISTS");
       }
 
-      const existingStudent = await tx.query.students.findFirst({
-        where: and(eq(students.lrn, values.lrn), isNull(students.userId)),
-      });
-
-      if (!existingStudent) {
-        throw new Error("STUDENT_MATCH_FAILED");
-      }
-
-      if (
-        normalizedName(existingStudent.firstName) !== normalizedName(values.firstName) ||
-        normalizedName(existingStudent.lastName) !== normalizedName(values.lastName)
-      ) {
-        throw new Error("STUDENT_MATCH_FAILED");
-      }
-
-      const now = new Date();
       const [createdUser] = await tx
         .insert(users)
         .values({
@@ -87,24 +67,37 @@ export async function POST(request: Request) {
           firstName: values.firstName,
           lastName: values.lastName,
           role: "student",
+          registrationStatus: "pending",
         })
         .returning();
 
-      const [linkedStudent] = await tx
-        .update(students)
-        .set({ userId: createdUser.id, email: values.email, updatedAt: now })
-        .where(and(eq(students.id, existingStudent.id), isNull(students.userId)))
-        .returning({ id: students.id });
-
-      if (!linkedStudent) {
-        throw new Error("STUDENT_MATCH_FAILED");
-      }
+      await tx.insert(students).values({
+        userId: createdUser.id,
+        lrn: values.lrn,
+        firstName: values.firstName,
+        middleName: values.middleName?.trim() || null,
+        lastName: values.lastName,
+        email: values.email,
+        contactNumber: values.phone?.trim() || null,
+        address: values.address?.trim() || null,
+      });
 
       return createdUser;
     });
 
-    await startSession(user.id, user.tokenVersion);
-    return NextResponse.json({ ok: true }, { status: 201 });
+    try {
+      await fanOutNewRegistrationNotification(
+        [user.firstName, user.middleName, user.lastName].filter(Boolean).join(" "),
+        user.email,
+      );
+    } catch (error) {
+      console.warn("[signup] Registration notification fan-out failed:", error instanceof Error ? error.message : "unknown error");
+    }
+
+    return NextResponse.json(
+      { ok: true, message: "Registration submitted. Check your email for updates after the registrar reviews it." },
+      { status: 201 },
+    );
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message ?? "Check the signup details." }, { status: 400 });
@@ -112,16 +105,6 @@ export async function POST(request: Request) {
 
     if (error instanceof Error && error.message === "EMAIL_OR_LRN_EXISTS") {
       return NextResponse.json({ error: "An account already uses that email or LRN." }, { status: 409 });
-    }
-
-    if (error instanceof Error && error.message === "STUDENT_MATCH_FAILED") {
-      // One response for every match failure (unknown LRN, name mismatch,
-      // lost link race) so signup responses cannot be used to probe which
-      // LRNs exist or to confirm a student's registered name.
-      return NextResponse.json(
-        { error: "We couldn't match those details to an unlinked student record. Contact the registrar to confirm your record." },
-        { status: 400 },
-      );
     }
 
     if (postgresCode(error) === "23505") {

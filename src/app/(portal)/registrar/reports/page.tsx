@@ -5,8 +5,8 @@ import { DownloadButton } from "@/components/ui/download-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ReportDateFilter } from "@/components/report-date-filter";
 import { formatPeriodLabel, listReports, parseReportRange } from "@/lib/services/reports";
-
-const PREVIEW_LIMIT = 10;
+import { Pagination } from "@/components/ui/pagination";
+import { parsePage } from "@/lib/pagination";
 
 function pdfHref(key: string, from?: string, to?: string) {
   const params = new URLSearchParams();
@@ -19,12 +19,22 @@ function pdfHref(key: string, from?: string, to?: string) {
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { from, to } = await searchParams;
+  const params = await searchParams;
+  const from = typeof params.from === "string" ? params.from : undefined;
+  const to = typeof params.to === "string" ? params.to : undefined;
   const range = parseReportRange(from, to);
   const periodLabel = formatPeriodLabel(range);
-  const reports = await listReports(range);
+  const reports = await listReports(range, {
+    "request-summary": parsePage(params["page-request-summary"]),
+    "claimed-documents": parsePage(params["page-claimed-documents"]),
+    "generated-certificates": parsePage(params["page-generated-certificates"]),
+    "student-records": parsePage(params["page-student-records"]),
+  });
+  const pageQuery = Object.fromEntries(
+    reports.map((report) => [`page-${report.key}`, report.page && report.page > 1 ? String(report.page) : undefined]),
+  );
 
   return (
     <div>
@@ -50,8 +60,8 @@ export default async function ReportsPage({
             label: column.header,
             render: (row: string[]) => row[index] ?? "",
           }));
-          const previewRows = report.rows.slice(0, PREVIEW_LIMIT);
-          const extra = report.rows.length - previewRows.length;
+          const page = report.page ?? 1;
+          const pageSize = report.pageSize ?? 20;
 
           return (
             <section key={report.key}>
@@ -71,15 +81,18 @@ export default async function ReportsPage({
 
               <DataTable
                 columns={columns}
-                rows={previewRows}
+                rows={report.rows}
                 emptyMessage="No records for the selected period."
               />
-
-              {extra > 0 ? (
-                <p className="mt-2 text-xs text-slate-500">
-                  Showing first {PREVIEW_LIMIT} of {report.rows.length}. Export the PDF for the full report.
-                </p>
-              ) : null}
+              <Pagination
+                page={page}
+                totalPages={Math.ceil(report.total / pageSize)}
+                total={report.total}
+                pageSize={pageSize}
+                basePath="/registrar/reports"
+                pageParam={`page-${report.key}`}
+                query={{ from, to, ...pageQuery }}
+              />
             </section>
           );
         })}

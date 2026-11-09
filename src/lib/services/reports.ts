@@ -24,6 +24,7 @@ import {
 } from "@/lib/services/pdf-brand";
 import { drawTable, type TableColumn } from "@/lib/services/pdf-table";
 import { statusLabel, formatDateTime } from "@/lib/utils";
+import { paginateRows, PAGE_SIZE } from "@/lib/pagination";
 
 export const REPORT_KEYS = [
   "request-summary",
@@ -51,6 +52,8 @@ export type ReportData = {
   total: number;
   columns: TableColumn[];
   rows: string[][];
+  page?: number;
+  pageSize?: number;
 };
 
 const REPORT_META: Record<
@@ -304,8 +307,12 @@ export async function getReportData(key: ReportKey, range: ReportRange): Promise
   };
 }
 
-export async function listReports(range: ReportRange): Promise<ReportData[]> {
-  return Promise.all(REPORT_KEYS.map((key) => getReportData(key, range)));
+export async function listReports(range: ReportRange, pages: Partial<Record<ReportKey, number>> = {}): Promise<ReportData[]> {
+  const reports = await Promise.all(REPORT_KEYS.map((key) => getReportData(key, range)));
+  return reports.map((report) => {
+    const paged = paginateRows(report.rows, pages[report.key] ?? 1, PAGE_SIZE);
+    return { ...report, rows: paged.rows, page: paged.page, pageSize: paged.pageSize };
+  });
 }
 
 // PDF layout constants (A4 to match the documents interface).

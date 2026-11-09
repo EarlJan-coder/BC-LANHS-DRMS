@@ -6,10 +6,10 @@ const require = createRequire(import.meta.url);
 require("@next/env").loadEnvConfig(process.cwd());
 process.env.SESSION_SECRET ||= "test-secret-test-secret-test-secret-32b";
 
-const { inArray } = await import("drizzle-orm");
+const { eq, inArray } = await import("drizzle-orm");
 const { getDb, closeDb } = await import("@/db");
-const { notifications, users } = await import("@/db/schema");
-const { countUnread, fanOutNewRequestNotification, listUserNotifications, markAll, markRead } = await import(
+const { documentRequests, notifications, students, users } = await import("@/db/schema");
+const { countUnread, fanOutNewRequestNotification, getNotificationDetail, listUserNotifications, markAll, markRead } = await import(
   "@/lib/services/notifications"
 );
 
@@ -49,7 +49,7 @@ async function createFixtureUser(overrides: {
 
 async function createFixtureNotification(
   userId: string,
-  overrides: { isRead?: boolean; title?: string; message?: string } = {},
+  overrides: { isRead?: boolean; title?: string; message?: string; referenceType?: string | null; referenceId?: string | null } = {},
 ) {
   const db = getDb();
   const [row] = await db
@@ -59,6 +59,8 @@ async function createFixtureNotification(
       type: "request",
       title: overrides.title ?? "Fixture notification",
       message: overrides.message ?? "Fixture message",
+      referenceType: overrides.referenceType,
+      referenceId: overrides.referenceId,
       isRead: overrides.isRead ?? false,
     })
     .returning();
@@ -254,7 +256,7 @@ describe("fanOutNewRequestNotification (integration, local DB)", {
       );
       assert.ok(rows.every((row) => row.type === "request"));
       assert.ok(rows.every((row) => row.title === "New document request submitted"));
-      assert.ok(rows.every((row) => row.message === "LANHS-TEST-0001 (Form 137) is awaiting registrar review."));
+      assert.ok(rows.every((row) => row.message === "Request · Pending"));
     } finally {
       // Delete every row the fan-out created — including copies that landed on
       // REAL registrars — so a shared DB is left exactly as it was found.
@@ -264,6 +266,63 @@ describe("fanOutNewRequestNotification (integration, local DB)", {
         });
       }
       await deleteFixtureUsers(everyone);
+    }
+  });
+});
+
+describe("getNotificationDetail (integration, local DB)", {
+  skip: hasDb ? false : "DATABASE_URL not configured",
+}, () => {
+  it("resolves a notification's referenced request record", async () => {
+    const owner = await createFixtureUser({ role: "student" });
+    const studentLrn = String(Date.now()).slice(-12).padStart(12, "0");
+    const trackingNumber = `DETAIL-${Date.now()}`;
+    const db = getDb();
+    const [student] = await db.insert(students).values({
+      userId: owner.id,
+      lrn: studentLrn,
+      firstName: "Detail",
+      lastName: "Fixture",
+      email: owner.email,
+    }).returning({ id: students.id });
+    const [request] = await db.insert(documentRequests).values({
+      trackingNumber,
+      studentId: student.id,
+      requestedByUserId: owner.id,
+      purpose: "Notification detail fixture",
+    }).returning({ id: documentRequests.id });
+    const notification = await createFixtureNotification(owner.id, {
+      title: "Request updated",
+      message: "Request · Under review",
+      referenceType: "document_request",
+      referenceId: trackingNumber,
+    });
+
+    try {
+      const detail = await getNotificationDetail(owner.id, notification.id);
+      assert.equal(detail.kind, "request");
+      assert.equal((detail.record as { trackingNumber: string }).trackingNumber, trackingNumber);
+    } finally {
+      await db.delete(notifications).where(eq(notifications.id, notification.id));
+      await db.delete(documentRequests).where(eq(documentRequests.id, request.id));
+      await db.delete(students).where(eq(students.id, student.id));
+      await deleteFixtureUsers([owner.id]);
+    }
+  });
+
+  it("returns a message-only detail when a notification has no reference", async () => {
+    const owner = await createFixtureUser({ role: "student" });
+    try {
+      const notification = await createFixtureNotification(owner.id, {
+        title: "Legacy notification",
+        message: "This notice predates record links.",
+      });
+      const detail = await getNotificationDetail(owner.id, notification.id);
+      assert.equal(detail.kind, "message");
+      assert.equal((detail.record as { title: string }).title, "Legacy notification");
+      assert.equal((detail.record as { message: string }).message, "This notice predates record links.");
+    } finally {
+      await deleteFixtureUsers([owner.id]);
     }
   });
 });

@@ -11,7 +11,7 @@ const { proxy } = await import("@/proxy");
 const { createSessionToken } = await import("@/lib/session-token");
 const { getDb, closeDb } = await import("@/db");
 const { users } = await import("@/db/schema");
-const { eq } = await import("drizzle-orm");
+const { eq, inArray } = await import("drizzle-orm");
 const { randomUUID } = await import("node:crypto");
 
 const db = getDb();
@@ -34,6 +34,7 @@ describe("proxy mustChangePassword gate (integration, local DB)", () => {
       firstName: "Proxy",
       lastName: "MustChange",
       role: "student",
+      registrationStatus: "approved",
       tokenVersion: 0,
       mustChangePassword,
     });
@@ -103,20 +104,21 @@ describe("proxy token_version revocation (integration, local DB)", () => {
       firstName: "Proxy",
       lastName: "Test",
       role: "student",
+      registrationStatus: "approved",
       tokenVersion: 0,
     });
 
     try {
       const token = await createSessionToken(id, 0);
 
-      const ok = await proxy(request("/api/students/import/template", `lanhs_session=${token}`));
+      const ok = await proxy(request("/api/students", `lanhs_session=${token}`));
       assert.equal(ok.status, 200, "valid session passes the proxy");
 
       // Simulate logout: the version bump must kill the old cookie at the
       // proxy boundary, including for routes with no in-route user check.
       await db.update(users).set({ tokenVersion: 1 }).where(eq(users.id, id));
 
-      const revokedApi = await proxy(request("/api/students/import/template", `lanhs_session=${token}`));
+      const revokedApi = await proxy(request("/api/students", `lanhs_session=${token}`));
       assert.equal(revokedApi.status, 401, "revoked cookie is rejected on API routes");
 
       const revokedPage = await proxy(request("/registrar/students", `lanhs_session=${token}`));
@@ -128,10 +130,45 @@ describe("proxy token_version revocation (integration, local DB)", () => {
 
       // A token minted at the new version works again.
       const fresh = await createSessionToken(id, 1);
-      const freshOk = await proxy(request("/api/students/import/template", `lanhs_session=${fresh}`));
+      const freshOk = await proxy(request("/api/students", `lanhs_session=${fresh}`));
       assert.equal(freshOk.status, 200, "token minted at the current version passes");
     } finally {
       await db.delete(users).where(eq(users.id, id));
+    }
+  });
+});
+
+describe("proxy registration approval gate (integration, local DB)", () => {
+  async function seedUser(registrationStatus: "pending" | "approved" | "declined") {
+    const id = randomUUID();
+    await db.insert(users).values({
+      id,
+      email: `proxy-registration-${id}@test.local`,
+      passwordHash: "not-a-real-hash",
+      firstName: "Proxy",
+      lastName: "Registration",
+      role: "student",
+      registrationStatus,
+      tokenVersion: 0,
+    });
+    return { id, token: await createSessionToken(id, 0) };
+  }
+
+  it("blocks pending and declined tokens while allowing an approved token", async () => {
+    const pending = await seedUser("pending");
+    const declined = await seedUser("declined");
+    const approved = await seedUser("approved");
+
+    try {
+      const pendingResponse = await proxy(request("/api/students", `lanhs_session=${pending.token}`));
+      const declinedResponse = await proxy(request("/api/students", `lanhs_session=${declined.token}`));
+      const approvedResponse = await proxy(request("/api/students", `lanhs_session=${approved.token}`));
+
+      assert.equal(pendingResponse.status, 401);
+      assert.equal(declinedResponse.status, 401);
+      assert.equal(approvedResponse.status, 200);
+    } finally {
+      await db.delete(users).where(inArray(users.id, [pending.id, declined.id, approved.id]));
     }
   });
 });

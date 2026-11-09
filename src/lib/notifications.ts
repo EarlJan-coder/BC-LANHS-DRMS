@@ -6,10 +6,25 @@ export function buildNewRequestNotification(
   trackingNumber: string,
   documentType: string,
 ): Pick<NewNotification, "type" | "title" | "message"> {
+  void trackingNumber;
+  void documentType;
   return {
     type: "request",
     title: "New document request submitted",
-    message: `${trackingNumber} (${documentType}) is awaiting registrar review.`,
+    message: "Request · Pending",
+  };
+}
+
+export function buildRegistrationDecisionNotification(
+  studentName: string,
+  decision: "approved" | "declined",
+): Pick<NewNotification, "type" | "title" | "message"> {
+  void studentName;
+  const status = decision === "approved" ? "Approved" : "Declined";
+  return {
+    type: "system",
+    title: `Registration ${status.toLowerCase()}`,
+    message: `Registration · ${status}`,
   };
 }
 

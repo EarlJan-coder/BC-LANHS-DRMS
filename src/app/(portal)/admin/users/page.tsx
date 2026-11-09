@@ -4,9 +4,12 @@ import { ResetPasswordForm } from "@/components/reset-password-form";
 import { SectionHeading } from "@/components/section-heading";
 import { UserRoleActions } from "@/components/user-role-actions";
 import { listUserViews } from "@/lib/services/live-data";
+import { Pagination } from "@/components/ui/pagination";
+import { parsePage } from "@/lib/pagination";
 
-export default async function UserManagementPage() {
-  const users = await listUserViews();
+export default async function UserManagementPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const page = parsePage((await searchParams).page);
+  const users = await listUserViews({ page });
 
   return (
     <div>
@@ -16,7 +19,7 @@ export default async function UserManagementPage() {
       />
       <AddAccountForm />
       <DataTable
-        rows={users}
+        rows={users.rows}
         emptyMessage="No registered accounts yet."
         columns={[
           { key: "name", label: "Name", render: (row) => row.name },
@@ -35,6 +38,7 @@ export default async function UserManagementPage() {
           },
         ]}
       />
+      <Pagination page={users.page} totalPages={Math.ceil(users.total / users.pageSize)} basePath="/admin/users" total={users.total} pageSize={users.pageSize} />
     </div>
   );
 }

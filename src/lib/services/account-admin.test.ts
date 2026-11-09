@@ -1,6 +1,7 @@
 import { after, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
+import type { AppError } from "@/lib/utils";
 
 const require = createRequire(import.meta.url);
 require("@next/env").loadEnvConfig(process.cwd());
@@ -9,7 +10,6 @@ process.env.SESSION_SECRET ||= "test-secret-test-secret-test-secret-32b";
 const { eq, inArray } = await import("drizzle-orm");
 const { getDb, closeDb } = await import("@/db");
 const { users } = await import("@/db/schema");
-const { AppError } = await import("@/lib/utils");
 const { comparePassword } = await import("@/lib/password");
 const { userCreateSchema, passwordChangeSchema } = await import("@/lib/validators");
 const { createStaffAccount, assertAdmin, resetUserPassword, changeOwnPassword } = await import("@/lib/services/account-admin");
@@ -157,6 +157,7 @@ describe("changeOwnPassword (integration, local DB)", {
     try {
       await assert.rejects(() => changeOwnPassword(created.id, "not-the-password", "brandnew12345"), (e: AppError) => e.status === 401);
       const row = await getDb().query.users.findFirst({ where: eq(users.id, created.id) });
+      assert.ok(row);
       assert.ok(await comparePassword("placeholder123", row.passwordHash));
     } finally {
       await deleteUsers([created.id]);
@@ -168,6 +169,7 @@ describe("changeOwnPassword (integration, local DB)", {
     try {
       const result = await changeOwnPassword(created.id, "placeholder123", "brandnew12345");
       const row = await getDb().query.users.findFirst({ where: eq(users.id, created.id) });
+      assert.ok(row);
       assert.equal(row.mustChangePassword, false);
       assert.equal(result.tokenVersion, row.tokenVersion);
       assert.ok(result.tokenVersion > 0);
@@ -188,6 +190,7 @@ describe("changeOwnPassword (integration, local DB)", {
         (e: AppError) => e.status === 400 && e.message === "New password must be different from your current password.",
       );
       const row = await getDb().query.users.findFirst({ where: eq(users.id, created.id) });
+      assert.ok(row);
       assert.ok(await comparePassword("placeholder123", row.passwordHash));
       assert.equal(row.mustChangePassword, true);
     } finally {

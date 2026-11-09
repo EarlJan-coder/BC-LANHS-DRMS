@@ -4,6 +4,8 @@ import { RetryBlockchainButton } from "@/components/retry-blockchain-button";
 import { SectionHeading } from "@/components/section-heading";
 import { Card } from "@/components/ui/card";
 import { getBlockchainAuditStats, listAuditTrailViews } from "@/lib/services/live-data";
+import { Pagination } from "@/components/ui/pagination";
+import { parsePage } from "@/lib/pagination";
 
 function StatCard({ label, value, icon: Icon, tone }: { label: string; value: number; icon: React.ElementType; tone: string }) {
   return (
@@ -19,8 +21,9 @@ function StatCard({ label, value, icon: Icon, tone }: { label: string; value: nu
   );
 }
 
-export default async function BlockchainAuditTrailPage() {
-  const [auditTrail, stats] = await Promise.all([listAuditTrailViews(), getBlockchainAuditStats()]);
+export default async function BlockchainAuditTrailPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const page = parsePage((await searchParams).page);
+  const [auditTrail, stats] = await Promise.all([listAuditTrailViews({ page }), getBlockchainAuditStats()]);
 
   return (
     <div>
@@ -44,7 +47,7 @@ export default async function BlockchainAuditTrailPage() {
         <RetryBlockchainButton />
       </Card>
       <DataTable
-        rows={auditTrail}
+        rows={auditTrail.rows}
         emptyMessage="No blockchain audit records found yet."
         columns={[
           { key: "reference", label: "Reference", render: (row) => row.referenceId },
@@ -55,6 +58,7 @@ export default async function BlockchainAuditTrailPage() {
           { key: "tx", label: "Transaction", render: (row) => <span className="font-mono text-xs">{row.transactionHash}</span> },
         ]}
       />
+      <Pagination page={auditTrail.page} totalPages={Math.ceil(auditTrail.total / auditTrail.pageSize)} basePath="/admin/blockchain" total={auditTrail.total} pageSize={auditTrail.pageSize} />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { eq, desc } from "drizzle-orm";
+import { count, eq, desc, or, sql } from "drizzle-orm";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import type { PDFFont, PDFPage } from "pdf-lib";
 import { getDb } from "@/db";
@@ -15,6 +15,7 @@ import { ensureCurrentDbUser } from "@/lib/auth";
 import { SCHOOL_NAME } from "@/lib/constants";
 import { sendWorkflowEmail } from "@/lib/email";
 import type { CertificateVerificationView, CertificateView } from "@/lib/types";
+import { makePaged, PAGE_SIZE, type Paged } from "@/lib/pagination";
 import { formatDate, generatePrefixedId, studentFullName, ZERO_HASH } from "@/lib/utils";
 import {
   certificateGenerateSchema,
@@ -209,7 +210,10 @@ export async function generateCertificate(input: unknown) {
         where: eq(documentRequests.id, values.requestId),
       })
     : undefined;
-  const studentId = values.studentId ?? request?.studentId;
+  if (!request) {
+    throw new Error("Document request was not found.");
+  }
+  const studentId = request.studentId;
 
   if (!studentId) {
     throw new Error("A linked student record is required before generating a certificate.");
@@ -292,7 +296,9 @@ export async function generateCertificate(input: unknown) {
       userId: request.requestedByUserId,
       type: "certificate",
       title: "Certificate generated",
-      message: `${created.certificateNumber} (${certificateType}) has been generated and is ready for registrar review.`,
+      message: "Certificate · Generated",
+      referenceType: "certificate",
+      referenceId: created.id,
     });
   }
 
@@ -323,9 +329,11 @@ export async function generateCertificate(input: unknown) {
   };
 }
 
-export async function listCertificateViews(limit = 100): Promise<CertificateView[]> {
+export function listCertificateViews(options: { page: number; pageSize?: number }): Promise<Paged<CertificateView>>;
+export function listCertificateViews(options?: number | { all?: true }): Promise<CertificateView[]>;
+export async function listCertificateViews(options: number | { page?: number; pageSize?: number; all?: true } = 100): Promise<CertificateView[] | Paged<CertificateView>> {
   const db = getDb();
-  const rows = await db
+  const baseQuery = db
     .select({
       id: certificates.id,
       certificateNumber: certificates.certificateNumber,
@@ -333,6 +341,7 @@ export async function listCertificateViews(limit = 100): Promise<CertificateView
       verificationCode: certificates.verificationCode,
       blockchainTxHash: certificates.blockchainTxHash,
       generatedAt: certificates.generatedAt,
+      schoolYearNeeded: documentRequests.schoolYearNeeded,
       firstName: students.firstName,
       middleName: students.middleName,
       lastName: students.lastName,
@@ -340,26 +349,78 @@ export async function listCertificateViews(limit = 100): Promise<CertificateView
     })
     .from(certificates)
     .leftJoin(students, eq(certificates.studentId, students.id))
-    .orderBy(desc(certificates.createdAt))
-    .limit(limit);
+    .leftJoin(documentRequests, eq(certificates.requestId, documentRequests.id))
+    .orderBy(desc(certificates.createdAt));
+  let rows: Awaited<typeof baseQuery>;
+  let total = 0;
+  if (typeof options === "object" && options.page !== undefined) {
+    const [row] = await db.select({ value: count() }).from(certificates);
+    total = Number(row?.value ?? 0);
+    const pageSize = options.pageSize ?? PAGE_SIZE;
+    const page = makePaged([], total, options.page, pageSize).page;
+    rows = await baseQuery.limit(pageSize).offset((page - 1) * pageSize);
+  } else if (typeof options === "object" && options.all) {
+    rows = await baseQuery;
+  } else {
+    rows = await baseQuery.limit(typeof options === "number" ? options : 100);
+  }
 
-  return rows.map((row) => ({
+  const views = rows.map((row) => ({
     id: row.id,
     certificateNumber: row.certificateNumber,
     certificateType: row.certificateType,
     studentName: [row.firstName, row.middleName, row.lastName, row.suffix].filter(Boolean).join(" ") || "Unknown student",
-    schoolYear: "Not set",
+    schoolYear: row.schoolYearNeeded ?? "Not set",
     verificationCode: row.verificationCode,
     verificationUrl: `${appUrl()}/verify-certificate/${row.verificationCode}`,
     blockchainStatus: row.blockchainTxHash ? "submitted" : "pending",
     blockchainTxHash: row.blockchainTxHash ?? "Pending",
     generatedAt: formatDate(row.generatedAt),
   }));
+  if (typeof options === "object" && options.page !== undefined) return makePaged(views, total, options.page, options.pageSize);
+  return views;
 }
 
 export async function getCertificateView(id: string) {
-  const views = await listCertificateViews(200);
-  return views.find((view) => view.id === id || view.certificateNumber === id || view.verificationCode === id) ?? null;
+  const rows = await getDb()
+    .select({
+      id: certificates.id,
+      certificateNumber: certificates.certificateNumber,
+      certificateType: certificates.certificateType,
+      verificationCode: certificates.verificationCode,
+      blockchainTxHash: certificates.blockchainTxHash,
+      generatedAt: certificates.generatedAt,
+      schoolYearNeeded: documentRequests.schoolYearNeeded,
+      firstName: students.firstName,
+      middleName: students.middleName,
+      lastName: students.lastName,
+      suffix: students.suffix,
+    })
+    .from(certificates)
+    .leftJoin(students, eq(certificates.studentId, students.id))
+    .leftJoin(documentRequests, eq(certificates.requestId, documentRequests.id))
+    .where(
+      or(
+        sql`${certificates.id}::text = ${id}`,
+        eq(certificates.certificateNumber, id),
+        eq(certificates.verificationCode, id),
+      ),
+    )
+    .limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    certificateNumber: row.certificateNumber,
+    certificateType: row.certificateType,
+    studentName: [row.firstName, row.middleName, row.lastName, row.suffix].filter(Boolean).join(" ") || "Unknown student",
+    schoolYear: row.schoolYearNeeded ?? "Not set",
+    verificationCode: row.verificationCode,
+    verificationUrl: `${appUrl()}/verify-certificate/${row.verificationCode}`,
+    blockchainStatus: row.blockchainTxHash ? "submitted" : "pending",
+    blockchainTxHash: row.blockchainTxHash ?? "Pending",
+    generatedAt: formatDate(row.generatedAt),
+  } satisfies CertificateView;
 }
 
 export async function verifyCertificate(code: string): Promise<CertificateVerificationView> {
@@ -437,6 +498,7 @@ async function loadCertificateDisplayRow(certificateId: string) {
       requestPurpose: documentRequests.purpose,
       requestSchoolYearNeeded: documentRequests.schoolYearNeeded,
       requestGradeLevelNeeded: documentRequests.gradeLevelNeeded,
+      requestSectionNeeded: documentRequests.sectionNeeded,
       firstName: students.firstName,
       middleName: students.middleName,
       lastName: students.lastName,
@@ -467,7 +529,7 @@ function toDisplayRow(row: CertificateDisplayDbRow): CertificateDisplayRow {
     lastName: row.lastName,
     suffix: row.suffix,
     gradeLevel: row.requestGradeLevelNeeded,
-    section: null,
+    section: row.requestSectionNeeded,
     requestPurpose: row.requestPurpose,
     generatedAt: row.generatedAt,
     overrideStudentName: row.overrideStudentName,

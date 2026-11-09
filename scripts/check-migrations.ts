@@ -258,6 +258,15 @@ async function main() {
       });
     }
 
+    if (pendingTags.has("0015_delete_unlinked_students") && existingTables.has("students")) {
+      const rows = await sql`SELECT count(*)::int AS count FROM students WHERE user_id IS NULL`;
+      pendingDataDeletes.push({
+        migration: "0015_delete_unlinked_students.sql",
+        statement: 'DELETE FROM "students" WHERE "user_id" IS NULL',
+        affectedRows: rows[0].count,
+      });
+    }
+
     if (pendingTags.has("0006_peaceful_mindworm") && existingTables.has("users")) {
       const rows = await sql`SELECT count(*)::int AS count FROM users`;
       pendingDataDeletes.push({

@@ -13,6 +13,7 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   // onSubmit (not <form action>): form actions auto-reset uncontrolled fields
   // when they complete, wiping the form on failed attempts (same fix as
@@ -22,6 +23,7 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
     if (loading) return;
     setLoading(true);
     setError("");
+    setSuccess("");
 
     const formData = new FormData(event.currentTarget);
     const payload = isSignup
@@ -29,7 +31,10 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
           email: formData.get("email"),
           lrn: formData.get("lrn"),
           firstName: formData.get("firstName"),
+          middleName: formData.get("middleName"),
           lastName: formData.get("lastName"),
+          phone: formData.get("phone"),
+          address: formData.get("address"),
           password: formData.get("password"),
         }
       : {
@@ -51,9 +56,14 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
         return;
       }
 
-      // Keep the button pending through navigation; only errors clear it.
-      router.replace(next ?? "/dashboard");
-      router.refresh();
+      if (isSignup) {
+        setSuccess(result.message ?? "Registration submitted. Check your email for updates after review.");
+        setLoading(false);
+      } else {
+        // Keep the button pending through navigation; only errors clear it.
+        router.replace(next ?? "/dashboard");
+        router.refresh();
+      }
     } catch {
       setError("Unable to reach the server. Check your connection and try again.");
       setLoading(false);
@@ -76,8 +86,22 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
               </div>
             </div>
             <div className="grid gap-2">
+              <Label htmlFor="middleName">Middle name <span className="font-normal text-slate-500">(optional)</span></Label>
+              <Input id="middleName" name="middleName" autoComplete="additional-name" maxLength={100} />
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" name="email" type="email" autoComplete="email" required maxLength={191} />
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="phone">Phone <span className="font-normal text-slate-500">(optional)</span></Label>
+                <Input id="phone" name="phone" type="tel" autoComplete="tel" maxLength={30} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="address">Address <span className="font-normal text-slate-500">(optional)</span></Label>
+                <Input id="address" name="address" autoComplete="street-address" maxLength={2000} />
+              </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="lrn">Learner Reference Number (LRN)</Label>
@@ -118,6 +142,12 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
         {error ? (
           <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
+          </p>
+        ) : null}
+
+        {success ? (
+          <p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            {success}
           </p>
         ) : null}
 
