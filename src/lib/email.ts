@@ -30,6 +30,20 @@ async function sendRequestNotificationEmail(input: {
   return { ok: true };
 }
 
+function registrationLoginUrl() {
+  const fallback = "https://www.lanhsdrms.online/sign-in";
+  const configuredBase = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (!configuredBase) return fallback;
+
+  try {
+    const baseUrl = new URL(configuredBase);
+    if (baseUrl.protocol !== "https:" && baseUrl.protocol !== "http:") return fallback;
+    return new URL("/sign-in", baseUrl.origin).toString();
+  } catch {
+    return fallback;
+  }
+}
+
 export async function sendWorkflowEmail(input: {
   to?: string | null;
   studentName: string;
@@ -88,19 +102,21 @@ export function buildRegistrationDecisionEmailContent(input: {
   note: string;
 }) {
   const outcome = input.decision === "approved" ? "approved" : "declined";
+  const loginUrl = input.decision === "approved" ? registrationLoginUrl() : null;
   const instructions =
     input.decision === "approved"
-      ? "You may now sign in to LANHS DRMS using the email or LRN and password you registered with."
+      ? "Your student account is ready. Sign in with the email address and password you registered with."
       : "Please contact the registrar if you have questions about this decision.";
 
   const message = [
     `Good day ${input.studentName},`,
     "",
-    `Your student registration has been ${outcome}.`,
+    `Your student account has been ${outcome}.`,
     "",
     `Registrar note: ${input.note.trim()}`,
     "",
     instructions,
+    loginUrl ? `Sign-in link: ${loginUrl}` : null,
     "",
     `${SCHOOL_NAME} Registrar`,
     `${APP_NAME} - Student Records and Document Request Management System`,
@@ -109,5 +125,16 @@ export function buildRegistrationDecisionEmailContent(input: {
   return {
     subject: `LANHS DRMS registration ${outcome}`,
     message,
+    ...(loginUrl
+      ? {
+          html: renderWorkflowEmailHtml({
+            studentName: input.studentName,
+            status: "approved",
+            details: [{ label: "Registrar note", value: input.note.trim() }],
+            instruction: instructions,
+            action: { label: "Go to sign in", href: loginUrl },
+          }),
+        }
+      : {}),
   };
 }

@@ -81,7 +81,7 @@ describe("student signup (integration, local DB)", { skip: hasDb ? false : "DATA
     }
   });
 
-  it("returns 409 when the LRN is already used", async () => {
+  it("allows multiple accounts to register with the same LRN", async () => {
     const payload = signupPayload();
     const [existing] = await getDb()
       .insert(users)
@@ -94,13 +94,17 @@ describe("student signup (integration, local DB)", { skip: hasDb ? false : "DATA
         registrationStatus: "approved",
       })
       .returning({ id: users.id });
+    let registeredId = "";
 
     try {
       const response = await postSignup(payload);
-      assert.equal(response.status, 409);
-      assert.deepEqual(await response.json(), { error: "An account already uses that email or LRN." });
+      assert.equal(response.status, 201);
+      const registered = await getDb().query.users.findFirst({ where: eq(users.email, payload.email) });
+      assert.ok(registered);
+      registeredId = registered.id;
+      assert.equal(registered.lrn, payload.lrn);
     } finally {
-      await cleanup([existing.id]);
+      await cleanup([existing.id, ...(registeredId ? [registeredId] : [])]);
     }
   });
 
@@ -121,7 +125,7 @@ describe("student signup (integration, local DB)", { skip: hasDb ? false : "DATA
     try {
       const response = await postSignup(payload);
       assert.equal(response.status, 409);
-      assert.deepEqual(await response.json(), { error: "An account already uses that email or LRN." });
+      assert.deepEqual(await response.json(), { error: "An account already uses that email." });
     } finally {
       await cleanup([existing.id]);
     }

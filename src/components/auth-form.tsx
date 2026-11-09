@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { Clock3, MailCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
@@ -14,6 +15,7 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [registeredEmail, setRegisteredEmail] = useState("");
 
   // onSubmit (not <form action>): form actions auto-reset uncontrolled fields
   // when they complete, wiping the form on failed attempts (same fix as
@@ -26,6 +28,7 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
     setSuccess("");
 
     const formData = new FormData(event.currentTarget);
+    const signupEmail = isSignup ? String(formData.get("email") ?? "") : "";
     const payload = isSignup
       ? {
           email: formData.get("email"),
@@ -57,6 +60,7 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
       }
 
       if (isSignup) {
+        setRegisteredEmail(signupEmail);
         setSuccess(result.message ?? "Registration submitted. Check your email for updates after review.");
         setLoading(false);
       } else {
@@ -68,6 +72,45 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
       setError("Unable to reach the server. Check your connection and try again.");
       setLoading(false);
     }
+  }
+
+  if (isSignup && success) {
+    return (
+      <Card className="p-6 sm:p-7">
+        <section role="status" aria-live="polite" className="grid gap-5">
+          <div className="flex items-start gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:p-5">
+            <span className="grid size-12 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-800">
+              <Clock3 size={23} aria-hidden="true" />
+            </span>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-800">Registration status</p>
+              <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">On hold</h2>
+            </div>
+          </div>
+
+          <div className="grid gap-2">
+            <h3 className="text-lg font-semibold text-slate-950">Registrar is confirming your identity</h3>
+            <p className="text-sm leading-6 text-slate-600">
+              Your registration has been submitted. You can sign in after the registrar approves your account.
+            </p>
+          </div>
+
+          <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <MailCheck size={19} className="mt-0.5 shrink-0 text-slate-600" aria-hidden="true" />
+            <p className="text-sm leading-6 text-slate-600">
+              We’ll email {registeredEmail ? <span className="font-semibold text-slate-900">{registeredEmail}</span> : "you"} when your account is approved. The email will include a link to sign in. If your LRN is shared, use this email address to log in.
+            </p>
+          </div>
+
+          <a
+            href="/sign-in"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-red-800 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
+          >
+            Return to sign in
+          </a>
+        </section>
+      </Card>
+    );
   }
 
   return (
@@ -122,6 +165,7 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
           <div className="grid gap-2">
             <Label htmlFor="identifier">Email or LRN</Label>
             <Input id="identifier" name="identifier" autoComplete="username" required />
+            <p className="text-xs text-slate-500">Use your email if multiple accounts share an LRN.</p>
           </div>
         )}
 

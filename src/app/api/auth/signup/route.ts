@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { and, eq, isNull, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { getDb } from "@/db";
@@ -32,10 +32,6 @@ function postgresCode(error: unknown) {
   return undefined;
 }
 
-function normalizedName(value: string) {
-  return value.trim().replace(/\s+/g, " ").toLowerCase();
-}
-
 export async function POST(request: Request) {
   try {
     const values = signupSchema.parse(await request.json());
@@ -44,9 +40,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Password must be 72 bytes or fewer." }, { status: 400 });
     }
 
-    // Signup previously had no limit and could be scripted to probe LRNs.
-    // The LRN is the enumerated value, so it keys the credential bucket.
-    const rateLimit = await checkAuthRateLimit(request, values.lrn, "signup");
+    // Email is the account's unique identifier. LRNs may be shared across
+    // registrations, so they must not block signup or share its rate bucket.
+    const rateLimit = await checkAuthRateLimit(request, values.email, "signup");
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: "Too many attempts. Wait a few minutes and try again." },
@@ -56,35 +52,17 @@ export async function POST(request: Request) {
 
     // Hash before opening the transaction: bcrypt is CPU-bound (~hundreds of
     // ms at cost 12) and would otherwise hold one of the 5 pool connections
-    // hostage for the whole computation. Duplicate/match checks still reject
-    // before any insert; the only cost is hashing attempts that end in a 409.
+    // hostage for the whole computation.
     const passwordHash = await bcrypt.hash(values.password, 12);
 
     const db = getDb();
     const user = await db.transaction(async (tx) => {
       const duplicate = await tx.query.users.findFirst({
-        where: or(eq(users.email, values.email), eq(users.lrn, values.lrn)),
+        where: eq(users.email, values.email),
       });
 
       if (duplicate) {
-        throw new Error("EMAIL_OR_LRN_EXISTS");
-      }
-
-      // Student records may already exist from a registrar import. Reuse an
-      // unlinked record for the same LRN instead of inserting a second row,
-      // since students.lrn is unique. If a roster record exists, require its
-      // first and last names to match before linking it to the new account.
-      const existingStudent = await tx.query.students.findFirst({
-        where: eq(students.lrn, values.lrn),
-      });
-
-      if (
-        existingStudent &&
-        (existingStudent.userId !== null ||
-          normalizedName(existingStudent.firstName) !== normalizedName(values.firstName) ||
-          normalizedName(existingStudent.lastName) !== normalizedName(values.lastName))
-      ) {
-        throw new Error("STUDENT_MATCH_FAILED");
+        throw new Error("EMAIL_EXISTS");
       }
 
       const [createdUser] = await tx
@@ -100,34 +78,16 @@ export async function POST(request: Request) {
         })
         .returning();
 
-      if (existingStudent) {
-        const [linkedStudent] = await tx
-          .update(students)
-          .set({
-            userId: createdUser.id,
-            email: values.email,
-            ...(values.phone?.trim() ? { contactNumber: values.phone.trim() } : {}),
-            ...(values.address?.trim() ? { address: values.address.trim() } : {}),
-            updatedAt: new Date(),
-          })
-          .where(and(eq(students.id, existingStudent.id), isNull(students.userId)))
-          .returning({ id: students.id });
-
-        if (!linkedStudent) {
-          throw new Error("STUDENT_MATCH_FAILED");
-        }
-      } else {
-        await tx.insert(students).values({
-          userId: createdUser.id,
-          lrn: values.lrn,
-          firstName: values.firstName,
-          middleName: values.middleName?.trim() || null,
-          lastName: values.lastName,
-          email: values.email,
-          contactNumber: values.phone?.trim() || null,
-          address: values.address?.trim() || null,
-        });
-      }
+      await tx.insert(students).values({
+        userId: createdUser.id,
+        lrn: values.lrn,
+        firstName: values.firstName,
+        middleName: values.middleName?.trim() || null,
+        lastName: values.lastName,
+        email: values.email,
+        contactNumber: values.phone?.trim() || null,
+        address: values.address?.trim() || null,
+      });
 
       return createdUser;
     });
@@ -142,7 +102,11 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { ok: true, message: "Registration submitted. Check your email for updates after the registrar reviews it." },
+      {
+        ok: true,
+        message:
+          "Your account is on hold while the registrar confirms your identity. We'll email you when it's approved, with a link to sign in.",
+      },
       { status: 201 },
     );
   } catch (error) {
@@ -150,22 +114,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.issues[0]?.message ?? "Check the signup details." }, { status: 400 });
     }
 
-    if (error instanceof Error && error.message === "EMAIL_OR_LRN_EXISTS") {
-      return NextResponse.json({ error: "An account already uses that email or LRN." }, { status: 409 });
-    }
-
-    if (error instanceof Error && error.message === "STUDENT_MATCH_FAILED") {
-      return NextResponse.json(
-        {
-          error:
-            "We couldn't match those details to an unlinked student record. Contact the registrar to confirm your record.",
-        },
-        { status: 400 },
-      );
+    if (error instanceof Error && error.message === "EMAIL_EXISTS") {
+      return NextResponse.json({ error: "An account already uses that email." }, { status: 409 });
     }
 
     if (postgresCode(error) === "23505") {
-      return NextResponse.json({ error: "An account already uses that email or LRN." }, { status: 409 });
+      return NextResponse.json({ error: "An account already uses that email." }, { status: 409 });
     }
 
     return NextResponse.json({ error: "Unable to create the account right now." }, { status: 500 });

@@ -41,7 +41,7 @@ export function getIpAttemptLimit(): number {
   return envAttemptLimit("IP_ATTEMPT_LIMIT", DEFAULT_IP_ATTEMPT_LIMIT);
 }
 
-// Per-credential ceiling (one email/LRN on login, one LRN on signup).
+// Per-identifier ceiling (email or LRN on login, email on signup).
 export function getLoginAttemptLimit(): number {
   return envAttemptLimit("LOGIN_ATTEMPT_LIMIT", DEFAULT_LOGIN_ATTEMPT_LIMIT);
 }

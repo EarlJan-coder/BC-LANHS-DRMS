@@ -94,7 +94,10 @@ export function NotificationDetailModal({
               <Detail label="Student" value={record.name} />
               <Detail label="Email" value={record.email} />
               <Detail label="LRN" value={record.lrn} />
-              <Detail label="Account" value={record.registrationStatus} />
+              <Detail
+                label="Account"
+                value={record.registrationStatus === "pending" ? "On hold" : record.registrationStatus}
+              />
               <Detail label="Registered" value={record.createdAt} />
             </>
           ) : null}

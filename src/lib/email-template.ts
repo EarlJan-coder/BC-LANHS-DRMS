@@ -31,7 +31,9 @@ export interface WorkflowEmailTemplateInput {
   trackingNumber?: string;
   documentType?: string;
   status?: string;
+  details?: Array<{ label: string; value: string }>;
   instruction: string;
+  action?: { label: string; href: string };
 }
 
 function statusStyle(status: string): StatusStyle {
@@ -51,7 +53,7 @@ function renderDetailsTable(rows: Array<{ label: string; valueHtml: string }>): 
     .map((row, index) => {
       const divider = index < rows.length - 1 ? "border-bottom:1px solid #e5e7eb;" : "";
       return `<tr>
-            <td valign="top" width="150" style="width:150px;padding:10px 16px;font-size:13px;color:#6b7280;${divider}">${row.label}</td>
+            <td valign="top" width="150" style="width:150px;padding:10px 16px;font-size:13px;color:#6b7280;${divider}">${escapeHtml(row.label)}</td>
             <td valign="top" style="padding:10px 16px;font-size:14px;color:#111827;font-weight:600;${divider}">${row.valueHtml}</td>
           </tr>`;
     })
@@ -79,6 +81,9 @@ export function renderWorkflowEmailHtml(input: WorkflowEmailTemplateInput): stri
       label: "Current status",
       valueHtml: `<span style="display:inline-block;padding:3px 10px;border-radius:9999px;background:${style.bg};color:${style.fg};font-size:12px;font-weight:700;">${escapeHtml(style.label)}</span>`,
     });
+  }
+  for (const detail of input.details ?? []) {
+    rows.push({ label: detail.label, valueHtml: escapeHtml(detail.value) });
   }
 
   const logoHtml = logoSrc
@@ -111,6 +116,11 @@ export function renderWorkflowEmailHtml(input: WorkflowEmailTemplateInput): stri
             </tr>
           </table>`;
 
+  const actionHtml = input.action
+    ? `<p style="margin:0 0 22px 0;"><a href="${escapeHtml(input.action.href)}" style="display:inline-block;padding:12px 20px;border-radius:6px;background:#991b1b;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;">${escapeHtml(input.action.label)}</a></p>
+       <p style="margin:0 0 22px 0;font-size:12px;line-height:1.6;color:#6b7280;">If the button does not work, copy this link into your browser: <a href="${escapeHtml(input.action.href)}" style="color:#991b1b;">${escapeHtml(input.action.href)}</a></p>`
+    : "";
+
   return `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -135,6 +145,7 @@ export function renderWorkflowEmailHtml(input: WorkflowEmailTemplateInput): stri
                 <p style="margin:0 0 18px 0;font-size:15px;color:#111827;">Good day ${escapeHtml(input.studentName)},</p>
                 ${renderDetailsTable(rows)}
                 <p style="margin:0 0 22px 0;font-size:15px;line-height:1.6;color:#111827;">${escapeHtml(input.instruction)}</p>
+                ${actionHtml}
                 <p style="margin:0 0 4px 0;font-size:15px;color:#111827;">Thank you,</p>
                 <p style="margin:0 0 18px 0;font-size:15px;color:#111827;font-weight:700;">${escapeHtml(SCHOOL_NAME)} Registrar</p>
                 <p style="margin:0;font-size:12px;color:#6b7280;">${escapeHtml(APP_NAME)} - Student Records and Document Request Management System</p>

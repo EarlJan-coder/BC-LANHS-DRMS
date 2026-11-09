@@ -20,7 +20,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Password must be 72 bytes or fewer." }, { status: 400 });
     }
 
-    const identifier = values.identifier.includes("@") ? values.identifier.toLowerCase() : values.identifier;
+    const isEmail = values.identifier.includes("@");
+    const identifier = isEmail ? values.identifier.toLowerCase() : values.identifier;
     const rateLimit = await checkAuthRateLimit(request, identifier, "login");
     if (!rateLimit.allowed) {
       return NextResponse.json(
@@ -30,9 +31,20 @@ export async function POST(request: Request) {
     }
 
     const db = getDb();
-    const user = await db.query.users.findFirst({
-      where: values.identifier.includes("@") ? eq(users.email, identifier) : eq(users.lrn, identifier),
-    });
+    let user: typeof users.$inferSelect | undefined;
+    if (isEmail) {
+      user = await db.query.users.findFirst({ where: eq(users.email, identifier) });
+    } else {
+      const lrnMatches = await db.select().from(users).where(eq(users.lrn, identifier)).limit(2);
+      if (lrnMatches.length > 1) {
+        await comparePassword(values.password, null);
+        return NextResponse.json(
+          { error: "Email/LRN or password is incorrect." },
+          { status: 401 },
+        );
+      }
+      user = lrnMatches[0];
+    }
 
     // Always run one bcrypt compare — against a dummy cost-12 hash when no
     // user exists — so response time does not reveal valid emails/LRNs.
@@ -44,7 +56,13 @@ export async function POST(request: Request) {
 
     if (requiresStudentRegistrationApproval(user.role)) {
       if (user.registrationStatus === "pending") {
-        return NextResponse.json({ error: "Your registration is still pending approval." }, { status: 403 });
+        return NextResponse.json(
+          {
+            error:
+              "Your account is on hold while the registrar confirms your identity. We'll email you when it's approved.",
+          },
+          { status: 403 },
+        );
       }
 
       if (user.registrationStatus === "declined") {
