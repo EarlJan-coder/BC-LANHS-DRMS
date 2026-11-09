@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { eq, or } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { getDb } from "@/db";
@@ -19,9 +19,21 @@ const signupSchema = z.object({
 });
 
 function postgresCode(error: unknown) {
-  return typeof error === "object" && error !== null && "code" in error
-    ? (error as { code?: string }).code
-    : undefined;
+  let current = error;
+  const seen = new Set<object>();
+
+  while (typeof current === "object" && current !== null && !seen.has(current)) {
+    seen.add(current);
+    const code = "code" in current ? (current as { code?: unknown }).code : undefined;
+    if (typeof code === "string") return code;
+    current = "cause" in current ? (current as { cause?: unknown }).cause : undefined;
+  }
+
+  return undefined;
+}
+
+function normalizedName(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
 export async function POST(request: Request) {
@@ -58,6 +70,23 @@ export async function POST(request: Request) {
         throw new Error("EMAIL_OR_LRN_EXISTS");
       }
 
+      // Student records may already exist from a registrar import. Reuse an
+      // unlinked record for the same LRN instead of inserting a second row,
+      // since students.lrn is unique. If a roster record exists, require its
+      // first and last names to match before linking it to the new account.
+      const existingStudent = await tx.query.students.findFirst({
+        where: eq(students.lrn, values.lrn),
+      });
+
+      if (
+        existingStudent &&
+        (existingStudent.userId !== null ||
+          normalizedName(existingStudent.firstName) !== normalizedName(values.firstName) ||
+          normalizedName(existingStudent.lastName) !== normalizedName(values.lastName))
+      ) {
+        throw new Error("STUDENT_MATCH_FAILED");
+      }
+
       const [createdUser] = await tx
         .insert(users)
         .values({
@@ -71,16 +100,34 @@ export async function POST(request: Request) {
         })
         .returning();
 
-      await tx.insert(students).values({
-        userId: createdUser.id,
-        lrn: values.lrn,
-        firstName: values.firstName,
-        middleName: values.middleName?.trim() || null,
-        lastName: values.lastName,
-        email: values.email,
-        contactNumber: values.phone?.trim() || null,
-        address: values.address?.trim() || null,
-      });
+      if (existingStudent) {
+        const [linkedStudent] = await tx
+          .update(students)
+          .set({
+            userId: createdUser.id,
+            email: values.email,
+            ...(values.phone?.trim() ? { contactNumber: values.phone.trim() } : {}),
+            ...(values.address?.trim() ? { address: values.address.trim() } : {}),
+            updatedAt: new Date(),
+          })
+          .where(and(eq(students.id, existingStudent.id), isNull(students.userId)))
+          .returning({ id: students.id });
+
+        if (!linkedStudent) {
+          throw new Error("STUDENT_MATCH_FAILED");
+        }
+      } else {
+        await tx.insert(students).values({
+          userId: createdUser.id,
+          lrn: values.lrn,
+          firstName: values.firstName,
+          middleName: values.middleName?.trim() || null,
+          lastName: values.lastName,
+          email: values.email,
+          contactNumber: values.phone?.trim() || null,
+          address: values.address?.trim() || null,
+        });
+      }
 
       return createdUser;
     });
@@ -105,6 +152,16 @@ export async function POST(request: Request) {
 
     if (error instanceof Error && error.message === "EMAIL_OR_LRN_EXISTS") {
       return NextResponse.json({ error: "An account already uses that email or LRN." }, { status: 409 });
+    }
+
+    if (error instanceof Error && error.message === "STUDENT_MATCH_FAILED") {
+      return NextResponse.json(
+        {
+          error:
+            "We couldn't match those details to an unlinked student record. Contact the registrar to confirm your record.",
+        },
+        { status: 400 },
+      );
     }
 
     if (postgresCode(error) === "23505") {
