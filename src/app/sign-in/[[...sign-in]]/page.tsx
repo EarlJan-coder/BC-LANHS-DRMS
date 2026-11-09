@@ -19,7 +19,7 @@ export default async function SignInPage({
         </div>
         <div className="mb-5 text-center">
           <h1 className="text-2xl font-semibold text-slate-950">Welcome back</h1>
-          <p className="mt-2 text-sm text-slate-600">Log in with your email or LRN and password.</p>
+          <p className="mt-2 text-sm text-slate-600">Log in with your email or LRN and password. Use your email if an LRN is shared by multiple accounts.</p>
         </div>
         <AuthForm mode="login" next={redirectTo} />
         <p className="mt-5 text-center text-sm text-slate-600">

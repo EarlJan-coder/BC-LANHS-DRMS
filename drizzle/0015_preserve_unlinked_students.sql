@@ -1,0 +1,2 @@
+-- Keep registrar-created records without linked accounts. Student LRNs are
+-- no longer unique, and new account registrations create their own records.

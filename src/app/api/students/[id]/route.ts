@@ -23,14 +23,6 @@ function handleStudentRecordError(error: unknown, fallback: string) {
     return NextResponse.json({ error: error.message }, { status: error.status });
   }
 
-  if (isPostgresError(error, "23505", "students_lrn_idx")) {
-    return NextResponse.json({ error: "This LRN already belongs to another student record." }, { status: 409 });
-  }
-
-  if (isPostgresError(error, "23505", "users_lrn_idx")) {
-    return NextResponse.json({ error: "This LRN already belongs to another account." }, { status: 409 });
-  }
-
   if (isPostgresError(error, "23505", "users_email_idx")) {
     return NextResponse.json({ error: "This email already belongs to another account." }, { status: 409 });
   }

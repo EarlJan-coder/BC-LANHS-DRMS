@@ -60,7 +60,7 @@ export const users = pgTable(
   },
   (table) => [
     uniqueIndex("users_email_idx").on(table.email),
-    uniqueIndex("users_lrn_idx").on(table.lrn),
+    index("users_lrn_idx").on(table.lrn),
     index("users_role_idx").on(table.role),
     index("users_status_idx").on(table.status),
   ],
@@ -88,7 +88,7 @@ export const students = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("students_lrn_idx").on(table.lrn),
+    index("students_lrn_idx").on(table.lrn),
     index("students_user_id_idx").on(table.userId),
   ],
 );

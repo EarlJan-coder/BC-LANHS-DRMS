@@ -16,7 +16,7 @@ export default async function RegistrarRegistrationsPage() {
   const rows = await listPendingRegistrations();
   return (
     <div className="space-y-5">
-      <SectionHeading title="Pending registrations" description="Review student registrations and send the decision note by email." />
+      <SectionHeading title="Registrations on hold" description="Confirm each student's identity. Approval sends the student a sign-in link by email." />
       <DataTable
         columns={columns}
         rows={rows}

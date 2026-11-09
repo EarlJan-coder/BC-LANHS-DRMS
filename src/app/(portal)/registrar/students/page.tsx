@@ -38,7 +38,11 @@ export default async function StudentRecordsPage({ searchParams }: { searchParam
           },
           { key: "email", label: "Email", render: (row) => row.email || "Not set" },
           { key: "phone", label: "Phone", render: (row) => row.phone || "Not set" },
-          { key: "account", label: "Account", render: (row) => row.registrationStatus[0].toUpperCase() + row.registrationStatus.slice(1) },
+          {
+            key: "account",
+            label: "Account",
+            render: (row) => row.registrationStatus === "pending" ? "On hold" : row.registrationStatus[0].toUpperCase() + row.registrationStatus.slice(1),
+          },
           { key: "status", label: "Status", render: (row) => row.status },
           {
             key: "view",

@@ -60,17 +60,6 @@ function optionalText(value?: string) {
   return value?.trim() || null;
 }
 
-async function ensureStudentRecordReferences(values: StudentRecordValues, currentStudentId?: string) {
-  const db = getDb();
-  const existing = await db.query.students.findFirst({
-    where: eq(students.lrn, values.lrn),
-  });
-
-  if (existing && existing.id !== currentStudentId) {
-    throw new StudentRecordError("This LRN already belongs to another student record.", 409);
-  }
-}
-
 export async function updateStudentRecord(id: string, values: StudentRecordValues) {
   const db = getDb();
   const [existing] = await db
@@ -82,8 +71,6 @@ export async function updateStudentRecord(id: string, values: StudentRecordValue
   if (!existing) {
     throw new StudentRecordError("Student record not found.", 404);
   }
-
-  await ensureStudentRecordReferences(values, id);
 
   return db.transaction(async (tx) => {
     const linkedUser = existing.userId

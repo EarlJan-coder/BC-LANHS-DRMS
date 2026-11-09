@@ -167,7 +167,9 @@ export function StudentRecordModal({ student }: { student: StudentView }) {
                     disabled={student.registrationStatus !== "declined"}
                     onChange={(event) => setDraft({ ...draft, registrationStatus: event.target.value as StudentView["registrationStatus"] })}
                   >
-                    <option value={student.registrationStatus}>{student.registrationStatus[0].toUpperCase() + student.registrationStatus.slice(1)}</option>
+                    <option value={student.registrationStatus}>
+                      {student.registrationStatus === "pending" ? "On hold" : student.registrationStatus[0].toUpperCase() + student.registrationStatus.slice(1)}
+                    </option>
                     {student.registrationStatus === "declined" ? <option value="approved">Approved</option> : null}
                   </Select>
                   {student.registrationStatus === "declined" ? <p className="text-xs text-slate-500">Declined accounts can be restored here.</p> : null}

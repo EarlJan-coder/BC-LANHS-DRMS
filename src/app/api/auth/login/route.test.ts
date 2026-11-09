@@ -60,7 +60,9 @@ describe("login registration gate (integration, local DB)", { skip: hasDb ? fals
 
       const response = await login(user.email, user.password);
       assert.equal(response.status, 403);
-      assert.deepEqual(await response.json(), { error: "Your registration is still pending approval." });
+      assert.deepEqual(await response.json(), {
+        error: "Your account is on hold while the registrar confirms your identity. We'll email you when it's approved.",
+      });
       assert.equal(response.headers.get("set-cookie"), null);
     } finally {
       await getDb().delete(users).where(inArray(users.id, [user.id]));
