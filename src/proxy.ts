@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { SESSION_COOKIE, isSessionValidForUser, verifySessionToken } from "@/lib/session-token";
+import { canAccessWithRegistrationStatus } from "@/lib/registration-access";
 
 const protectedPrefixes = [
   "/dashboard",
@@ -50,7 +51,7 @@ export async function proxy(request: NextRequest) {
           user &&
           user.isActive &&
           user.status === "active" &&
-          user.registrationStatus === "approved" &&
+          canAccessWithRegistrationStatus(user.role, user.registrationStatus) &&
           isSessionValidForUser(session, user)
         ) {
           if (user.mustChangePassword && !passwordChangeAllowlist.includes(request.nextUrl.pathname)) {

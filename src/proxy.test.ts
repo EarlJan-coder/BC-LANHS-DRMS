@@ -139,7 +139,10 @@ describe("proxy token_version revocation (integration, local DB)", () => {
 });
 
 describe("proxy registration approval gate (integration, local DB)", () => {
-  async function seedUser(registrationStatus: "pending" | "approved" | "declined") {
+  async function seedUser(
+    registrationStatus: "pending" | "approved" | "declined",
+    role: "student" | "registrar" | "admin" = "student",
+  ) {
     const id = randomUUID();
     await db.insert(users).values({
       id,
@@ -147,7 +150,7 @@ describe("proxy registration approval gate (integration, local DB)", () => {
       passwordHash: "not-a-real-hash",
       firstName: "Proxy",
       lastName: "Registration",
-      role: "student",
+      role,
       registrationStatus,
       tokenVersion: 0,
     });
@@ -169,6 +172,19 @@ describe("proxy registration approval gate (integration, local DB)", () => {
       assert.equal(approvedResponse.status, 200);
     } finally {
       await db.delete(users).where(inArray(users.id, [pending.id, declined.id, approved.id]));
+    }
+  });
+
+  it("allows active registrar and admin accounts regardless of registration status", async () => {
+    const pendingRegistrar = await seedUser("pending", "registrar");
+    const declinedAdmin = await seedUser("declined", "admin");
+    try {
+      const registrarResponse = await proxy(request("/registrar/dashboard", `lanhs_session=${pendingRegistrar.token}`));
+      const adminResponse = await proxy(request("/admin/dashboard", `lanhs_session=${declinedAdmin.token}`));
+      assert.equal(registrarResponse.status, 200);
+      assert.equal(adminResponse.status, 200);
+    } finally {
+      await db.delete(users).where(inArray(users.id, [pendingRegistrar.id, declinedAdmin.id]));
     }
   });
 });

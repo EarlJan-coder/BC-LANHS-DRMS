@@ -100,7 +100,6 @@ export async function fanOutNewRegistrationNotification(_name: string, email: st
           inArray(users.role, ["registrar", "admin"]),
           eq(users.isActive, true),
           eq(users.status, "active"),
-          eq(users.registrationStatus, "approved"),
         ),
       );
     if (reviewers.length === 0) return [];
