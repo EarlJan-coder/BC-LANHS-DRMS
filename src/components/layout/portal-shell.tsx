@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { PendingForm } from "@/components/ui/pending-form";
 import { LinkPendingContent } from "@/components/ui/pending-link";
@@ -151,10 +151,33 @@ export function PortalShell({ children, unreadCount }: { children: ReactNode; un
   const pathname = usePathname();
   const role = roleFromPath(pathname);
   const nav = navigationByRole[role];
-  const badgeLabel = formatUnreadCount(unreadCount ?? 0);
+  const [liveUnreadCount, setLiveUnreadCount] = useState(unreadCount ?? 0);
+  const badgeLabel = formatUnreadCount(liveUnreadCount);
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const refreshUnreadCount = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const response = await fetch("/api/notifications/live", { cache: "no-store" });
+        if (!response.ok) return;
+        const result = await response.json() as { unreadCount: number };
+        if (active) setLiveUnreadCount(result.unreadCount);
+      } catch {
+        // Keep the last known count and retry on the next poll.
+      }
+    };
+    const interval = window.setInterval(refreshUnreadCount, 10_000);
+    window.addEventListener("focus", refreshUnreadCount);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshUnreadCount);
+    };
+  }, []);
 
   const toggleMobileMenu = () => setMobileMenuOpen((prev) => !prev);
   const closeMobileMenu = () => setMobileMenuOpen(false);

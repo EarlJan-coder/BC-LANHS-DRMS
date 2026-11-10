@@ -2,7 +2,7 @@
 
 import { Bell, CheckCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -32,6 +32,35 @@ export function NotificationsList({
   const [detail, setDetail] = useState<NotificationDetail | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const hasUnread = notifications.some((notification) => !notification.isRead);
+
+  useEffect(() => {
+    let active = true;
+    const refreshNotifications = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const response = await fetch("/api/notifications/live", { cache: "no-store" });
+        if (!response.ok) return;
+        const result = await response.json() as { notifications: NotificationItem[] };
+        if (!active) return;
+        setNotifications((current) => {
+          const byId = new Map(current.map((item) => [item.id, item]));
+          for (const item of result.notifications) byId.set(item.id, item);
+          return [...byId.values()]
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            .slice(0, 20);
+        });
+      } catch {
+        // A temporary connection failure is retried on the next poll.
+      }
+    };
+    const interval = window.setInterval(refreshNotifications, 10_000);
+    window.addEventListener("focus", refreshNotifications);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshNotifications);
+    };
+  }, []);
 
   async function openNotification(target: NotificationItem) {
     if (busy) return;
