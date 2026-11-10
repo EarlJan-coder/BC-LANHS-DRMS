@@ -92,10 +92,10 @@ export function drawDocumentHeader(page: PDFPage, logo: PDFImage | null, regular
     page.drawText("LANHS", { x: 68, y: 773, size: 13, font: bold, color: BRAND_RED });
   }
 
-  page.drawText("Republic of the Philippines", { x: 150, y: 792, size: 10, font: regular, color: MUTED_TEXT });
-  page.drawText("Department of Education", { x: 150, y: 777, size: 11, font: bold, color: DARK_TEXT });
-  page.drawText(SCHOOL_NAME, { x: 150, y: 759, size: 15, font: bold, color: BRAND_RED });
-  page.drawText(SCHOOL_ADDRESS, { x: 150, y: 742, size: 9, font: regular, color: MUTED_TEXT });
+  drawCenteredText(page, "Republic of the Philippines", 792, regular, 10, MUTED_TEXT);
+  drawCenteredText(page, "Department of Education", 777, bold, 11, DARK_TEXT);
+  drawCenteredText(page, SCHOOL_NAME, 759, bold, 15, BRAND_RED);
+  drawCenteredText(page, SCHOOL_ADDRESS, 742, regular, 9, MUTED_TEXT);
   page.drawLine({ start: { x: 50, y: 720 }, end: { x: 545, y: 720 }, thickness: 1.5, color: BRAND_RED });
 }
 

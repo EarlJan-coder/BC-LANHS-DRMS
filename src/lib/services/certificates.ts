@@ -67,14 +67,14 @@ async function drawCertificateFooter(
   bold: PDFFont,
   names: { registrarName: string; principalName: string },
 ) {
-  drawSignatureName(page, names.registrarName, 70, 215, 108, bold);
-  drawSignatureLine(page, 70, 215, "Registrar", 112, regular);
-  drawSignatureName(page, names.principalName, 300, 465, 108, bold);
-  drawSignatureLine(page, 300, 465, "School Head / Principal", 338, regular);
+  drawSignatureName(page, names.registrarName, 65, 270, 158, bold);
+  drawSignatureLine(page, 65, 270, "Registrar", 65 + (205 - regular.widthOfTextAtSize("Registrar", 9)) / 2, regular);
+  drawSignatureName(page, names.principalName, 325, 530, 158, bold);
+  drawSignatureLine(page, 325, 530, "School Head / Principal", 325 + (205 - regular.widthOfTextAtSize("School Head / Principal", 9)) / 2, regular);
 
   const qrImage = await embedQrCode(pdf, qrCodeData);
-  page.drawImage(qrImage, { x: 465, y: 132, width: 68, height: 68 });
-  page.drawText("Scan to verify", { x: 468, y: 120, size: 8, font: bold, color: BRAND_RED });
+  page.drawImage(qrImage, { x: 263, y: 48, width: 68, height: 68 });
+  page.drawText("Scan to verify", { x: 297 - bold.widthOfTextAtSize("Scan to verify", 8) / 2, y: 38, size: 8, font: bold, color: BRAND_RED });
   page.drawText(qrCodeData, { x: 50, y: 42, size: 7, font: regular, color: MUTED_TEXT });
   page.drawText("This QR code can be scanned to verify certificate authenticity.", {
     x: 50,
@@ -674,7 +674,6 @@ export async function generateCertificatePdf(certificateId: string) {
   page.drawText(`Date Generated: ${formatDate(display.dateGenerated)}`, { x: 365, y: 645, size: 10, font: regular, color: DARK_TEXT });
   page.drawText(`Tracking No.: ${certificate.trackingNumber ?? "Not linked"}`, { x: 50, y: 628, size: 9, font: regular, color: MUTED_TEXT });
 
-  page.drawRectangle({ x: 50, y: 586, width: 495, height: 26, color: rgb(1, 1, 1), borderColor: LIGHT_BORDER, borderWidth: 0.8 });
   page.drawText(`Student: ${name || "Not set"}`, { x: 60, y: 596, size: 10, font: bold, color: DARK_TEXT });
   page.drawText(`LRN: ${certificate.lrn ?? "Not set"}`, { x: 365, y: 596, size: 10, font: regular, color: DARK_TEXT });
   page.drawText(`Grade/Section: ${[gradeLevel, section].filter((value) => value !== "Not set").join(" - ") || "Not set"}`, {
@@ -686,7 +685,6 @@ export async function generateCertificatePdf(certificateId: string) {
   });
   page.drawText(`School Year: ${schoolYear}`, { x: 365, y: 570, size: 10, font: regular, color: DARK_TEXT });
 
-  page.drawRectangle({ x: 50, y: 250, width: 495, height: 300, color: rgb(1, 1, 1), borderColor: LIGHT_BORDER, borderWidth: 0.8 });
   const body = genericCertificateText({
     certificateType: certificate.certificateType,
     name,

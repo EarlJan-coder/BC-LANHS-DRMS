@@ -254,7 +254,6 @@ export async function renderRequestSlipPdf(request: DocumentRequestView) {
     color: DARK_TEXT,
   });
 
-  page.drawRectangle({ x: 50, y: 560, width: 495, height: 72, color: rgb(1, 1, 1), borderColor: LIGHT_BORDER, borderWidth: 0.8 });
 
   const infoFields = [
     { x: 62, labelY: 614, valueY: 600, label: "Student Name", value: request.studentName, valueFont: bold },
@@ -284,15 +283,6 @@ export async function renderRequestSlipPdf(request: DocumentRequestView) {
     panelY -= lineStep * remarksLines.length;
   }
   const panelBottom = panelY - 16;
-  page.drawRectangle({
-    x: 50,
-    y: panelBottom,
-    width: 495,
-    height: panelTop - panelBottom,
-    color: rgb(1, 1, 1),
-    borderColor: LIGHT_BORDER,
-    borderWidth: 0.8,
-  });
 
   const badgeLabel =
     REQUEST_STATUSES.find((status) => status.value === request.status)?.label ??
@@ -343,28 +333,28 @@ export async function renderRequestSlipPdf(request: DocumentRequestView) {
   const registrarLabel = "Registrar";
   drawSignatureLine(
     page,
-    70,
-    215,
+    65,
+    270,
     requestedByLabel,
-    70 + (145 - regular.widthOfTextAtSize(requestedByLabel, 9)) / 2,
+    65 + (205 - regular.widthOfTextAtSize(requestedByLabel, 9)) / 2,
     regular,
   );
   drawSignatureLine(
     page,
-    300,
-    465,
+    325,
+    530,
     registrarLabel,
-    300 + (165 - regular.widthOfTextAtSize(registrarLabel, 9)) / 2,
+    325 + (205 - regular.widthOfTextAtSize(registrarLabel, 9)) / 2,
     regular,
   );
 
   const qrUrl = `${appUrl()}/student/requests/${request.id}`;
   const qrImage = await embedQrCode(pdfDoc, qrUrl);
-  page.drawImage(qrImage, { x: 465, y: 132, width: 68, height: 68 });
+  page.drawImage(qrImage, { x: 263, y: 48, width: 68, height: 68 });
   const qrCaption = "Scan to track request";
   page.drawText(qrCaption, {
-    x: 545 - bold.widthOfTextAtSize(qrCaption, 8),
-    y: 120,
+    x: 297 - bold.widthOfTextAtSize(qrCaption, 8) / 2,
+    y: 38,
     size: 8,
     font: bold,
     color: BRAND_RED,
