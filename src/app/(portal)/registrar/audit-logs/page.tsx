@@ -11,7 +11,7 @@ export default async function RegistrarAuditLogsPage({ searchParams }: { searchP
   return (
     <div>
       <SectionHeading
-        title="Audit logs"
+        title="Logs"
         description="Important registrar actions are recorded locally and mirrored to blockchain audit proofs when configured."
       />
       <DataTable
