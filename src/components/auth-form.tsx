@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Clock3, MailCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input, Label } from "@/components/ui/input";
+import { Input, Label, Select } from "@/components/ui/input";
 
 type AuthFormMode = "login" | "signup";
 
@@ -49,6 +49,7 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
           firstName: formData.get("firstName"),
           middleName: formData.get("middleName"),
           lastName: formData.get("lastName"),
+          suffix: formData.get("suffix"),
           phone: formData.get("phone"),
           address: formData.get("address"),
           password: formData.get("password"),
@@ -132,19 +133,30 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
       <form onSubmit={submit} className="grid gap-4">
         {isSignup ? (
           <>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="grid gap-2">
                 <Label htmlFor="firstName">First name</Label>
                 <Input id="firstName" name="firstName" autoComplete="given-name" required maxLength={100} />
               </div>
               <div className="grid gap-2">
+                <Label htmlFor="middleName">Middle name <span className="font-normal text-slate-500">(optional)</span></Label>
+                <Input id="middleName" name="middleName" autoComplete="additional-name" maxLength={100} />
+              </div>
+              <div className="grid gap-2">
                 <Label htmlFor="lastName">Last name</Label>
                 <Input id="lastName" name="lastName" autoComplete="family-name" required maxLength={100} />
               </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="middleName">Middle name <span className="font-normal text-slate-500">(optional)</span></Label>
-              <Input id="middleName" name="middleName" autoComplete="additional-name" maxLength={100} />
+              <div className="grid gap-2">
+                <Label htmlFor="suffix">Suffix</Label>
+                <Select id="suffix" name="suffix" defaultValue="None">
+                  <option value="None">None</option>
+                  <option value="Jr.">Jr.</option>
+                  <option value="Sr.">Sr.</option>
+                  <option value="II">II</option>
+                  <option value="III">III</option>
+                  <option value="IV">IV</option>
+                </Select>
+              </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
