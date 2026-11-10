@@ -21,6 +21,7 @@ import { getDocumentRequestView } from "@/lib/services/live-data";
 import type { DocumentRequestView } from "@/lib/types";
 import { recordAuditedAction } from "./audit-log";
 import { fanOutNewRequestNotification } from "./notifications";
+import { getDocumentSignatoryTemplate } from "./document-signatory-template";
 import {
   appUrl,
   BRAND_RED,
@@ -28,6 +29,7 @@ import {
   drawCenteredText,
   drawDocumentHeader,
   drawSignatureLine,
+  drawSignatureName,
   drawWatermark,
   embedQrCode,
   embedSchoolLogo,
@@ -339,6 +341,8 @@ export async function renderRequestSlipPdf(request: DocumentRequestView) {
     50 + (200 - regular.widthOfTextAtSize(requestedByLabel, 9)) / 2,
     regular,
   );
+  const { registrarName } = await getDocumentSignatoryTemplate();
+  drawSignatureName(page, registrarName, 345, 545, 122, bold);
   drawSignatureLine(
     page,
     345,

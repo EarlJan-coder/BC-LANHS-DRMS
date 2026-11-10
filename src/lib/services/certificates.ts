@@ -68,9 +68,9 @@ async function drawCertificateFooter(
   bold: PDFFont,
   names: { registrarName: string; principalName: string },
 ) {
-  drawSignatureName(page, names.registrarName, 50, 250, 158, bold);
+  drawSignatureName(page, names.registrarName, 50, 250, 122, bold);
   drawSignatureLine(page, 50, 250, "Registrar", 50 + (200 - regular.widthOfTextAtSize("Registrar", 9)) / 2, regular);
-  drawSignatureName(page, names.principalName, 345, 545, 158, bold);
+  drawSignatureName(page, names.principalName, 345, 545, 122, bold);
   drawSignatureLine(page, 345, 545, "School Head / Principal", 345 + (200 - regular.widthOfTextAtSize("School Head / Principal", 9)) / 2, regular);
 
   const qrImage = await embedQrCode(pdf, qrCodeData);
