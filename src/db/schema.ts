@@ -8,6 +8,7 @@ import {
   numeric,
   pgEnum,
   pgTable,
+  serial,
   text,
   timestamp,
   uniqueIndex,
@@ -123,6 +124,13 @@ export const documentTypes = pgTable(
     uniqueIndex("document_types_name_idx").on(table.name),
   ],
 );
+
+export const documentSignatoryTemplate = pgTable("document_signatory_template", {
+  id: serial("id").primaryKey(),
+  registrarName: varchar("registrar_name", { length: 200 }).notNull().default(""),
+  principalName: varchar("principal_name", { length: 200 }).notNull().default(""),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const documentRequests = pgTable(
   "document_requests",

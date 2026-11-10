@@ -27,6 +27,7 @@ export const navigationByRole: Record<
     { label: "Notifications", href: "/admin/notifications", icon: "Bell", badge: true },
     { label: "Users", href: "/admin/users", icon: "Users" },
     { label: "Document types", href: "/admin/document-types", icon: "FileText" },
+    { label: "Document template", href: "/admin/document-template", icon: "FileSignature" },
     { label: "Blockchain trail", href: "/admin/blockchain", icon: "Blocks" },
     { label: "Settings", href: "/admin/settings", icon: "Settings" },
   ],

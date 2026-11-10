@@ -207,8 +207,8 @@ export function CertificatePreviewEditor({
 
           <p className="text-xs text-slate-500">
             School year, certificate number, and certificate type are not editable — they are covered by
-            certificate verification. Signatory names are typed per certificate; leave a name blank to print
-            no name above its signature line.
+            certificate verification. Signatory names start with the admin template and can be changed for
+            this certificate.
           </p>
 
           <div className="flex flex-wrap gap-2">

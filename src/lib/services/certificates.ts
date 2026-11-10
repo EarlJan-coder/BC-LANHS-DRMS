@@ -23,6 +23,7 @@ import {
   type CertificateOverrideValues,
 } from "@/lib/validators";
 import { recordAuditedAction } from "./audit-log";
+import { getDocumentSignatoryTemplate } from "./document-signatory-template";
 import {
   appUrl,
   BRAND_RED,
@@ -550,6 +551,7 @@ export async function getCertificateEditView(certificateId: string): Promise<Cer
   }
 
   const fields = resolveCertificateDisplayFields(toDisplayRow(row));
+  const template = await getDocumentSignatoryTemplate();
 
   return {
     id: row.id,
@@ -559,8 +561,8 @@ export async function getCertificateEditView(certificateId: string): Promise<Cer
     section: fields.section,
     purpose: fields.purpose,
     dateGenerated: fields.dateGenerated.toISOString(),
-    registrarName: fields.registrarName,
-    principalName: fields.principalName,
+    registrarName: fields.registrarName || template.registrarName,
+    principalName: fields.principalName || template.principalName,
     hasOverride: {
       studentName: effectiveOverride(row.overrideStudentName) !== null,
       gradeLevel: effectiveOverride(row.overrideGradeLevel) !== null,
@@ -655,6 +657,7 @@ export async function generateCertificatePdf(certificateId: string) {
   }
 
   const display = resolveCertificateDisplayFields(toDisplayRow(certificate));
+  const signatories = await getDocumentSignatoryTemplate();
   const pdf = await PDFDocument.create();
   const page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
@@ -710,8 +713,8 @@ export async function generateCertificatePdf(certificateId: string) {
   page.drawText(`Purpose: ${purpose.slice(0, 72)}`, { x: 50, y: 292, size: 9, font: regular, color: MUTED_TEXT });
 
   await drawCertificateFooter(pdf, page, certificate.qrCodeData, regular, bold, {
-    registrarName: display.registrarName,
-    principalName: display.principalName,
+    registrarName: display.registrarName || signatories.registrarName,
+    principalName: display.principalName || signatories.principalName,
   });
 
   drawWatermark(page, logo);
