@@ -18,12 +18,12 @@ export default async function RegistrarAuditLogsPage({ searchParams }: { searchP
         rows={auditTrail.rows}
         emptyMessage="No audit records found yet."
         columns={[
-          { key: "action", label: "Action", render: (row) => row.action },
           { key: "reference", label: "Reference", render: (row) => row.referenceId },
+          { key: "action", label: "Action", render: (row) => row.action },
           { key: "role", label: "Actor role", render: (row) => row.actorRole },
-          { key: "hash", label: "Record hash", render: (row) => <span className="font-mono text-xs">{row.hash.slice(0, 18)}...</span> },
-          { key: "status", label: "Chain status", render: (row) => row.status },
-          { key: "created", label: "Created", render: (row) => row.createdAt },
+          { key: "hash", label: "Record hash", render: (row) => <span className="font-mono text-xs">{row.hash}</span> },
+          { key: "status", label: "Status", render: (row) => row.status },
+          { key: "tx", label: "Transaction", render: (row) => <span className="font-mono text-xs">{row.transactionHash}</span> },
         ]}
       />
       <Pagination page={auditTrail.page} totalPages={Math.ceil(auditTrail.total / auditTrail.pageSize)} basePath="/registrar/audit-logs" total={auditTrail.total} pageSize={auditTrail.pageSize} />
