@@ -67,18 +67,18 @@ async function drawCertificateFooter(
   bold: PDFFont,
   names: { registrarName: string; principalName: string },
 ) {
-  drawSignatureName(page, names.registrarName, 65, 270, 158, bold);
-  drawSignatureLine(page, 65, 270, "Registrar", 65 + (205 - regular.widthOfTextAtSize("Registrar", 9)) / 2, regular);
-  drawSignatureName(page, names.principalName, 325, 530, 158, bold);
-  drawSignatureLine(page, 325, 530, "School Head / Principal", 325 + (205 - regular.widthOfTextAtSize("School Head / Principal", 9)) / 2, regular);
+  drawSignatureName(page, names.registrarName, 50, 250, 158, bold);
+  drawSignatureLine(page, 50, 250, "Registrar", 50 + (200 - regular.widthOfTextAtSize("Registrar", 9)) / 2, regular);
+  drawSignatureName(page, names.principalName, 345, 545, 158, bold);
+  drawSignatureLine(page, 345, 545, "School Head / Principal", 345 + (200 - regular.widthOfTextAtSize("School Head / Principal", 9)) / 2, regular);
 
   const qrImage = await embedQrCode(pdf, qrCodeData);
-  page.drawImage(qrImage, { x: 263, y: 48, width: 68, height: 68 });
-  page.drawText("Scan to verify", { x: 297 - bold.widthOfTextAtSize("Scan to verify", 8) / 2, y: 38, size: 8, font: bold, color: BRAND_RED });
-  page.drawText(qrCodeData, { x: 50, y: 42, size: 7, font: regular, color: MUTED_TEXT });
+  page.drawImage(qrImage, { x: 50, y: 22, width: 64, height: 64 });
+  page.drawText("Scan to verify", { x: 128, y: 76, size: 8, font: bold, color: BRAND_RED });
+  page.drawText(qrCodeData, { x: 128, y: 60, size: 7, font: regular, color: MUTED_TEXT });
   page.drawText("This QR code can be scanned to verify certificate authenticity.", {
-    x: 50,
-    y: 28,
+    x: 128,
+    y: 44,
     size: 8,
     font: regular,
     color: MUTED_TEXT,
@@ -671,19 +671,22 @@ export async function generateCertificatePdf(certificateId: string) {
   drawDocumentHeader(page, logo, regular, bold);
   drawCenteredText(page, title, 680, bold, titleSize);
   page.drawText(`Certificate No.: ${certificate.certificateNumber}`, { x: 50, y: 645, size: 10, font: regular, color: DARK_TEXT });
-  page.drawText(`Date Generated: ${formatDate(display.dateGenerated)}`, { x: 365, y: 645, size: 10, font: regular, color: DARK_TEXT });
+  const generatedLabel = `Date Generated: ${formatDate(display.dateGenerated)}`;
+  page.drawText(generatedLabel, { x: 545 - regular.widthOfTextAtSize(generatedLabel, 10), y: 645, size: 10, font: regular, color: DARK_TEXT });
   page.drawText(`Tracking No.: ${certificate.trackingNumber ?? "Not linked"}`, { x: 50, y: 628, size: 9, font: regular, color: MUTED_TEXT });
 
-  page.drawText(`Student: ${name || "Not set"}`, { x: 60, y: 596, size: 10, font: bold, color: DARK_TEXT });
-  page.drawText(`LRN: ${certificate.lrn ?? "Not set"}`, { x: 365, y: 596, size: 10, font: regular, color: DARK_TEXT });
+  page.drawText(`Student: ${name || "Not set"}`, { x: 50, y: 596, size: 10, font: bold, color: DARK_TEXT });
+  const lrnLabel = `LRN: ${certificate.lrn ?? "Not set"}`;
+  page.drawText(lrnLabel, { x: 545 - regular.widthOfTextAtSize(lrnLabel, 10), y: 596, size: 10, font: regular, color: DARK_TEXT });
   page.drawText(`Grade/Section: ${[gradeLevel, section].filter((value) => value !== "Not set").join(" - ") || "Not set"}`, {
-    x: 60,
+    x: 50,
     y: 570,
     size: 10,
     font: regular,
     color: DARK_TEXT,
   });
-  page.drawText(`School Year: ${schoolYear}`, { x: 365, y: 570, size: 10, font: regular, color: DARK_TEXT });
+  const schoolYearLabel = `School Year: ${schoolYear}`;
+  page.drawText(schoolYearLabel, { x: 545 - regular.widthOfTextAtSize(schoolYearLabel, 10), y: 570, size: 10, font: regular, color: DARK_TEXT });
 
   const body = genericCertificateText({
     certificateType: certificate.certificateType,
@@ -695,16 +698,16 @@ export async function generateCertificatePdf(certificateId: string) {
     purpose,
   });
 
-  let y = drawWrappedText(page, body, 72, 520, 450, regular, 12, DARK_TEXT, 20);
+  let y = drawWrappedText(page, body, 50, 520, 495, regular, 12, DARK_TEXT, 20);
   y -= 18;
   page.drawText("This document is generated from validated LANHS DRMS records.", {
-    x: 72,
+    x: 50,
     y,
     size: 10,
     font: regular,
     color: MUTED_TEXT,
   });
-  page.drawText(`Purpose: ${purpose.slice(0, 72)}`, { x: 72, y: 292, size: 9, font: regular, color: MUTED_TEXT });
+  page.drawText(`Purpose: ${purpose.slice(0, 72)}`, { x: 50, y: 292, size: 9, font: regular, color: MUTED_TEXT });
 
   await drawCertificateFooter(pdf, page, certificate.qrCodeData, regular, bold, {
     registrarName: display.registrarName,
