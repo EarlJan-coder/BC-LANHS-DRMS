@@ -107,8 +107,8 @@ export function drawSignatureLine(
   labelX: number,
   regular: PDFFont,
 ) {
-  page.drawLine({ start: { x: startX, y: 102 }, end: { x: endX, y: 102 }, thickness: 0.8, color: DARK_TEXT });
-  page.drawText(label, { x: labelX, y: 88, size: 9, font: regular, color: MUTED_TEXT });
+  page.drawLine({ start: { x: startX, y: 116 }, end: { x: endX, y: 116 }, thickness: 0.8, color: DARK_TEXT });
+  page.drawText(label, { x: labelX, y: 102, size: 9, font: regular, color: MUTED_TEXT });
 }
 
 export const SIGNATURE_NAME_PREFERRED_SIZE = 10;

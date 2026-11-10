@@ -73,11 +73,11 @@ async function drawCertificateFooter(
   drawSignatureLine(page, 345, 545, "School Head / Principal", 345 + (200 - regular.widthOfTextAtSize("School Head / Principal", 9)) / 2, regular);
 
   const qrImage = await embedQrCode(pdf, qrCodeData);
-  page.drawImage(qrImage, { x: 50, y: 22, width: 64, height: 64 });
-  page.drawText("Scan to verify", { x: 128, y: 76, size: 8, font: bold, color: BRAND_RED });
-  page.drawText(qrCodeData, { x: 128, y: 60, size: 7, font: regular, color: MUTED_TEXT });
+  page.drawImage(qrImage, { x: 481, y: 22, width: 64, height: 64 });
+  page.drawText("Scan to verify", { x: 50, y: 76, size: 8, font: bold, color: BRAND_RED });
+  page.drawText(qrCodeData, { x: 50, y: 60, size: 7, font: regular, color: MUTED_TEXT });
   page.drawText("This QR code can be scanned to verify certificate authenticity.", {
-    x: 128,
+    x: 50,
     y: 44,
     size: 8,
     font: regular,
