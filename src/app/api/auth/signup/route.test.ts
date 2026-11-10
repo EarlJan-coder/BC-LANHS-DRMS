@@ -23,7 +23,7 @@ function nextLrn() {
   return `9${String(Date.now() + fixtureIndex).slice(-11)}`;
 }
 
-function signupPayload(overrides: Record<string, string> = {}) {
+function signupPayload(overrides: Record<string, string | boolean> = {}) {
   return {
     email: `signup-${Date.now()}-${fixtureIndex}@example.test`,
     lrn: nextLrn(),
@@ -33,6 +33,7 @@ function signupPayload(overrides: Record<string, string> = {}) {
     phone: "09171234567",
     address: "12 Mabini Street",
     password: "registration-test-password",
+    acceptedTerms: true,
     ...overrides,
   };
 }

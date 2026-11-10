@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
-import { Clock3, MailCheck } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Clock3, MailCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
@@ -16,6 +16,19 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [registeredEmail, setRegisteredEmail] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
+  const termsCloseRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!termsOpen) return;
+    termsCloseRef.current?.focus();
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setTermsOpen(false);
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [termsOpen]);
 
   // onSubmit (not <form action>): form actions auto-reset uncontrolled fields
   // when they complete, wiping the form on failed attempts (same fix as
@@ -39,6 +52,7 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
           phone: formData.get("phone"),
           address: formData.get("address"),
           password: formData.get("password"),
+          acceptedTerms: termsAccepted,
         }
       : {
           identifier: formData.get("identifier"),
@@ -195,7 +209,29 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
           </p>
         ) : null}
 
-        <Button type="submit" loading={loading} className="mt-1 w-full">
+        {isSignup ? (
+          <div className="flex items-start gap-2.5 text-sm leading-6 text-slate-700">
+            <input
+              type="checkbox"
+              id="accept-terms"
+              checked={termsAccepted}
+              onChange={(event) => setTermsAccepted(event.target.checked)}
+              className="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 accent-blue-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            />
+            <div>
+              <label htmlFor="accept-terms">I have read the </label>
+              <button
+                type="button"
+                onClick={() => setTermsOpen(true)}
+                className="font-medium text-blue-600 underline decoration-blue-300 underline-offset-2 hover:text-blue-800 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              >
+                Terms and Conditions
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        <Button type="submit" loading={loading} disabled={isSignup && !termsAccepted} className="mt-1 w-full">
           {isSignup
             ? loading
               ? "Creating account…"
@@ -205,6 +241,67 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
               : "Log in"}
         </Button>
       </form>
+      {isSignup && termsOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-[2px]"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setTermsOpen(false);
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="signup-terms-title"
+            aria-describedby="signup-terms-intro"
+            className="flex max-h-[min(88vh,46rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+          >
+            <header className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-7">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">Luis Aguado National High School</p>
+                <h2 id="signup-terms-title" className="mt-1 text-xl font-semibold tracking-tight text-slate-950">Terms and Conditions</h2>
+              </div>
+              <button ref={termsCloseRef} type="button" onClick={() => setTermsOpen(false)} aria-label="Close terms and conditions" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-blue-600">
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </header>
+            <div className="overflow-y-auto px-5 py-5 sm:px-7">
+              <p id="signup-terms-intro" className="text-sm leading-6 text-slate-600">
+                By creating an account, you agree to use the LANHS document and records system responsibly for legitimate school-related services.
+              </p>
+              <div className="mt-5 space-y-5 text-sm leading-6 text-slate-600">
+                <section>
+                  <h3 className="font-semibold text-slate-900">1. Accurate information</h3>
+                  <p className="mt-1">You must provide truthful, current registration details, including your Learner Reference Number (LRN), and keep your contact information up to date. The school may review details and request clarification before approving access.</p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-slate-900">2. Account security</h3>
+                  <p className="mt-1">Keep your password private and use your own account. You are responsible for activity performed through your account. Notify the school if you believe someone else has accessed it.</p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-slate-900">3. Appropriate use</h3>
+                  <p className="mt-1">Use the system only to manage your own school records, submit document requests, and access services you are authorized to use. Do not impersonate another person, submit false information, attempt to access another user’s records, or disrupt the system.</p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-slate-900">4. Personal information</h3>
+                  <p className="mt-1">The school processes the personal information you submit to verify your identity, manage your account and school document requests, maintain records, and send service-related updates. Access is limited to authorized school personnel for these purposes and handled under applicable privacy requirements, including the Data Privacy Act of 2012 (Republic Act No. 10173).</p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-slate-900">5. Review and access</h3>
+                  <p className="mt-1">Registration may remain pending while school personnel verify your details. Access can be limited or suspended when necessary to protect records, users, or the school’s services. Contact the registrar to correct account or record information.</p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-slate-900">6. Service updates</h3>
+                  <p className="mt-1">The school may update these terms or the system to reflect changes in school processes, security needs, or applicable requirements. Continued use after an update means you accept the revised terms.</p>
+                </section>
+              </div>
+            </div>
+            <footer className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50/70 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+              <p className="text-xs text-slate-500">Close this window and check the box to continue registration.</p>
+              <Button type="button" onClick={() => setTermsOpen(false)} className="w-full sm:w-auto">Close</Button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
     </Card>
   );
 }

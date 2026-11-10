@@ -16,6 +16,7 @@ const signupSchema = z.object({
   phone: z.string().trim().max(30).optional(),
   address: z.string().trim().max(2000).optional(),
   password: z.string().min(8, "Password must be at least 8 characters.").max(72),
+  acceptedTerms: z.literal(true, "You must accept the Terms and Conditions to register."),
 });
 
 function postgresCode(error: unknown) {
