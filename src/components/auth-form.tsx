@@ -133,7 +133,7 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
       <form onSubmit={submit} className="grid gap-4">
         {isSignup ? (
           <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="firstName">First name</Label>
                 <Input id="firstName" name="firstName" autoComplete="given-name" required maxLength={100} />
