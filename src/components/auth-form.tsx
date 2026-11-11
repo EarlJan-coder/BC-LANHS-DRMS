@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Clock3, MailCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -117,12 +118,12 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
             </p>
           </div>
 
-          <a
+          <Link
             href="/sign-in"
             className="inline-flex min-h-11 items-center justify-center rounded-xl bg-red-800 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
           >
             Return to sign in
-          </a>
+          </Link>
         </section>
       </Card>
     );
