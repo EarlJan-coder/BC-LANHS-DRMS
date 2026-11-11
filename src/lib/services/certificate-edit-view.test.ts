@@ -10,6 +10,7 @@ const { eq } = await import("drizzle-orm");
 const { getDb, closeDb } = await import("@/db");
 const { certificates } = await import("@/db/schema");
 const { getCertificateEditView } = await import("@/lib/services/certificates");
+const { getDocumentSignatoryTemplate } = await import("@/lib/services/document-signatory-template");
 
 const hasDb = Boolean(process.env.DATABASE_URL);
 const insertedIds: string[] = [];
@@ -50,7 +51,7 @@ describe("getCertificateEditView signatory names (integration, local DB)", {
     assert.equal(view.hasOverride.principalName, true);
   });
 
-  it("returns empty signatory names when none were typed", async () => {
+  it("inherits the admin signatory template when none were typed", async () => {
     const db = getDb();
     const [row] = await db
       .insert(certificates)
@@ -65,8 +66,11 @@ describe("getCertificateEditView signatory names (integration, local DB)", {
 
     const view = await getCertificateEditView(row.id);
     assert.ok(view);
-    assert.equal(view.registrarName, "");
-    assert.equal(view.principalName, "");
+    // Effective names fall back to the admin template (the editor pre-fills
+    // them), but nothing is overridden on this certificate itself.
+    const template = await getDocumentSignatoryTemplate();
+    assert.equal(view.registrarName, template.registrarName);
+    assert.equal(view.principalName, template.principalName);
     assert.equal(view.hasOverride.registrarName, false);
     assert.equal(view.hasOverride.principalName, false);
   });
