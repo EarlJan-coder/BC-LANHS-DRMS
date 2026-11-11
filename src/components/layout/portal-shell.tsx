@@ -35,7 +35,7 @@ import { PendingForm } from "@/components/ui/pending-form";
 import { LinkPendingContent } from "@/components/ui/pending-link";
 import { Spinner } from "@/components/ui/spinner";
 import { ROLE_LABELS } from "@/lib/constants";
-import { navigationByRole } from "@/lib/navigation";
+import { isNavItemActive, navigationByRole } from "@/lib/navigation";
 import { formatUnreadCount } from "@/lib/notifications";
 import type { DashboardRole } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -201,7 +201,7 @@ export function PortalShell({ children, unreadCount }: { children: ReactNode; un
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
           {nav.map((item) => {
             const Icon = icons[item.icon as keyof typeof icons] ?? LayoutDashboard;
-            const active = pathname === item.href || (item.href !== `/${role}` && pathname.startsWith(item.href));
+            const active = isNavItemActive(pathname, item.href, nav);
 
             return (
               <Link
@@ -260,7 +260,7 @@ export function PortalShell({ children, unreadCount }: { children: ReactNode; un
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
           {nav.map((item) => {
             const Icon = icons[item.icon as keyof typeof icons] ?? LayoutDashboard;
-            const active = pathname === item.href || (item.href !== `/${role}` && pathname.startsWith(item.href));
+            const active = isNavItemActive(pathname, item.href, nav);
 
             return (
               <Link

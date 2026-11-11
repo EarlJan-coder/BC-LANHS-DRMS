@@ -1,5 +1,23 @@
 import type { DashboardRole } from "./types";
 
+/**
+ * Reports whether a nav item should be highlighted for the current path.
+ *
+ * An exact match always wins, and a prefix only counts on a path-segment
+ * boundary. Without those two rules, `/student/requests/new` (Submit request)
+ * would also light up its parent item `/student/requests` (My requests),
+ * leaving two items highlighted at once.
+ */
+export function isNavItemActive(
+  pathname: string,
+  href: string,
+  items: Array<{ href: string }>,
+): boolean {
+  if (pathname === href) return true;
+  if (items.some((item) => item.href === pathname)) return false;
+  return pathname.startsWith(`${href}/`);
+}
+
 export const navigationByRole: Record<
   DashboardRole,
   Array<{ label: string; href: string; icon: string; badge?: boolean }>
