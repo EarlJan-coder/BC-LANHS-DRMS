@@ -79,6 +79,17 @@ export function sanitizeRedirectPath(value: unknown): string | undefined {
     return undefined;
   }
 
+  // The change-password screen is managed by the proxy's must-change-password
+  // gate, not by the sign-in redirect: a signed-out hit on it bounces to
+  // "/sign-in?next=/change-password", and honoring that target after login
+  // re-opens the screen even when the flag is already cleared. Stripping it is
+  // safe because the gate still routes flagged users there from any protected
+  // page (e.g. the role dashboard they land on instead).
+  const path = value.split(/[?#]/, 1)[0];
+  if (path === "/change-password" || path.startsWith("/change-password/")) {
+    return undefined;
+  }
+
   return value;
 }
 

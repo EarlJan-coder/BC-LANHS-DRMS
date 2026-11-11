@@ -31,6 +31,19 @@ describe("sanitizeRedirectPath", () => {
     assert.equal(sanitizeRedirectPath("/api"), undefined);
   });
 
+  it("rejects the internal change-password screen as a post-login target", () => {
+    // A signed-out hit on /change-password bounces to
+    // /sign-in?next=/change-password (the form's post-logout refresh, a
+    // back-navigation, or a restored tab). Honoring that target after login
+    // re-opens the "Set a new password" screen even when mustChangePassword
+    // is already cleared. The proxy gate routes flagged users to
+    // /change-password from any protected page anyway, so landing on the
+    // role dashboard first is always safe.
+    assert.equal(sanitizeRedirectPath("/change-password"), undefined);
+    assert.equal(sanitizeRedirectPath("/change-password?tab=x"), undefined);
+    assert.equal(sanitizeRedirectPath("/change-password/extra"), undefined);
+  });
+
   it("rejects malformed or missing values", () => {
     assert.equal(sanitizeRedirectPath(undefined), undefined);
     assert.equal(sanitizeRedirectPath(["/a", "/b"]), undefined);
