@@ -13,10 +13,7 @@ export function RegistrationApproveActions({ registration }: { registration: Pen
   const [error, setError] = useState("");
 
   async function decide(decision: "approved" | "declined") {
-    if (!note.trim() || busy) {
-      setError("Add a note before reviewing this registration.");
-      return;
-    }
+    if (busy) return;
     setBusy(decision);
     setError("");
     try {
@@ -47,24 +44,24 @@ export function RegistrationApproveActions({ registration }: { registration: Pen
       <td className="px-4 py-3 font-medium text-slate-800">{registration.name}</td>
       <td className="px-4 py-3 text-slate-700">{registration.email}</td>
       <td className="px-4 py-3">
-        <Button type="button" onClick={() => decide("approved")} loading={busy === "approved"} disabled={!note.trim() || busy !== null}>
+        <Button type="button" onClick={() => decide("approved")} loading={busy === "approved"} disabled={busy !== null}>
           Approve
         </Button>
       </td>
       <td className="px-4 py-3">
-        <Button type="button" tone="danger" onClick={() => decide("declined")} loading={busy === "declined"} disabled={!note.trim() || busy !== null}>
+        <Button type="button" tone="danger" onClick={() => decide("declined")} loading={busy === "declined"} disabled={busy !== null}>
           Decline
         </Button>
       </td>
       <td className="min-w-64 px-4 py-3">
-        <label className="sr-only" htmlFor={`registration-note-${registration.id}`}>Note for {registration.name}</label>
+        <label className="sr-only" htmlFor={`registration-note-${registration.id}`}>Optional note for {registration.name}</label>
         <textarea
           id={`registration-note-${registration.id}`}
           value={note}
           onChange={(event) => setNote(event.target.value)}
           maxLength={2000}
           rows={2}
-          placeholder="Required note sent by email"
+          placeholder="Optional note sent by email"
           disabled={busy !== null}
           className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand disabled:bg-slate-50"
         />

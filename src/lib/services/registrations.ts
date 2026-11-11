@@ -50,7 +50,6 @@ export async function decideRegistration(
   effects: DecisionEffects = {},
 ): Promise<RegistrationStatus> {
   const note = input.note.trim();
-  if (!note) throw new AppError("A note is required.", 400);
 
   const db = getDb();
   const [student] = await db.select().from(users).where(eq(users.id, input.id)).limit(1);
@@ -85,7 +84,7 @@ export async function decideRegistration(
     entityType: "registration",
     entityId: student.id,
     actorUserId: input.actorUserId,
-    description: note,
+    description: note || `Registration ${input.decision} without a note`,
     metadata: { decision: input.decision, note },
     hashMetadata: { decision: input.decision, note },
   });

@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { certificateOverrideSchema } from "@/lib/validators";
+import { certificateOverrideSchema, registrationDecisionSchema } from "@/lib/validators";
 
 describe("certificateOverrideSchema", () => {
   it("accepts the seven editable content fields", () => {
@@ -64,5 +64,24 @@ describe("certificateOverrideSchema", () => {
 
   it("rejects an invalid date", () => {
     assert.throws(() => certificateOverrideSchema.parse({ dateGenerated: "not-a-date" }));
+  });
+});
+
+describe("registrationDecisionSchema", () => {
+  it("allows a decision with a blank note", () => {
+    const parsed = registrationDecisionSchema.parse({ decision: "approved", note: "   " });
+    assert.deepEqual(parsed, { decision: "approved", note: "" });
+  });
+
+  it("defaults a missing note to an empty string", () => {
+    assert.deepEqual(registrationDecisionSchema.parse({ decision: "declined" }), {
+      decision: "declined",
+      note: "",
+    });
+  });
+
+  it("still rejects an unknown decision or an over-long note", () => {
+    assert.throws(() => registrationDecisionSchema.parse({ decision: "pending", note: "" }));
+    assert.throws(() => registrationDecisionSchema.parse({ decision: "approved", note: "x".repeat(2001) }));
   });
 });

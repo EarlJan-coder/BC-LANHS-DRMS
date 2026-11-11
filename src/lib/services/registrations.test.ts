@@ -116,17 +116,28 @@ describe("registration decisions and fan-out (integration, local DB)", { skip: h
     }
   });
 
-  it("decline without a note throws", async () => {
-    await assert.rejects(
-      () => decideRegistration({
-        id: randomUUID(),
+  it("a decision can be made without a note", async () => {
+    const student = await createUser("student");
+    const actor = await createUser("registrar", "approved");
+    try {
+      const status = await decide(student.id, actor, "declined", "   ", {
+        sendEmail: async () => ({ ok: true }),
+      });
+      assert.equal(status, "declined");
+      assert.equal(
+        (await getDb().query.users.findFirst({ where: eq(users.id, student.id) }))?.registrationStatus,
+        "declined",
+      );
+      const email = buildRegistrationDecisionEmailContent({
+        studentName: "Riley Mae Santos",
         decision: "declined",
-        note: "  ",
-        actorUserId: randomUUID(),
-        actorRole: "registrar",
-      }),
-      /note is required/i,
-    );
+        note: "",
+      });
+      assert.doesNotMatch(email.message, /Registrar note/i);
+      assert.match(email.message, /contact the registrar/i);
+    } finally {
+      await cleanup([student.id, actor.id]);
+    }
   });
 
   it("a declined registration can later be approved", async () => {

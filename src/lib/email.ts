@@ -108,13 +108,13 @@ export function buildRegistrationDecisionEmailContent(input: {
       ? "Your student account is ready. Sign in with the email address and password you registered with."
       : "Please contact the registrar if you have questions about this decision.";
 
+  const note = input.note.trim();
   const message = [
     `Good day ${input.studentName},`,
     "",
     `Your student account has been ${outcome}.`,
     "",
-    `Registrar note: ${input.note.trim()}`,
-    "",
+    ...(note ? [`Registrar note: ${note}`, ""] : []),
     instructions,
     loginUrl ? `Sign-in link: ${loginUrl}` : null,
     "",
@@ -130,7 +130,7 @@ export function buildRegistrationDecisionEmailContent(input: {
           html: renderWorkflowEmailHtml({
             studentName: input.studentName,
             status: "approved",
-            details: [{ label: "Registrar note", value: input.note.trim() }],
+            ...(note ? { details: [{ label: "Registrar note", value: note }] } : {}),
             instruction: instructions,
             action: { label: "Go to sign in", href: loginUrl },
           }),

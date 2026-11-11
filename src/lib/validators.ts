@@ -90,7 +90,7 @@ export const userPasswordResetSchema = z.object({
 
 export const registrationDecisionSchema = z.object({
   decision: z.enum(["approved", "declined"]),
-  note: z.string().trim().min(1, "A note is required.").max(2000, "The note must be 2,000 characters or fewer."),
+  note: z.string().trim().max(2000, "The note must be 2,000 characters or fewer.").default(""),
 });
 
 export const passwordChangeSchema = z.object({

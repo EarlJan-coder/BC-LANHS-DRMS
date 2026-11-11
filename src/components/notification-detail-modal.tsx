@@ -33,7 +33,7 @@ export function NotificationDetailModal({
   const canReview = (viewerRole === "admin" || viewerRole === "registrar") && detail.kind === "registration" && (status === "pending" || status === "declined");
 
   async function decide(decision: "approved" | "declined") {
-    if (!note.trim() || busy) return;
+    if (busy) return;
     setBusy(true);
     try {
       const response = await fetch(`/api/registrations/${String(record.id)}/decision`, {
@@ -109,10 +109,10 @@ export function NotificationDetailModal({
         {canReview ? (
           <div className="border-t border-border bg-slate-50 px-5 py-4">
             <label htmlFor="notification-registration-note" className="text-sm font-medium text-slate-700">Decision note sent by email</label>
-            <Textarea id="notification-registration-note" value={note} onChange={(event) => setNote(event.target.value)} maxLength={2000} rows={3} className="mt-2" placeholder="Required note for the student" />
+            <Textarea id="notification-registration-note" value={note} onChange={(event) => setNote(event.target.value)} maxLength={2000} rows={3} className="mt-2" placeholder="Optional note for the student" />
             <div className="mt-3 flex justify-end gap-2">
-              {status === "pending" ? <Button type="button" tone="danger" onClick={() => decide("declined")} loading={busy} disabled={!note.trim()}>Decline</Button> : null}
-              <Button type="button" onClick={() => decide("approved")} loading={busy} disabled={!note.trim()}>{status === "declined" ? "Restore and approve" : "Approve"}</Button>
+              {status === "pending" ? <Button type="button" tone="danger" onClick={() => decide("declined")} loading={busy} disabled={busy}>Decline</Button> : null}
+              <Button type="button" onClick={() => decide("approved")} loading={busy} disabled={busy}>{status === "declined" ? "Restore and approve" : "Approve"}</Button>
             </div>
           </div>
         ) : null}
