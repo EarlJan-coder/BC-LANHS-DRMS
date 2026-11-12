@@ -28,7 +28,10 @@ describe("isNavItemActive", () => {
       assert.equal(activeLabels(item.href).length, 1, `expected one active item for ${item.href}`);
     }
     assert.deepEqual(activeLabels("/student/dashboard"), ["Dashboard"]);
-    assert.deepEqual(activeLabels("/student/notifications"), ["Notifications"]);
+  });
+
+  it("does not light up anything on the notifications page (nav entry replaced by the header bell)", () => {
+    assert.deepEqual(activeLabels("/student/notifications"), []);
   });
 
   it("does not treat a partial segment as a prefix match", () => {

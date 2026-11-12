@@ -20,20 +20,18 @@ export function isNavItemActive(
 
 export const navigationByRole: Record<
   DashboardRole,
-  Array<{ label: string; href: string; icon: string; badge?: boolean }>
+  Array<{ label: string; href: string; icon: string }>
 > = {
   student: [
     { label: "Dashboard", href: "/student/dashboard", icon: "LayoutDashboard" },
     { label: "Submit request", href: "/student/requests/new", icon: "FilePlus" },
     { label: "My requests", href: "/student/requests", icon: "Files" },
-    { label: "Notifications", href: "/student/notifications", icon: "Bell" },
     { label: "Profile", href: "/student/profile", icon: "UserRound" },
   ],
   registrar: [
     { label: "Dashboard", href: "/registrar/dashboard", icon: "LayoutDashboard" },
     { label: "Requests", href: "/registrar/requests", icon: "Inbox" },
     { label: "Registrations", href: "/registrar/registrations", icon: "UserRoundCheck" },
-    { label: "Notifications", href: "/registrar/notifications", icon: "Bell", badge: true },
     { label: "Student records", href: "/registrar/students", icon: "GraduationCap" },
     { label: "Certificates", href: "/registrar/certificates", icon: "FileBadge" },
     { label: "Reports", href: "/registrar/reports", icon: "BarChart3" },
@@ -42,7 +40,6 @@ export const navigationByRole: Record<
   admin: [
     { label: "Dashboard", href: "/admin/dashboard", icon: "LayoutDashboard" },
     { label: "Registrations", href: "/admin/registrations", icon: "UserRoundCheck" },
-    { label: "Notifications", href: "/admin/notifications", icon: "Bell", badge: true },
     { label: "Users", href: "/admin/users", icon: "Users" },
     { label: "Document types", href: "/admin/document-types", icon: "FileText" },
     { label: "Document template", href: "/admin/document-template", icon: "FileSignature" },

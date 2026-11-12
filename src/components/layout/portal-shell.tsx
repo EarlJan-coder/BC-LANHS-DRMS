@@ -29,17 +29,18 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import type { ReactNode } from "react";
 import { PendingForm } from "@/components/ui/pending-form";
 import { LinkPendingContent } from "@/components/ui/pending-link";
 import { Spinner } from "@/components/ui/spinner";
 import { ROLE_LABELS } from "@/lib/constants";
 import { isNavItemActive, navigationByRole } from "@/lib/navigation";
-import { formatUnreadCount } from "@/lib/notifications";
 import type { DashboardRole } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { AppLogo } from "./app-logo";
+import { NotificationBell } from "@/components/notification-bell";
+import type { UserRole } from "@/db/schema";
 
 const icons = {
   BarChart3,
@@ -83,7 +84,7 @@ function HeaderSearchForm({ role, defaultValue = "" }: { role: DashboardRole; de
     <PendingForm
       role="search"
       action={`/${role}/search`}
-      className="hidden min-w-0 flex-1 items-center rounded-md border border-border bg-slate-50 px-3 py-2 sm:flex"
+      className="flex min-w-0 flex-1 items-center rounded-md border border-border bg-slate-50 px-3 py-2"
     >
       {({ isPending }) => (
         <>
@@ -147,37 +148,21 @@ function SidebarAccountActions({
   );
 }
 
-export function PortalShell({ children, unreadCount }: { children: ReactNode; unreadCount?: number }) {
+export function PortalShell({
+  children,
+  unreadCount,
+  viewerRole,
+}: {
+  children: ReactNode;
+  unreadCount?: number;
+  viewerRole?: UserRole;
+}) {
   const pathname = usePathname();
   const role = roleFromPath(pathname);
   const nav = navigationByRole[role];
-  const [liveUnreadCount, setLiveUnreadCount] = useState(unreadCount ?? 0);
-  const badgeLabel = formatUnreadCount(liveUnreadCount);
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    const refreshUnreadCount = async () => {
-      if (document.visibilityState !== "visible") return;
-      try {
-        const response = await fetch("/api/notifications/live", { cache: "no-store" });
-        if (!response.ok) return;
-        const result = await response.json() as { unreadCount: number };
-        if (active) setLiveUnreadCount(result.unreadCount);
-      } catch {
-        // Keep the last known count and retry on the next poll.
-      }
-    };
-    const interval = window.setInterval(refreshUnreadCount, 10_000);
-    window.addEventListener("focus", refreshUnreadCount);
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-      window.removeEventListener("focus", refreshUnreadCount);
-    };
-  }, []);
 
   const toggleMobileMenu = () => setMobileMenuOpen((prev) => !prev);
   const closeMobileMenu = () => setMobileMenuOpen(false);
@@ -194,6 +179,7 @@ export function PortalShell({ children, unreadCount }: { children: ReactNode; un
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* ── Desktop sidebar ── */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r border-border bg-white lg:flex">
         <div className="flex h-20 items-center border-b border-border px-5">
           <AppLogo />
@@ -216,14 +202,6 @@ export function PortalShell({ children, unreadCount }: { children: ReactNode; un
                 <LinkPendingContent icon={<Icon className="h-4 w-4" aria-hidden />} className="gap-3">
                   <span className="truncate">{item.label}</span>
                 </LinkPendingContent>
-                {item.badge && badgeLabel ? (
-                  <span
-                    aria-label={`${badgeLabel} unread`}
-                    className="ml-auto inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-xs font-semibold text-white ring-2 ring-white"
-                  >
-                    {badgeLabel}
-                  </span>
-                ) : null}
               </Link>
             );
           })}
@@ -231,7 +209,7 @@ export function PortalShell({ children, unreadCount }: { children: ReactNode; un
         <SidebarAccountActions signingOut={signingOut} onSignOut={signOut} />
       </aside>
 
-      {/* Mobile menu overlay */}
+      {/* ── Mobile menu overlay ── */}
       {mobileMenuOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
@@ -276,14 +254,6 @@ export function PortalShell({ children, unreadCount }: { children: ReactNode; un
                 <LinkPendingContent icon={<Icon className="h-4 w-4" aria-hidden />} className="gap-3">
                   <span className="truncate">{item.label}</span>
                 </LinkPendingContent>
-                {item.badge && badgeLabel ? (
-                  <span
-                    aria-label={`${badgeLabel} unread`}
-                    className="ml-auto inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-xs font-semibold text-white ring-2 ring-white"
-                  >
-                    {badgeLabel}
-                  </span>
-                ) : null}
               </Link>
             );
           })}
@@ -298,9 +268,11 @@ export function PortalShell({ children, unreadCount }: { children: ReactNode; un
         />
       </aside>
 
+      {/* ── Main content area ── */}
       <div className="lg:pl-72">
         <header className="sticky top-0 z-20 border-b border-border bg-white/95 backdrop-blur">
-          <div className="flex h-16 items-center gap-3 px-4 sm:px-6">
+          {/* Top row: mobile toggle · logo · role label · notification bell */}
+          <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
             <button
               type="button"
               className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-slate-600 lg:hidden"
@@ -312,14 +284,25 @@ export function PortalShell({ children, unreadCount }: { children: ReactNode; un
             <div className="lg:hidden">
               <AppLogo compact />
             </div>
-            <Suspense fallback={<HeaderSearchForm role={role} />}>
-              <HeaderSearch role={role} />
-            </Suspense>
-            <div className="ml-auto flex items-center gap-3">
+
+            {/* Right cluster: role pill + bell */}
+            <div className="ml-auto flex items-center gap-2">
               <span className="hidden rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-brand ring-1 ring-rose-100 sm:inline-flex">
                 {ROLE_LABELS[role]}
               </span>
+              <NotificationBell
+                initialUnreadCount={unreadCount ?? 0}
+                viewerRole={viewerRole ?? role}
+                dashboardRole={role}
+              />
             </div>
+          </div>
+
+          {/* Search bar on its own row, clearly separated */}
+          <div className="border-t border-border/50 px-4 py-2 sm:px-6">
+            <Suspense fallback={<HeaderSearchForm role={role} />}>
+              <HeaderSearch role={role} />
+            </Suspense>
           </div>
         </header>
 
@@ -328,4 +311,3 @@ export function PortalShell({ children, unreadCount }: { children: ReactNode; un
     </div>
   );
 }
-
