@@ -1,6 +1,24 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { certificateOverrideSchema, registrationDecisionSchema } from "@/lib/validators";
+import { certificateOverrideSchema, documentRequestSchema, profileUpdateSchema, registrationDecisionSchema, studentRecordSchema } from "@/lib/validators";
+
+describe("documentRequestSchema", () => {
+  it("no longer takes school year needed — it is snapshotted from the profile", () => {
+    const parsed = documentRequestSchema.parse({
+      documentType: "Form 137",
+      purpose: "College scholarship application requirement",
+      gradeLevelNeeded: "Grade 12",
+      schoolYearNeeded: "2026-2027",
+    });
+    assert.equal("schoolYearNeeded" in parsed, false);
+  });
+
+  it("still requires document type, purpose, and grade level", () => {
+    assert.throws(() => documentRequestSchema.parse({ purpose: "x".repeat(11), gradeLevelNeeded: "Grade 12" }));
+    assert.throws(() => documentRequestSchema.parse({ documentType: "Form 137", gradeLevelNeeded: "Grade 12" }));
+    assert.throws(() => documentRequestSchema.parse({ documentType: "Form 137", purpose: "Too short" }));
+  });
+});
 
 describe("certificateOverrideSchema", () => {
   it("accepts the seven editable content fields", () => {
@@ -83,5 +101,67 @@ describe("registrationDecisionSchema", () => {
   it("still rejects an unknown decision or an over-long note", () => {
     assert.throws(() => registrationDecisionSchema.parse({ decision: "pending", note: "" }));
     assert.throws(() => registrationDecisionSchema.parse({ decision: "approved", note: "x".repeat(2001) }));
+  });
+});
+
+describe("profileUpdateSchema", () => {
+  it("accepts the last school year and structured address fields", () => {
+    const parsed = profileUpdateSchema.parse({
+      lastSchoolYearAttended: " 2025-2026 ",
+      addressCity: " Tanza ",
+      addressBarangay: " Biga ",
+      addressStreetLine: " 123 Mabini St. ",
+    });
+    assert.deepEqual(parsed, {
+      lastSchoolYearAttended: "2025-2026",
+      addressCity: "Tanza",
+      addressBarangay: "Biga",
+      addressStreetLine: "123 Mabini St.",
+    });
+  });
+
+  it("rejects a blank last school year or address part", () => {
+    assert.throws(() => profileUpdateSchema.parse({ lastSchoolYearAttended: "   " }));
+    assert.throws(() => profileUpdateSchema.parse({ addressCity: "Tanza", addressBarangay: " " }));
+    assert.throws(() => profileUpdateSchema.parse({ addressStreetLine: "" }));
+  });
+
+  it("caps the last school year at 40 characters", () => {
+    assert.throws(() => profileUpdateSchema.parse({ lastSchoolYearAttended: "x".repeat(41) }));
+  });
+
+  it("rejects a city or barangay outside the static dataset", () => {
+    assert.throws(
+      () => profileUpdateSchema.parse({ addressCity: "Nowhereville", addressBarangay: "Aguado" }),
+      /city/i,
+    );
+    assert.throws(
+      () => profileUpdateSchema.parse({ addressCity: "Tanza", addressBarangay: "Milagrosa" }),
+      /barangay/i,
+    );
+    assert.doesNotThrow(() =>
+      profileUpdateSchema.parse({ addressCity: "Tanza", addressBarangay: "Biga", addressStreetLine: "123 Mabini St." }),
+    );
+  });
+
+  it("keeps contact number and email optional", () => {
+    assert.deepEqual(profileUpdateSchema.parse({}), {});
+    assert.deepEqual(profileUpdateSchema.parse({ contactNumber: "09171234567" }), {
+      contactNumber: "09171234567",
+    });
+  });
+});
+
+describe("studentRecordSchema", () => {
+  const base = { lrn: "123456789012", firstName: "Jamie", lastName: "Santos" };
+
+  it("accepts an optional last school year attended and trims it", () => {
+    const parsed = studentRecordSchema.parse({ ...base, lastSchoolYearAttended: " 2025-2026 " });
+    assert.equal(parsed.lastSchoolYearAttended, "2025-2026");
+    assert.equal(studentRecordSchema.parse(base).lastSchoolYearAttended, undefined);
+  });
+
+  it("rejects an over-long last school year attended", () => {
+    assert.throws(() => studentRecordSchema.parse({ ...base, lastSchoolYearAttended: "x".repeat(41) }));
   });
 });

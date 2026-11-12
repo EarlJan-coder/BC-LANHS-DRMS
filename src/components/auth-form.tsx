@@ -7,6 +7,16 @@ import { Clock3, MailCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input, Label, Select } from "@/components/ui/input";
+import { CITY_NAMES, barangaysFor } from "@/lib/ph-address";
+
+/** Marks a required field label. */
+function Required() {
+  return (
+    <span className="text-red-600" aria-hidden="true">
+      *
+    </span>
+  );
+}
 
 type AuthFormMode = "login" | "signup";
 
@@ -20,6 +30,8 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
   const termsCloseRef = useRef<HTMLButtonElement>(null);
+  const [addressCity, setAddressCity] = useState("");
+  const [addressBarangay, setAddressBarangay] = useState("");
 
   useEffect(() => {
     if (!termsOpen) return;
@@ -52,7 +64,10 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
           lastName: formData.get("lastName"),
           suffix: formData.get("suffix"),
           phone: formData.get("phone"),
-          address: formData.get("address"),
+          addressCity: formData.get("addressCity"),
+          addressBarangay: formData.get("addressBarangay"),
+          addressStreetLine: formData.get("addressStreetLine"),
+          lastSchoolYearAttended: formData.get("lastSchoolYearAttended"),
           password: formData.get("password"),
           acceptedTerms: termsAccepted,
         }
@@ -136,7 +151,9 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
           <>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="firstName">First name</Label>
+                <Label htmlFor="firstName">
+                  First name <Required />
+                </Label>
                 <Input id="firstName" name="firstName" autoComplete="given-name" required maxLength={100} />
               </div>
               <div className="grid gap-2">
@@ -144,7 +161,9 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
                 <Input id="middleName" name="middleName" autoComplete="additional-name" maxLength={100} />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="lastName">Last name</Label>
+                <Label htmlFor="lastName">
+                  Last name <Required />
+                </Label>
                 <Input id="lastName" name="lastName" autoComplete="family-name" required maxLength={100} />
               </div>
               <div className="grid gap-2">
@@ -160,21 +179,92 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">
+                Email <Required />
+              </Label>
               <Input id="email" name="email" type="email" autoComplete="email" required maxLength={191} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="phone">Phone <span className="font-normal text-slate-500">(optional)</span></Label>
+              <Input id="phone" name="phone" type="tel" autoComplete="tel" maxLength={30} />
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="phone">Phone <span className="font-normal text-slate-500">(optional)</span></Label>
-                <Input id="phone" name="phone" type="tel" autoComplete="tel" maxLength={30} />
+                <Label htmlFor="addressCity">
+                  City <Required />
+                </Label>
+                <Select
+                  id="addressCity"
+                  name="addressCity"
+                  required
+                  value={addressCity}
+                  onChange={(event) => {
+                    setAddressCity(event.target.value);
+                    setAddressBarangay("");
+                  }}
+                >
+                  <option value="" disabled>
+                    Select a city
+                  </option>
+                  {CITY_NAMES.map((city) => (
+                    <option key={city} value={city}>
+                      {city}
+                    </option>
+                  ))}
+                </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="address">Address <span className="font-normal text-slate-500">(optional)</span></Label>
-                <Input id="address" name="address" autoComplete="street-address" maxLength={2000} />
+                <Label htmlFor="addressBarangay">
+                  Barangay <Required />
+                </Label>
+                <Select
+                  id="addressBarangay"
+                  name="addressBarangay"
+                  required
+                  disabled={!addressCity}
+                  value={addressBarangay}
+                  onChange={(event) => setAddressBarangay(event.target.value)}
+                >
+                  <option value="" disabled>
+                    {addressCity ? "Select a barangay" : "Select a city first"}
+                  </option>
+                  {barangaysFor(addressCity).map((barangay) => (
+                    <option key={barangay} value={barangay}>
+                      {barangay}
+                    </option>
+                  ))}
+                </Select>
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="lrn">Learner Reference Number (LRN)</Label>
+              <Label htmlFor="addressStreetLine">
+                House no. / street <Required />
+              </Label>
+              <Input
+                id="addressStreetLine"
+                name="addressStreetLine"
+                autoComplete="address-line1"
+                required
+                maxLength={500}
+                placeholder="123 Mabini St."
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="lastSchoolYearAttended">
+                Last school year attended <Required />
+              </Label>
+              <Input
+                id="lastSchoolYearAttended"
+                name="lastSchoolYearAttended"
+                required
+                maxLength={40}
+                placeholder="2025-2026"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="lrn">
+                Learner Reference Number (LRN) <Required />
+              </Label>
               <Input
                 id="lrn"
                 name="lrn"
@@ -197,7 +287,9 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
         )}
 
         <div className="grid gap-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">
+            Password {isSignup ? <Required /> : null}
+          </Label>
           <Input
             id="password"
             name="password"

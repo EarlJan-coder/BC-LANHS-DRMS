@@ -1,10 +1,34 @@
 import { z } from "zod";
 import { requestStatusEnum } from "@/db/schema";
+import { CITIES } from "@/lib/ph-address";
+
+/**
+ * Server-side guard for the cascading City → Barangay selects: reject pairs
+ * that are not in the static dataset so a crafted POST cannot store an
+ * address the profile form can never prefill.
+ */
+export function refineAddressParts(
+  values: { addressCity?: string; addressBarangay?: string },
+  ctx: z.RefinementCtx,
+) {
+  if (!values.addressCity) return;
+  const barangays = CITIES[values.addressCity];
+  if (!barangays) {
+    ctx.addIssue({ code: "custom", path: ["addressCity"], message: "Select a city from the list." });
+    return;
+  }
+  if (values.addressBarangay && !barangays.includes(values.addressBarangay)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["addressBarangay"],
+      message: "Select a barangay from the list.",
+    });
+  }
+}
 
 export const documentRequestSchema = z.object({
   documentType: z.string().min(2, "Select a document type."),
   purpose: z.string().min(10, "Please describe the request purpose in at least 10 characters."),
-  schoolYearNeeded: z.string().min(1, "School year needed is required."),
   gradeLevelNeeded: z.string().min(1, "Grade level needed is required."),
   sectionNeeded: z.string().trim().max(40, "Section must be 40 characters or fewer.").optional().default(""),
   remarks: z.string().optional(),
@@ -17,6 +41,23 @@ export const updateRequestStatusSchema = z.object({
   rejectionReason: z.string().optional(),
 });
 
+// Student self-service profile edit. Address parts are composed server-side
+// into students.address; each part is optional but must be non-blank when sent
+// (the form sends all three together — the service rejects partial addresses).
+export const profileUpdateSchema = z.object({
+  contactNumber: z.string().trim().max(30).optional(),
+  email: z.string().trim().toLowerCase().email("Enter a valid email address.").max(191).optional(),
+  lastSchoolYearAttended: z
+    .string()
+    .trim()
+    .min(1, "Last school year attended is required.")
+    .max(40, "Last school year attended must be 40 characters or fewer.")
+    .optional(),
+  addressCity: z.string().trim().min(1, "City is required.").max(100).optional(),
+  addressBarangay: z.string().trim().min(1, "Barangay is required.").max(100).optional(),
+  addressStreetLine: z.string().trim().min(1, "House no. / street is required.").max(500).optional(),
+}).superRefine(refineAddressParts);
+
 export const studentRecordSchema = z.object({
   lrn: z.string().trim().min(1, "LRN is required."),
   firstName: z.string().trim().min(1, "First name is required."),
@@ -26,6 +67,7 @@ export const studentRecordSchema = z.object({
   email: z.union([z.string().trim().email("Enter a valid email address.").max(191), z.literal("")]).optional(),
   contactNumber: z.string().trim().optional(),
   address: z.string().trim().optional(),
+  lastSchoolYearAttended: z.string().trim().max(40).optional(),
   enrollmentStatus: z.enum(["enrolled", "alumni", "transferred", "inactive"]).default("enrolled"),
   registrationStatus: z.enum(["pending", "approved", "declined"]).optional(),
   registrationNote: z.string().trim().max(2000).optional(),

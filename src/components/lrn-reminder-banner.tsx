@@ -3,14 +3,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
 
 export interface LrnReminderBannerProps {
-  reason: "no_record" | "no_lrn";
+  reason: "no_record" | "no_lrn" | "no_school_year";
 }
 
 export function LrnReminderBanner({ reason }: LrnReminderBannerProps) {
   const message =
     reason === "no_record"
       ? "We couldn't find a student record for your account. Please set up your profile and add your Learner Reference Number (LRN) so your document requests can be validated."
-      : "Your student profile has no LRN yet. Please add your Learner Reference Number on your profile page so your document requests can be validated.";
+      : reason === "no_school_year"
+        ? "Your student profile has no last school year attended yet. Please add it on your profile page so your document requests can be validated."
+        : "Your student profile has no LRN yet. Please add your Learner Reference Number on your profile page so your document requests can be validated.";
 
   return (
     <Card className="mb-4 border-amber-200 bg-amber-50">

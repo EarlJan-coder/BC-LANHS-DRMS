@@ -82,6 +82,7 @@ export const students = pgTable(
     email: varchar("email", { length: 191 }),
     contactNumber: varchar("contact_number", { length: 30 }),
     address: text("address"),
+    lastSchoolYearAttended: varchar("last_school_year_attended", { length: 40 }),
     studentType: studentTypeEnum("student_type").notNull().default("current"),
     status: studentStatusEnum("status").notNull().default("enrolled"),
     enrollmentStatus: varchar("enrollment_status", { length: 40 }).notNull().default("enrolled"),

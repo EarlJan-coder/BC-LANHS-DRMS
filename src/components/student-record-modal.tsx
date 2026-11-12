@@ -24,6 +24,7 @@ type StudentDraft = {
   email: string;
   phone: string;
   address: string;
+  lastSchoolYearAttended: string;
   status: string;
   registrationStatus: StudentView["registrationStatus"];
   registrationNote: string;
@@ -39,6 +40,7 @@ function toDraft(student: StudentView): StudentDraft {
     email: student.email,
     phone: student.phone,
     address: student.address,
+    lastSchoolYearAttended: student.lastSchoolYearAttended,
     status: student.status,
     registrationStatus: student.registrationStatus,
     registrationNote: "",
@@ -85,6 +87,7 @@ export function StudentRecordModal({ student }: { student: StudentView }) {
           email: draft.email,
           contactNumber: draft.phone,
           address: draft.address,
+          lastSchoolYearAttended: draft.lastSchoolYearAttended,
           enrollmentStatus: draft.status,
           registrationStatus: draft.registrationStatus,
           registrationNote: draft.registrationNote,
@@ -153,6 +156,14 @@ export function StudentRecordModal({ student }: { student: StudentView }) {
                 <Field id={`student-suffix-${student.id}`} label="Suffix" value={draft.suffix} maxLength={20} onChange={(suffix) => setDraft({ ...draft, suffix })} />
                 <Field id={`student-email-${student.id}`} label="Email" type="email" value={draft.email} maxLength={191} onChange={(email) => setDraft({ ...draft, email })} />
                 <Field id={`student-phone-${student.id}`} label="Phone" type="tel" value={draft.phone} maxLength={30} onChange={(phone) => setDraft({ ...draft, phone })} />
+                <Field
+                  id={`student-school-year-${student.id}`}
+                  label="Last school year attended"
+                  value={draft.lastSchoolYearAttended}
+                  maxLength={40}
+                  placeholder="2025-2026"
+                  onChange={(lastSchoolYearAttended) => setDraft({ ...draft, lastSchoolYearAttended })}
+                />
                 <div className="grid gap-2">
                   <Label htmlFor={`student-status-${student.id}`}>Student status</Label>
                   <Select id={`student-status-${student.id}`} value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value })}>
@@ -230,6 +241,7 @@ function Field({
   type = "text",
   value,
   maxLength,
+  placeholder,
   required = false,
   onChange,
 }: {
@@ -238,13 +250,14 @@ function Field({
   type?: string;
   value: string;
   maxLength?: number;
+  placeholder?: string;
   required?: boolean;
   onChange: (value: string) => void;
 }) {
   return (
     <div className="grid gap-2">
       <Label htmlFor={id}>{label}</Label>
-      <Input id={id} type={type} value={value} maxLength={maxLength} required={required} onChange={(event) => onChange(event.target.value)} />
+      <Input id={id} type={type} value={value} maxLength={maxLength} placeholder={placeholder} required={required} onChange={(event) => onChange(event.target.value)} />
     </div>
   );
 }

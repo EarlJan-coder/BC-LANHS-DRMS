@@ -40,12 +40,24 @@ import {
   wrapText,
 } from "./pdf-brand";
 
-export type EligibilityReason = "no_record" | "no_lrn";
+export type EligibilityReason = "no_record" | "no_lrn" | "no_school_year";
 
 export interface RequestEligibility {
   eligible: boolean;
   reason: EligibilityReason | null;
 }
+
+/**
+ * Injectable effects for tests (same seam pattern as decideRegistration):
+ * cookie-bound auth resolvers plus email/fan-out/audit side effects.
+ */
+export type CreateDocumentRequestEffects = {
+  resolveProfile?: typeof getCurrentProfile;
+  resolveUser?: typeof ensureCurrentDbUser;
+  writeAudit?: typeof recordAuditedAction;
+  sendEmail?: typeof sendWorkflowEmail;
+  notifyRegistrars?: (trackingNumber: string, documentType: string) => Promise<unknown>;
+};
 
 /** Slip PDFs carry student PII (name, LRN, purpose): staff may read any slip,
  * everyone else only the slip of a request they made. */
@@ -90,19 +102,26 @@ export async function getRequestEligibility(
     return { eligible: false, reason: "no_lrn" };
   }
 
+  if (!student.lastSchoolYearAttended || student.lastSchoolYearAttended.trim() === "") {
+    return { eligible: false, reason: "no_school_year" };
+  }
+
   return { eligible: true, reason: null };
 }
 
-export async function createDocumentRequest(input: unknown) {
+export async function createDocumentRequest(input: unknown, effects: CreateDocumentRequestEffects = {}) {
   const values = documentRequestSchema.parse(input);
-  const profile = await getCurrentProfile();
+  const profile = await (effects.resolveProfile ?? getCurrentProfile)();
   const trackingNumber = generateTrackingNumber();
 
   let requestId = trackingNumber;
   let actorUserId: string | undefined;
+  // Snapshot of the student's last school year attended: issued certificates
+  // and audit hashes must never change if the student later edits their profile.
+  let schoolYearNeeded: string | null = null;
 
   if (db) {
-    const user = await ensureCurrentDbUser();
+    const user = await (effects.resolveUser ?? ensureCurrentDbUser)();
     actorUserId = user?.id;
     const student = user
       ? await db.query.students.findFirst({
@@ -115,9 +134,13 @@ export async function createDocumentRequest(input: unknown) {
       const message =
         eligibility.reason === "no_record"
           ? "We couldn't find a student record for your account. Set up your profile and add your LRN before submitting a document request."
-          : "Your student profile has no LRN yet. Add your Learner Reference Number on your profile page before submitting a document request.";
+          : eligibility.reason === "no_school_year"
+            ? "Your student profile has no last school year attended yet. Add it on your profile page before submitting a document request."
+            : "Your student profile has no LRN yet. Add your Learner Reference Number on your profile page before submitting a document request.";
       throw new AppError(message, 403);
     }
+
+    schoolYearNeeded = student?.lastSchoolYearAttended ?? null;
 
     const [documentType] = await db
       .select()
@@ -133,7 +156,7 @@ export async function createDocumentRequest(input: unknown) {
         requestedByUserId: user?.id,
         documentTypeId: documentType?.id,
         purpose: values.purpose,
-        schoolYearNeeded: values.schoolYearNeeded,
+        schoolYearNeeded,
         gradeLevelNeeded: values.gradeLevelNeeded,
         sectionNeeded: values.sectionNeeded,
         remarks: values.remarks,
@@ -163,9 +186,9 @@ export async function createDocumentRequest(input: unknown) {
 
     // Registrar fan-out: one 'request' copy per ACTIVE registrar (ruled
     // behavior — no admin copies).
-    await fanOutNewRequestNotification(trackingNumber, values.documentType);
+    await (effects.notifyRegistrars ?? fanOutNewRequestNotification)(trackingNumber, values.documentType);
 
-    await sendWorkflowEmail({
+    await (effects.sendEmail ?? sendWorkflowEmail)({
       to: profile.email,
       studentName: `${profile.firstName} ${profile.lastName}`,
       trackingNumber,
@@ -176,7 +199,7 @@ export async function createDocumentRequest(input: unknown) {
     });
   }
 
-  const audit = await recordAuditedAction({
+  const audit = await (effects.writeAudit ?? recordAuditedAction)({
     referenceType: "document_request",
     referenceId: trackingNumber,
     action: "Document request submitted",
@@ -187,14 +210,14 @@ export async function createDocumentRequest(input: unknown) {
     metadata: {
       documentType: values.documentType,
       status: "pending",
-      schoolYearNeeded: values.schoolYearNeeded,
+      schoolYearNeeded,
       gradeLevelNeeded: values.gradeLevelNeeded,
       sectionNeeded: values.sectionNeeded,
     },
     hashMetadata: {
       documentType: values.documentType,
       status: "pending",
-      schoolYearNeeded: values.schoolYearNeeded,
+      schoolYearNeeded,
       gradeLevelNeeded: values.gradeLevelNeeded,
     },
   });

@@ -5,6 +5,8 @@ import { z, ZodError } from "zod";
 import { getDb } from "@/db";
 import { students, users } from "@/db/schema";
 import { checkAuthRateLimit } from "@/lib/auth-rate-limit";
+import { composeAddress } from "@/lib/ph-address";
+import { refineAddressParts } from "@/lib/validators";
 import { fanOutNewRegistrationNotification } from "@/lib/services/notifications";
 
 const signupSchema = z.object({
@@ -15,10 +17,17 @@ const signupSchema = z.object({
   lastName: z.string().trim().min(1, "Last name is required.").max(100),
   suffix: z.enum(["None", "Jr.", "Sr.", "II", "III", "IV"]).default("None"),
   phone: z.string().trim().max(30).optional(),
-  address: z.string().trim().max(2000).optional(),
+  addressCity: z.string().trim().min(1, "City is required.").max(100),
+  addressBarangay: z.string().trim().min(1, "Barangay is required.").max(100),
+  addressStreetLine: z.string().trim().min(1, "Street line is required.").max(500),
+  lastSchoolYearAttended: z
+    .string()
+    .trim()
+    .min(1, "Last school year attended is required.")
+    .max(40, "Last school year attended must be 40 characters or fewer."),
   password: z.string().min(8, "Password must be at least 8 characters.").max(72),
   acceptedTerms: z.literal(true, "You must accept the Terms and Conditions to register."),
-});
+}).superRefine(refineAddressParts);
 
 function postgresCode(error: unknown) {
   let current = error;
@@ -89,7 +98,12 @@ export async function POST(request: Request) {
         suffix: values.suffix === "None" ? null : values.suffix,
         email: values.email,
         contactNumber: values.phone?.trim() || null,
-        address: values.address?.trim() || null,
+        address: composeAddress({
+          streetLine: values.addressStreetLine,
+          barangay: values.addressBarangay,
+          city: values.addressCity,
+        }),
+        lastSchoolYearAttended: values.lastSchoolYearAttended,
       });
 
       return createdUser;

@@ -8,10 +8,14 @@ process.env.SESSION_SECRET ||= "test-secret-test-secret-test-secret-32b";
 
 const { eq } = await import("drizzle-orm");
 const { getDb, closeDb } = await import("@/db");
-const { documentRequests } = await import("@/db/schema");
-const { canAccessRequestSlip, generateRequestSlipPdf } = await import("@/lib/services/document-requests");
+const { documentRequests, notifications, requestStatusHistory, students, users } = await import("@/db/schema");
+const { canAccessRequestSlip, createDocumentRequest, generateRequestSlipPdf, getRequestEligibility } = await import(
+  "@/lib/services/document-requests"
+);
+const { AppError } = await import("@/lib/utils");
 
 const hasDb = Boolean(process.env.DATABASE_URL);
+let fixtureIndex = 0;
 
 after(async () => {
   await closeDb();
@@ -69,6 +73,135 @@ describe("generateRequestSlipPdf access (integration, local DB)", {
       assert.ok(pdf.length > 0);
     } finally {
       await db.delete(documentRequests).where(eq(documentRequests.id, created.id));
+    }
+  });
+});
+
+async function createStudentUser(lastSchoolYearAttended: string | null) {
+  fixtureIndex += 1;
+  const db = getDb();
+  const lrn = `9${String(Date.now() + fixtureIndex).slice(-11)}`;
+  const [user] = await db
+    .insert(users)
+    .values({
+      email: `req-eligibility-${Date.now()}-${fixtureIndex}@example.test`,
+      lrn,
+      passwordHash: "not-a-real-hash",
+      firstName: "Jamie",
+      lastName: "Santos",
+      role: "student",
+      registrationStatus: "approved",
+    })
+    .returning();
+  await db.insert(students).values({
+    userId: user.id,
+    lrn,
+    firstName: "Jamie",
+    lastName: "Santos",
+    lastSchoolYearAttended,
+  });
+  return user;
+}
+
+async function cleanupStudentUser(userId: string) {
+  const db = getDb();
+  await db.delete(notifications).where(eq(notifications.userId, userId));
+  await db.delete(students).where(eq(students.userId, userId));
+  await db.delete(users).where(eq(users.id, userId));
+}
+
+const noopAudit = async () => ({
+  recordHash: "0x0",
+  blockchainStatus: "blockchain_pending" as const,
+  blockchainTransactionHash: null,
+  blockchainError: null,
+  blockNumber: null,
+  network: null,
+});
+
+/** Test seam: bypass cookie-bound auth, email, registrar fan-out, and audit. */
+type UserRow = Awaited<ReturnType<typeof createStudentUser>>;
+function testEffects(user: UserRow) {
+  return {
+    resolveUser: async () => user,
+    resolveProfile: async () => ({
+      userId: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+    }),
+    writeAudit: noopAudit,
+    sendEmail: async () => ({ ok: true }),
+    notifyRegistrars: async () => [],
+  };
+}
+
+const requestPayload = {
+  documentType: "Form 137",
+  purpose: "College scholarship application requirement",
+  gradeLevelNeeded: "Grade 12",
+  sectionNeeded: "",
+};
+
+describe("last school year eligibility (integration, local DB)", { skip: hasDb ? false : "DATABASE_URL not configured" }, () => {
+  it("blocks a student whose profile has no last school year attended", async () => {
+    const user = await createStudentUser(null);
+    try {
+      const eligibility = await getRequestEligibility(user);
+      assert.deepEqual(eligibility, { eligible: false, reason: "no_school_year" });
+    } finally {
+      await cleanupStudentUser(user.id);
+    }
+  });
+
+  it("allows a student whose profile has a last school year attended", async () => {
+    const user = await createStudentUser("2025-2026");
+    try {
+      const eligibility = await getRequestEligibility(user);
+      assert.deepEqual(eligibility, { eligible: true, reason: null });
+    } finally {
+      await cleanupStudentUser(user.id);
+    }
+  });
+});
+
+describe("createDocumentRequest school year snapshot (integration, local DB)", {
+  skip: hasDb ? false : "DATABASE_URL not configured",
+}, () => {
+  it("copies the profile's last school year onto the request", async () => {
+    const user = await createStudentUser("2025-2026");
+    let createdId = "";
+    try {
+      const result = await createDocumentRequest(requestPayload, testEffects(user));
+      createdId = result.id;
+      const row = await getDb().query.documentRequests.findFirst({
+        where: eq(documentRequests.id, result.id),
+      });
+      assert.equal(row?.schoolYearNeeded, "2025-2026");
+      assert.equal(row?.requestedByUserId, user.id);
+    } finally {
+      if (createdId) {
+        const db = getDb();
+        await db.delete(requestStatusHistory).where(eq(requestStatusHistory.requestId, createdId));
+        await db.delete(documentRequests).where(eq(documentRequests.id, createdId));
+      }
+      await cleanupStudentUser(user.id);
+    }
+  });
+
+  it("throws 403 and creates nothing when the profile has no last school year", async () => {
+    const user = await createStudentUser(null);
+    try {
+      await assert.rejects(
+        () => createDocumentRequest(requestPayload, testEffects(user)),
+        (error: unknown) =>
+          error instanceof AppError && error.status === 403 && /last school year/i.test(error.message),
+      );
+      const rows = await getDb().select().from(documentRequests).where(eq(documentRequests.requestedByUserId, user.id));
+      assert.equal(rows.length, 0);
+    } finally {
+      await cleanupStudentUser(user.id);
     }
   });
 });

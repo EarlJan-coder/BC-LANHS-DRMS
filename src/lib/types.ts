@@ -60,6 +60,7 @@ export type StudentView = {
   phone: string;
   contactNumber: string;
   address: string;
+  lastSchoolYearAttended: string;
   status: string;
   hasLinkedRecords: boolean;
 };
@@ -92,6 +93,7 @@ export type StudentProfileView = {
   lrn: string;
   contactNumber: string;
   address: string;
+  lastSchoolYearAttended: string;
   hasStudentRecord: boolean;
 };
 
