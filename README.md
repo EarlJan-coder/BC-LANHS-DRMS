@@ -12,7 +12,7 @@ LANHS DRMS is a full-stack registrar portal for online document requests, studen
 - Student document request submission with tracking numbers, remarks, status timeline, notifications, email attempts, request-slip PDFs (staff or the requesting student only), and audit logging.
 - Registrar request queue with search/filter, status actions, certificate generation, ready/claimed workflow, and blockchain proof status.
 - Student records with bulk CSV/XLSX import: XLSX template download, preview validation, per-row error messages, duplicate LRN detection, atomic batch saving, and a batch audit entry.
-- Certificate PDFs with QR verification URL, a registrar preview editor for per-certificate content overrides (including the registrar and principal names printed above the signature lines), public privacy-safe verification page, and blockchain hash proof.
+- Certificate PDFs that reproduce the school's official DepEd templates 1:1 (Good Moral Character, Enrolment, Graduation), with QR verification, a registrar preview editor for per-certificate content overrides (including the signatory names), a public privacy-safe verification page, and blockchain hash proof.
 - Registrar notifications: document-request submissions fan out one in-app notification per ACTIVE registrar (no admin copies); registrar nav shows an unread badge (server-rendered count, "99+" cap) with mark-one / mark-all read at /registrar/notifications.
 - Admin user, document type, school year, grade level, section, settings, and blockchain retry screens.
 - Solidity smart contract and Hardhat workflow for local and Sepolia deployment.
@@ -196,14 +196,22 @@ XLSX date cells (for example Birth Date) are read with `sheet_to_json`'s `UTC: t
 
 ## Certificates
 
+Certificate PDFs reproduce the school's official DepEd templates **1:1** — the exact fonts (Old English Text MT, Cambria, Bookman Old Style, Times New Roman, Calibri), spacing, rules, logos, and footer identity block of the reference files in `public/pdf/`. The Good Moral, Enrolment (both JHS and SHS wordings), and Graduation templates match their reference pages glyph-for-glyph; other certificate types render a generic frame built from the same letterhead. Fill-in blanks are printed with live record values (falling back to the reference underscores when a value is empty). Certificates carry a discreet verification QR in the bottom-right corner and no watermark.
+
 Registrar workflow:
 
 1. Open a document request and generate the certificate.
-2. Preview the PDF and adjust its content at `/registrar/certificates/[id]/edit` — per-certificate overrides for student name, grade level, section, purpose, and date generated. An empty override renders the live student/request value. The registrar and principal names printed above the signature lines are typed per certificate; leave one blank to print no name there.
+2. Preview the PDF and adjust its content at `/registrar/certificates/[id]/edit` — per-certificate overrides for student name, grade level, section, purpose, and date generated. An empty override renders the live student/request value. The Good Moral template prints the registrar name above the **School Counselor** line and the principal name above **Principal IV**; Enrolment and Graduation print the principal only. Leave a name blank to print none there.
 3. Download the PDF.
 4. Scan the QR code or open `/verify-certificate/[verificationCode]`.
 
 The public verification page shows only non-sensitive information: certificate number, partial student name, certificate type, issue date, school, and blockchain transaction status.
+
+### Template internals
+
+- `src/lib/services/certificate-layouts.ts` is **generated** from the reference PDFs — do not edit it by hand. Regenerate with `python scripts/cert_layout.py generate` (dev-only; needs pdfminer.six, pdfplumber, Pillow) after changing anything under `public/pdf/`.
+- `src/lib/services/certificate-renderer.ts` draws the layouts verbatim at their reference coordinates; only the fill-in blanks and signatory names are dynamic. `scripts/render-cert-samples.ts` renders samples to `out/cert-samples/`, and `python scripts/cert_layout.py verify out/cert-samples/good-moral.pdf out/cert-samples/enrolment-jhs.pdf out/cert-samples/enrolment-shs.pdf out/cert-samples/graduation.pdf` proves the output is 1:1 against the references (glyph-level diff of text, rules, and images).
+- `assets/fonts/` bundles the templates' real Microsoft/Monotype faces (Bookman Old Style, Old English Text MT, Cambria, Times New Roman, Calibri, Wingdings) for server-side embedding via `@pdf-lib/fontkit`. These are **commercial fonts** kept for a school capstone — revisit licensing before any public or commercial release.
 
 ## Blockchain Setup
 
