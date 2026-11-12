@@ -31,7 +31,10 @@ function signupPayload(overrides: Record<string, string | boolean> = {}) {
     middleName: "Mae",
     lastName: "Santos",
     phone: "09171234567",
-    address: "12 Mabini Street",
+    addressCity: "Trece Martires City",
+    addressBarangay: "Aguado",
+    addressStreetLine: "12 Mabini Street",
+    lastSchoolYearAttended: "2025-2026",
     password: "registration-test-password",
     acceptedTerms: true,
     ...overrides,
@@ -132,7 +135,7 @@ describe("student signup (integration, local DB)", { skip: hasDb ? false : "DATA
     }
   });
 
-  it("persists middle name, phone, and address on the student record", async () => {
+  it("persists middle name, phone, composed address, and last school year on the student record", async () => {
     const payload = signupPayload();
     let createdUserId = "";
 
@@ -145,9 +148,27 @@ describe("student signup (integration, local DB)", { skip: hasDb ? false : "DATA
       const student = await getDb().query.students.findFirst({ where: eq(students.userId, user.id) });
       assert.equal(student?.middleName, payload.middleName);
       assert.equal(student?.contactNumber, payload.phone);
-      assert.equal(student?.address, payload.address);
+      assert.equal(student?.address, "12 Mabini Street, Brgy. Aguado, Trece Martires City");
+      assert.equal(student?.lastSchoolYearAttended, "2025-2026");
     } finally {
       await cleanup(createdUserId ? [createdUserId] : []);
     }
   });
+
+  it("rejects signup without a last school year attended", async () => {
+    const payload = signupPayload({ lastSchoolYearAttended: "" });
+    const response = await postSignup(payload);
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.match(body.error, /last school year/i);
+  });
+
+  for (const field of ["addressCity", "addressBarangay", "addressStreetLine"] as const) {
+    it(`rejects signup when ${field} is missing`, async () => {
+      const payload = signupPayload();
+      delete payload[field];
+      const response = await postSignup(payload);
+      assert.equal(response.status, 400);
+    });
+  }
 });
