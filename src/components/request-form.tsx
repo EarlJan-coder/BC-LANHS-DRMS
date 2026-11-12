@@ -7,13 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
-import { DOCUMENT_TYPES } from "@/lib/constants";
+import { DOCUMENT_TYPES, GRADE_LEVELS, SHS_STRANDS } from "@/lib/constants";
 
 export function RequestForm() {
   const [loading, setLoading] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [gradeLevel, setGradeLevel] = useState("");
   const pendingFormRef = useRef<FormData | null>(null);
+
+  const needsStrand = gradeLevel === "11" || gradeLevel === "12";
 
   function handleFormSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -38,6 +41,7 @@ export function RequestForm() {
           documentType: formData.get("documentType"),
           purpose: formData.get("purpose"),
           gradeLevelNeeded: formData.get("gradeLevelNeeded"),
+          strandNeeded: needsStrand ? formData.get("strandNeeded") : "",
           sectionNeeded: formData.get("sectionNeeded"),
           remarks: formData.get("remarks"),
         }),
@@ -93,8 +97,38 @@ export function RequestForm() {
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="gradeLevelNeeded">Grade level needed</Label>
-                <Input id="gradeLevelNeeded" name="gradeLevelNeeded" required placeholder="Grade 12" />
+                <Select
+                  id="gradeLevelNeeded"
+                  name="gradeLevelNeeded"
+                  required
+                  value={gradeLevel}
+                  onChange={(event) => setGradeLevel(event.target.value)}
+                >
+                  <option value="" disabled>
+                    Select grade level
+                  </option>
+                  {GRADE_LEVELS.map((grade) => (
+                    <option key={grade} value={grade}>
+                      Grade {grade}
+                    </option>
+                  ))}
+                </Select>
               </div>
+              {needsStrand ? (
+                <div className="grid gap-2">
+                  <Label htmlFor="strandNeeded">Strand</Label>
+                  <Select id="strandNeeded" name="strandNeeded" required defaultValue="">
+                    <option value="" disabled>
+                      Select strand
+                    </option>
+                    {SHS_STRANDS.map((strand) => (
+                      <option key={strand} value={strand}>
+                        {strand}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              ) : null}
               <div className="grid gap-2">
                 <Label htmlFor="sectionNeeded">Section <span className="font-normal text-slate-500">(optional)</span></Label>
                 <Input id="sectionNeeded" name="sectionNeeded" maxLength={40} placeholder="e.g. Mabini" />

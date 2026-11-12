@@ -15,7 +15,7 @@ import { ensureCurrentDbUser, getCurrentProfile, getCurrentRole } from "@/lib/au
 import { REQUEST_STATUSES } from "@/lib/constants";
 import { AppError } from "@/lib/utils";
 import { sendWorkflowEmail } from "@/lib/email";
-import { generateTrackingNumber } from "@/lib/utils";
+import { composeGradeValue, generateTrackingNumber } from "@/lib/utils";
 import { documentRequestSchema, updateRequestStatusSchema } from "@/lib/validators";
 import { getDocumentRequestView } from "@/lib/services/live-data";
 import type { DocumentRequestView } from "@/lib/types";
@@ -158,6 +158,7 @@ export async function createDocumentRequest(input: unknown, effects: CreateDocum
         purpose: values.purpose,
         schoolYearNeeded,
         gradeLevelNeeded: values.gradeLevelNeeded,
+        strandNeeded: values.strandNeeded,
         sectionNeeded: values.sectionNeeded,
         remarks: values.remarks,
         status: "pending",
@@ -212,6 +213,7 @@ export async function createDocumentRequest(input: unknown, effects: CreateDocum
       status: "pending",
       schoolYearNeeded,
       gradeLevelNeeded: values.gradeLevelNeeded,
+      strandNeeded: values.strandNeeded,
       sectionNeeded: values.sectionNeeded,
     },
     hashMetadata: {
@@ -219,6 +221,7 @@ export async function createDocumentRequest(input: unknown, effects: CreateDocum
       status: "pending",
       schoolYearNeeded,
       gradeLevelNeeded: values.gradeLevelNeeded,
+      strandNeeded: values.strandNeeded,
     },
   });
 
@@ -283,7 +286,7 @@ export async function renderRequestSlipPdf(request: DocumentRequestView) {
   const infoFields = [
     { x: 62, labelY: 614, valueY: 600, label: "Student Name", value: request.studentName, valueFont: bold },
     { x: 310, labelY: 614, valueY: 600, label: "LRN", value: request.lrn ?? "Not set", valueFont: regular },
-    { x: 62, labelY: 578, valueY: 566, label: "Grade Level Needed", value: request.gradeLevelNeeded, valueFont: regular },
+    { x: 62, labelY: 578, valueY: 566, label: "Grade Level Needed", value: composeGradeValue(request.gradeLevelNeeded, request.strandNeeded || request.sectionNeeded), valueFont: regular },
     { x: 310, labelY: 578, valueY: 566, label: "School Year Needed", value: request.schoolYearNeeded, valueFont: regular },
   ];
   for (const field of infoFields) {

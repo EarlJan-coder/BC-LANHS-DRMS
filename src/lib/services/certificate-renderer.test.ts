@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import { CERT_LAYOUTS } from "@/lib/services/certificate-layouts";
 import type { CertTemplateKey } from "@/lib/services/certificate-layouts";
+import { composeGradeValue } from "@/lib/utils";
 import {
   manilaDateParts,
   pickCertificateTemplate,
@@ -21,6 +22,11 @@ describe("pickCertificateTemplate", () => {
     assert.equal(pickCertificateTemplate("Good Moral Certificate", "11"), "good-moral");
     assert.equal(pickCertificateTemplate("Certificate of Graduation", "12"), "graduation");
     assert.equal(pickCertificateTemplate("Certificate of Enrolment", "9"), "enrolment-jhs");
+    // Legacy free-text grade values route by their first number.
+    assert.equal(pickCertificateTemplate("Certificate of Enrolment", "Grade 12"), "enrolment-shs");
+    assert.equal(pickCertificateTemplate("Certificate of Enrolment", "Grade 9"), "enrolment-jhs");
+    // Unparsable grades fall back to the junior-high wording.
+    assert.equal(pickCertificateTemplate("Certificate of Enrolment", "unknown"), "enrolment-jhs");
   });
 
   it("uses the senior-high enrolment wording for grade 11/12", () => {
@@ -77,6 +83,22 @@ describe("manilaDateParts", () => {
     const late = manilaDateParts(new Date("2026-11-12T20:00:00Z"));
     assert.equal(late.day, "13");
     assert.equal(late.monthYear, "November 2026");
+  });
+});
+
+describe("composeGradeValue", () => {
+  it("composes the grade with the strand or section qualifier", () => {
+    assert.equal(composeGradeValue("11", "Academic-Track"), "11 - Academic-Track");
+    assert.equal(composeGradeValue("9", "Sampaguita"), "9 - Sampaguita");
+    assert.equal(composeGradeValue("12", "Technical-Track"), "12 - Technical-Track");
+    assert.equal(composeGradeValue("9", ""), "9");
+  });
+
+  it("strips a legacy 'Grade ' prefix so templates never print it twice", () => {
+    assert.equal(composeGradeValue("Grade 12", "Academic-Track"), "12 - Academic-Track");
+    assert.equal(composeGradeValue("grade 10", null), "10");
+    assert.equal(composeGradeValue(null, "Sampaguita"), "Sampaguita");
+    assert.equal(composeGradeValue(undefined, undefined), "");
   });
 });
 

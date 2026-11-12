@@ -25,6 +25,17 @@ export function formatDateTime(date: Date | null | undefined) {
   return date ? date.toISOString().slice(0, 16).replace("T", " ") : "Not set";
 }
 
+/** Printed grade value for certificates and request slips: e.g.
+ * "11 - Academic-Track" (senior high) or "9 - Mabini" (junior high).
+ * The qualifier slot takes the strand when present, else the section.
+ * A legacy "Grade " prefix is stripped so old free-text rows don't print
+ * "Grade Grade 12" against templates that already print the word "Grade". */
+export function composeGradeValue(gradeLevel: string | null | undefined, qualifier?: string | null): string {
+  const grade = (gradeLevel ?? "").trim().replace(/^grade\s+/i, "");
+  const extra = (qualifier ?? "").trim();
+  return [grade, extra].filter(Boolean).join(" - ");
+}
+
 export function generateTrackingNumber(prefix = "LANHS") {
   const now = new Date();
   const date = now.toISOString().slice(0, 10).replaceAll("-", "");

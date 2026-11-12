@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { PDFDocument, rgb } from "pdf-lib";
-import type { PDFFont, PDFImage, PDFPage } from "pdf-lib";
+import type { PDFEmbeddedPage, PDFFont, PDFImage, PDFPage } from "pdf-lib";
 import { embedQrCode, fitSignatureNameSize } from "@/lib/services/pdf-brand";
 import { CERT_FALLBACK_FRAME, CERT_LAYOUTS } from "@/lib/services/certificate-layouts";
 import type {
@@ -28,7 +28,26 @@ const BODY_RIGHT = 524.9;
 const BLACK = rgb(0, 0, 0);
 const MIN_BLANK_SIZE = 8;
 
-const ASSET_FILES = ["deped-seal", "school-seal-a", "school-seal-b", "footer-lockup", "icon-small"] as const;
+/** Assets sourced as PNG files from public/pdf-assets. The logos are the
+ * school's original files (the reference PDFs' embedded copies were degraded). */
+const PNG_ASSET_FILES: Record<string, string> = {
+  "deped-seal": "deped-seal.png",
+  "icon-small": "icon-small.png",
+  "deped-logo": "deped-logo_freelogovectors.net_.png",
+  "lanhs-logo": "lanhs-logo.png",
+};
+
+// The Bagong Pilipinas logo ships as SVG; committed as a single-page vector
+// PDF (converted with svglib, see README) and embedded as a page so it stays
+// crisp at any size.
+const VECTOR_ASSET_FILES: Record<string, string> = {
+  "bagong-pilipinas-logo": "bagong-pilipinas-logo.pdf",
+};
+
+type EmbeddedAsset =
+  | { kind: "image"; image: PDFImage }
+  | { kind: "page"; page: PDFEmbeddedPage };
+
 export const CERT_ASSET_DIR = join(process.cwd(), "public", "pdf-assets");
 
 export type CertBlankValues = Partial<Record<CertBlankField, string>>;
@@ -45,9 +64,15 @@ export interface CertificateRenderOptions {
   qrUrl?: string;
 }
 
-/** Matches the certificate-type routing the body text already uses. */
+/** Matches the certificate-type routing the body text already uses. The COE
+ * template has two reference pages: grades 7-10 use the junior-high wording
+ * ("classified as Grade ____") and grades 11-12 the senior-high wording
+ * ("classified under the Grade ____ strand"). Legacy free-text grade values
+ * ("Grade 12") are parsed by their first number; unparsable grades are JHS. */
 export function pickCertificateTemplate(type: string, gradeLevel: string): CertTemplateKey | null {
   const value = type.toLowerCase();
+  const grade = Number.parseInt((gradeLevel.match(/\d+/) ?? [])[0] ?? "", 10);
+  const seniorHigh = grade === 11 || grade === 12;
   if (value.includes("good moral")) {
     return "good-moral";
   }
@@ -55,7 +80,7 @@ export function pickCertificateTemplate(type: string, gradeLevel: string): CertT
     return "graduation";
   }
   if (value.includes("enrol") || value.includes("enroll")) {
-    return /\b(11|12)\b/.test(gradeLevel) ? "enrolment-shs" : "enrolment-jhs";
+    return seniorHigh ? "enrolment-shs" : "enrolment-jhs";
   }
   return null;
 }
@@ -222,16 +247,34 @@ function drawJustifiedBody(
   });
 }
 
-async function embedAssets(pdf: PDFDocument): Promise<Record<string, PDFImage>> {
-  const out: Record<string, PDFImage> = {};
-  for (const asset of ASSET_FILES) {
+async function embedAssets(pdf: PDFDocument): Promise<Record<string, EmbeddedAsset>> {
+  const out: Record<string, EmbeddedAsset> = {};
+  for (const [asset, file] of Object.entries(PNG_ASSET_FILES)) {
     try {
-      out[asset] = await pdf.embedPng(await readFile(join(CERT_ASSET_DIR, `${asset}.png`)));
+      out[asset] = { kind: "image", image: await pdf.embedPng(await readFile(join(CERT_ASSET_DIR, file))) };
+    } catch {
+      // Asset missing: skip it rather than failing the certificate.
+    }
+  }
+  for (const [asset, file] of Object.entries(VECTOR_ASSET_FILES)) {
+    try {
+      const [embedded] = await pdf.embedPdf(await readFile(join(CERT_ASSET_DIR, file)), [0]);
+      if (embedded) {
+        out[asset] = { kind: "page", page: embedded };
+      }
     } catch {
       // Asset missing: skip it rather than failing the certificate.
     }
   }
   return out;
+}
+
+/** Aspect-fit (contain) placement centered inside the target box. */
+function fitContain(srcW: number, srcH: number, boxW: number, boxH: number) {
+  const scale = Math.min(boxW / srcW, boxH / srcH) || 1;
+  const w = srcW * scale;
+  const h = srcH * scale;
+  return { x: (boxW - w) / 2, y: (boxH - h) / 2, w, h };
 }
 
 export async function renderCertificatePdf(options: CertificateRenderOptions): Promise<Uint8Array> {
@@ -253,9 +296,22 @@ export async function renderCertificatePdf(options: CertificateRenderOptions): P
         color: BLACK,
       });
     } else if (token.kind === "image") {
-      const image = assets[token.asset];
-      if (image) {
-        page.drawImage(image, { x: token.x, y: token.y, width: token.w, height: token.h });
+      const asset = assets[token.asset];
+      if (asset) {
+        // Assets extracted from the references are drawn into their exact
+        // (possibly stretched) box, matching the reference placement 1:1.
+        // Supplied logo originals keep their aspect ratio inside the box.
+        const exact = asset.kind === "image" && (token.asset === "deped-seal" || token.asset === "icon-small");
+        const srcW = asset.kind === "image" ? asset.image.width : asset.page.width;
+        const srcH = asset.kind === "image" ? asset.image.height : asset.page.height;
+        const fit = exact ? { x: 0, y: 0, w: token.w, h: token.h } : fitContain(srcW, srcH, token.w, token.h);
+        const x = token.x + fit.x;
+        const y = token.y + fit.y;
+        if (asset.kind === "image") {
+          page.drawImage(asset.image, { x, y, width: fit.w, height: fit.h });
+        } else {
+          page.drawPage(asset.page, { x, y, xScale: fit.w / srcW, yScale: fit.h / srcH });
+        }
       }
     }
   }

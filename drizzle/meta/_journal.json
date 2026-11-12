@@ -134,6 +134,13 @@
       "when": 1794468797575,
       "tag": "0018_aromatic_jackal",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1794486550372,
+      "tag": "0019_crazy_iron_fist",
+      "breakpoints": true
     }
   ]
 }

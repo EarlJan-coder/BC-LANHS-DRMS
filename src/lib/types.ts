@@ -27,6 +27,8 @@ export type DocumentRequestView = {
   purpose: string;
   schoolYearNeeded: string;
   gradeLevelNeeded: string;
+  strandNeeded: string;
+  sectionNeeded: string;
   remarks: string;
   registrarRemarks: string;
   status: RequestStatus;

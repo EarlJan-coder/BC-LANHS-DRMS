@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { requestStatusEnum } from "@/db/schema";
+import { GRADE_LEVELS, SHS_STRANDS } from "@/lib/constants";
 import { CITIES } from "@/lib/ph-address";
 
 /**
@@ -26,13 +27,50 @@ export function refineAddressParts(
   }
 }
 
-export const documentRequestSchema = z.object({
-  documentType: z.string().min(2, "Select a document type."),
-  purpose: z.string().min(10, "Please describe the request purpose in at least 10 characters."),
-  gradeLevelNeeded: z.string().min(1, "Grade level needed is required."),
-  sectionNeeded: z.string().trim().max(40, "Section must be 40 characters or fewer.").optional().default(""),
-  remarks: z.string().optional(),
-});
+/** Grades 11-12 are senior high: they require a strand and use the SHS certificate wording. */
+export function isSeniorHighGrade(gradeLevel: string): boolean {
+  return gradeLevel === "11" || gradeLevel === "12";
+}
+
+export const documentRequestSchema = z
+  .object({
+    documentType: z.string().min(2, "Select a document type."),
+    purpose: z.string().min(10, "Please describe the request purpose in at least 10 characters."),
+    gradeLevelNeeded: z.string().trim().max(40),
+    strandNeeded: z.string().trim().max(40, "Strand must be 40 characters or fewer.").optional().default(""),
+    sectionNeeded: z.string().trim().max(40, "Section must be 40 characters or fewer.").optional().default(""),
+    remarks: z.string().optional(),
+  })
+  .superRefine((values, ctx) => {
+    if (!GRADE_LEVELS.includes(values.gradeLevelNeeded)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["gradeLevelNeeded"],
+        message: "Select a grade level from 7 to 12.",
+      });
+      return;
+    }
+    if (isSeniorHighGrade(values.gradeLevelNeeded)) {
+      if (!values.strandNeeded) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["strandNeeded"],
+          message: "Select a strand for grade 11 or 12.",
+        });
+      } else if (!SHS_STRANDS.includes(values.strandNeeded)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["strandNeeded"],
+          message: "Select a valid strand.",
+        });
+      }
+    }
+  })
+  .transform((values) => ({
+    // A strand only applies to senior high requests; anything else is stored empty.
+    ...values,
+    strandNeeded: isSeniorHighGrade(values.gradeLevelNeeded) ? values.strandNeeded : "",
+  }));
 
 export const updateRequestStatusSchema = z.object({
   status: z.enum(requestStatusEnum.enumValues),
@@ -99,6 +137,7 @@ const overrideSignatoryName = z
 export const certificateOverrideSchema = z.object({
   studentName: overrideField,
   gradeLevel: overrideField,
+  strand: overrideField,
   section: overrideField,
   purpose: overrideField,
   registrarName: overrideSignatoryName,

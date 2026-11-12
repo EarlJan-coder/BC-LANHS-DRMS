@@ -58,6 +58,8 @@ type DocumentRequestDbRow = {
   updatedAt: Date;
   schoolYearNeeded: string | null;
   gradeLevelNeeded: string | null;
+  strandNeeded: string | null;
+  sectionNeeded: string | null;
   remarks: string | null;
   registrarRemarks: string | null;
   documentType: string | null;
@@ -79,6 +81,8 @@ const documentRequestSelection = {
   updatedAt: documentRequests.updatedAt,
   schoolYearNeeded: documentRequests.schoolYearNeeded,
   gradeLevelNeeded: documentRequests.gradeLevelNeeded,
+  strandNeeded: documentRequests.strandNeeded,
+  sectionNeeded: documentRequests.sectionNeeded,
   remarks: documentRequests.remarks,
   registrarRemarks: documentRequests.registrarRemarks,
   documentType: documentTypes.name,
@@ -104,6 +108,8 @@ function mapDocumentRequestView(
     purpose: row.purpose,
     schoolYearNeeded: row.schoolYearNeeded ?? "Not set",
     gradeLevelNeeded: row.gradeLevelNeeded ?? "Not set",
+    strandNeeded: row.strandNeeded ?? "",
+    sectionNeeded: row.sectionNeeded ?? "",
     remarks: row.remarks ?? "None",
     registrarRemarks: row.registrarRemarks ?? "None",
     status: row.status,

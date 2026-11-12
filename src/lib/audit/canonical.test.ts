@@ -42,6 +42,12 @@ describe("canonical hashing", () => {
     assert.equal(createRecordHashFromCanonical(d1), createRecordHashFromCanonical(d2));
   });
 
+  it("document request: the strand participates in the hash", () => {
+    const withStrand = buildCanonicalDocumentRequest({ trackingNumber: "REQ-123", documentType: "Form 137", status: "approved", schoolYearNeeded: "2025-2026", gradeLevelNeeded: "11", strandNeeded: "Academic-Track" });
+    const withoutStrand = buildCanonicalDocumentRequest({ trackingNumber: "REQ-123", documentType: "Form 137", status: "approved", schoolYearNeeded: "2025-2026", gradeLevelNeeded: "11" });
+    assert.notEqual(createRecordHashFromCanonical(withStrand), createRecordHashFromCanonical(withoutStrand));
+  });
+
   it("status change: same input produces same hash", () => {
     const s1 = buildCanonicalStatusChange({ referenceId: "REQ-123", fromStatus: "pending", toStatus: "approved", actorRole: "registrar" });
     const s2 = buildCanonicalStatusChange({ referenceId: "REQ-123", fromStatus: "pending", toStatus: "approved", actorRole: "registrar" });

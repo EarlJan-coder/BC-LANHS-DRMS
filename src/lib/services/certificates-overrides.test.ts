@@ -7,12 +7,14 @@ const liveRow = {
   middleName: "Santos",
   lastName: "Dela Cruz",
   suffix: null,
-  gradeLevel: "Grade 10",
+  gradeLevel: "10",
+  strand: null,
   section: "Sampaguita",
   requestPurpose: "Scholarship application",
   generatedAt: new Date("2026-01-15T00:00:00Z"),
   overrideStudentName: null,
   overrideGradeLevel: null,
+  overrideStrand: null,
   overrideSection: null,
   overridePurpose: null,
   overrideDateGenerated: null,
@@ -24,7 +26,7 @@ describe("resolveCertificateDisplayFields", () => {
   it("falls back to the live joined values when no override is set", () => {
     const fields = resolveCertificateDisplayFields(liveRow);
     assert.equal(fields.name, "Juan Santos Dela Cruz");
-    assert.equal(fields.gradeLevel, "Grade 10");
+    assert.equal(fields.gradeLevel, "10");
     assert.equal(fields.section, "Sampaguita");
     assert.equal(fields.purpose, "Scholarship application");
     assert.deepEqual(fields.dateGenerated, new Date("2026-01-15T00:00:00Z"));
@@ -34,13 +36,15 @@ describe("resolveCertificateDisplayFields", () => {
     const fields = resolveCertificateDisplayFields({
       ...liveRow,
       overrideStudentName: "Juan Dela Cruz",
-      overrideGradeLevel: "Grade 12",
+      overrideGradeLevel: "12",
+      overrideStrand: "Academic-Track",
       overrideSection: "Rosal",
       overridePurpose: "Employment requirement",
       overrideDateGenerated: new Date("2026-06-01T00:00:00Z"),
     });
     assert.equal(fields.name, "Juan Dela Cruz");
-    assert.equal(fields.gradeLevel, "Grade 12");
+    assert.equal(fields.gradeLevel, "12");
+    assert.equal(fields.strand, "Academic-Track");
     assert.equal(fields.section, "Rosal");
     assert.equal(fields.purpose, "Employment requirement");
     assert.deepEqual(fields.dateGenerated, new Date("2026-06-01T00:00:00Z"));
@@ -55,7 +59,7 @@ describe("resolveCertificateDisplayFields", () => {
       overridePurpose: "",
     });
     assert.equal(fields.name, "Juan Santos Dela Cruz");
-    assert.equal(fields.gradeLevel, "Grade 10");
+    assert.equal(fields.gradeLevel, "10");
     assert.equal(fields.section, "Sampaguita");
     assert.equal(fields.purpose, "Scholarship application");
   });
@@ -67,7 +71,7 @@ describe("resolveCertificateDisplayFields", () => {
     });
     assert.equal(fields.purpose, "Transfer requirements");
     assert.equal(fields.name, "Juan Santos Dela Cruz");
-    assert.equal(fields.gradeLevel, "Grade 10");
+    assert.equal(fields.gradeLevel, "10");
   });
 });
 

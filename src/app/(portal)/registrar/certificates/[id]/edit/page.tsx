@@ -26,6 +26,7 @@ export default async function CertificateEditPage({
         initial={{
           studentName: certificate.studentName,
           gradeLevel: certificate.gradeLevel,
+          strand: certificate.strand,
           section: certificate.section,
           purpose: certificate.purpose,
           dateGenerated: certificate.dateGenerated.slice(0, 10),

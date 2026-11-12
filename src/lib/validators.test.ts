@@ -7,31 +7,79 @@ describe("documentRequestSchema", () => {
     const parsed = documentRequestSchema.parse({
       documentType: "Form 137",
       purpose: "College scholarship application requirement",
-      gradeLevelNeeded: "Grade 12",
+      gradeLevelNeeded: "12",
+      strandNeeded: "Academic-Track",
       schoolYearNeeded: "2026-2027",
     });
     assert.equal("schoolYearNeeded" in parsed, false);
   });
 
   it("still requires document type, purpose, and grade level", () => {
-    assert.throws(() => documentRequestSchema.parse({ purpose: "x".repeat(11), gradeLevelNeeded: "Grade 12" }));
-    assert.throws(() => documentRequestSchema.parse({ documentType: "Form 137", gradeLevelNeeded: "Grade 12" }));
+    assert.throws(() => documentRequestSchema.parse({ purpose: "x".repeat(11), gradeLevelNeeded: "10" }));
+    assert.throws(() => documentRequestSchema.parse({ documentType: "Form 137", gradeLevelNeeded: "10" }));
     assert.throws(() => documentRequestSchema.parse({ documentType: "Form 137", purpose: "Too short" }));
+    assert.throws(() => documentRequestSchema.parse({ documentType: "Form 137", purpose: "x".repeat(11) }));
+  });
+
+  it("rejects grades outside the 7-12 dropdown", () => {
+    assert.throws(() =>
+      documentRequestSchema.parse({ documentType: "Form 137", purpose: "x".repeat(11), gradeLevelNeeded: "Grade 12" }),
+    );
+    assert.throws(() =>
+      documentRequestSchema.parse({ documentType: "Form 137", purpose: "x".repeat(11), gradeLevelNeeded: "13" }),
+    );
+  });
+
+  it("requires a strand for grades 11 and 12", () => {
+    for (const gradeLevelNeeded of ["11", "12"]) {
+      assert.throws(() =>
+        documentRequestSchema.parse({ documentType: "Form 137", purpose: "x".repeat(11), gradeLevelNeeded }),
+      );
+    }
+    const parsed = documentRequestSchema.parse({
+      documentType: "Form 137",
+      purpose: "x".repeat(11),
+      gradeLevelNeeded: "11",
+      strandNeeded: "Technical-Track",
+    });
+    assert.equal(parsed.strandNeeded, "Technical-Track");
+  });
+
+  it("rejects unknown strands and stores no strand for grades 7-10", () => {
+    assert.throws(() =>
+      documentRequestSchema.parse({
+        documentType: "Form 137",
+        purpose: "x".repeat(11),
+        gradeLevelNeeded: "12",
+        strandNeeded: "STEM",
+      }),
+    );
+    const parsed = documentRequestSchema.parse({
+      documentType: "Form 137",
+      purpose: "x".repeat(11),
+      gradeLevelNeeded: "9",
+      strandNeeded: "Academic-Track",
+      sectionNeeded: "Sampaguita",
+    });
+    assert.equal(parsed.strandNeeded, "");
+    assert.equal(parsed.sectionNeeded, "Sampaguita");
   });
 });
 
 describe("certificateOverrideSchema", () => {
-  it("accepts the seven editable content fields", () => {
+  it("accepts the eight editable content fields", () => {
     const parsed = certificateOverrideSchema.parse({
       studentName: "Juan Dela Cruz",
-      gradeLevel: "Grade 10",
+      gradeLevel: "11",
+      strand: "Academic-Track",
       section: "Sampaguita",
       purpose: "Scholarship application",
       dateGenerated: "2026-10-24",
     });
     assert.deepEqual(parsed, {
       studentName: "Juan Dela Cruz",
-      gradeLevel: "Grade 10",
+      gradeLevel: "11",
+      strand: "Academic-Track",
       section: "Sampaguita",
       purpose: "Scholarship application",
       dateGenerated: new Date("2026-10-24"),

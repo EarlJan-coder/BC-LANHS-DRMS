@@ -29,4 +29,11 @@ export const DOCUMENT_TYPES = [
   "Other school documents",
 ];
 
+// Grade levels selectable on document requests (drives the certificate template).
+export const GRADE_LEVELS = ["7", "8", "9", "10", "11", "12"];
+
+// Senior high tracks per the current DepEd senior high curriculum. Shown only
+// when the requested grade is 11 or 12.
+export const SHS_STRANDS = ["Academic-Track", "Technical-Track"];
+
 export const SCHOOL_ADDRESS = "Luis Aguado National High School, Philippines";

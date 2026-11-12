@@ -12,6 +12,7 @@ import { Spinner } from "@/components/ui/spinner";
 export interface CertificateEditValues {
   studentName: string;
   gradeLevel: string;
+  strand: string;
   section: string;
   purpose: string;
   /** yyyy-mm-dd for <input type="date"> */
@@ -70,6 +71,7 @@ export function CertificatePreviewEditor({
         body: JSON.stringify({
           studentName: values.studentName,
           gradeLevel: values.gradeLevel,
+          strand: values.strand,
           section: values.section,
           purpose: values.purpose,
           dateGenerated: values.dateGenerated,
@@ -107,6 +109,7 @@ export function CertificatePreviewEditor({
         body: JSON.stringify({
           studentName: "",
           gradeLevel: "",
+          strand: "",
           section: "",
           purpose: "",
           dateGenerated: "",
@@ -127,6 +130,7 @@ export function CertificatePreviewEditor({
         setValues({
           studentName: view.studentName,
           gradeLevel: view.gradeLevel,
+          strand: view.strand,
           section: view.section,
           purpose: view.purpose,
           dateGenerated: view.dateGenerated.slice(0, 10),
@@ -166,6 +170,12 @@ export function CertificatePreviewEditor({
               value={values.gradeLevel}
               override={hasOverride.gradeLevel}
               onChange={(value) => setField("gradeLevel", value)}
+            />
+            <Field
+              label="Strand"
+              value={values.strand}
+              override={hasOverride.strand}
+              onChange={(value) => setField("strand", value)}
             />
             <Field
               label="Section"

@@ -10,6 +10,7 @@ export interface CanonicalDocumentRequest {
   status: string;
   schoolYearNeeded: string | null;
   gradeLevelNeeded: string | null;
+  strandNeeded: string | null;
 }
 
 export interface CanonicalStatusChange {
@@ -42,6 +43,7 @@ export function buildCanonicalDocumentRequest(data: {
   status: string;
   schoolYearNeeded: string | null;
   gradeLevelNeeded: string | null;
+  strandNeeded?: string | null;
 }): CanonicalDocumentRequest {
   return {
     trackingNumber: data.trackingNumber,
@@ -49,6 +51,7 @@ export function buildCanonicalDocumentRequest(data: {
     status: normalizeString(data.status) || "",
     schoolYearNeeded: normalizeString(data.schoolYearNeeded),
     gradeLevelNeeded: normalizeString(data.gradeLevelNeeded),
+    strandNeeded: normalizeString(data.strandNeeded ?? null),
   };
 }
 

@@ -76,6 +76,7 @@ export function NotificationDetailModal({
               <Detail label="Purpose" value={record.purpose} />
               <Detail label="School year" value={record.schoolYearNeeded} />
               <Detail label="Grade level" value={record.gradeLevelNeeded} />
+              {record.strandNeeded ? <Detail label="Strand" value={record.strandNeeded} /> : null}
               <Detail label="Section" value={record.sectionNeeded} />
               <Detail label="Registrar remarks" value={record.registrarRemarks} />
             </>

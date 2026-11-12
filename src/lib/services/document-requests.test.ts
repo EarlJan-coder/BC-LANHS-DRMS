@@ -140,7 +140,8 @@ function testEffects(user: UserRow) {
 const requestPayload = {
   documentType: "Form 137",
   purpose: "College scholarship application requirement",
-  gradeLevelNeeded: "Grade 12",
+  gradeLevelNeeded: "12",
+  strandNeeded: "Academic-Track",
   sectionNeeded: "",
 };
 

@@ -14,7 +14,7 @@ import { SCHOOL_NAME } from "@/lib/constants";
 import { sendWorkflowEmail } from "@/lib/email";
 import type { CertificateVerificationView, CertificateView } from "@/lib/types";
 import { makePaged, PAGE_SIZE, type Paged } from "@/lib/pagination";
-import { formatDate, generatePrefixedId, studentFullName, ZERO_HASH } from "@/lib/utils";
+import { composeGradeValue, formatDate, generatePrefixedId, studentFullName, ZERO_HASH } from "@/lib/utils";
 import {
   certificateGenerateSchema,
   certificateOverrideSchema,
@@ -53,11 +53,13 @@ export interface CertificateDisplayRow {
   lastName: string | null;
   suffix: string | null;
   gradeLevel: string | null;
+  strand: string | null;
   section: string | null;
   requestPurpose: string | null;
   generatedAt: Date;
   overrideStudentName: string | null;
   overrideGradeLevel: string | null;
+  overrideStrand: string | null;
   overrideSection: string | null;
   overridePurpose: string | null;
   overrideDateGenerated: Date | null;
@@ -68,6 +70,7 @@ export interface CertificateDisplayRow {
 export interface CertificateDisplayFields {
   name: string;
   gradeLevel: string;
+  strand: string;
   section: string;
   purpose: string;
   dateGenerated: Date;
@@ -91,6 +94,7 @@ export function resolveCertificateDisplayFields(row: CertificateDisplayRow): Cer
       effectiveOverride(row.overrideStudentName) ??
       [row.firstName, row.middleName, row.lastName, row.suffix].filter(Boolean).join(" "),
     gradeLevel: effectiveOverride(row.overrideGradeLevel) ?? row.gradeLevel ?? "",
+    strand: effectiveOverride(row.overrideStrand) ?? row.strand ?? "",
     section: effectiveOverride(row.overrideSection) ?? row.section ?? "",
     purpose: effectiveOverride(row.overridePurpose) ?? row.requestPurpose ?? "",
     dateGenerated: row.overrideDateGenerated ?? row.generatedAt,
@@ -428,6 +432,7 @@ export interface CertificateEditView {
   certificateNumber: string;
   studentName: string;
   gradeLevel: string;
+  strand: string;
   section: string;
   purpose: string;
   /** ISO timestamp of the effective "Date Generated" (override or record). */
@@ -438,6 +443,7 @@ export interface CertificateEditView {
   hasOverride: {
     studentName: boolean;
     gradeLevel: boolean;
+    strand: boolean;
     section: boolean;
     purpose: boolean;
     dateGenerated: boolean;
@@ -460,6 +466,7 @@ async function loadCertificateDisplayRow(certificateId: string) {
       requestPurpose: documentRequests.purpose,
       requestSchoolYearNeeded: documentRequests.schoolYearNeeded,
       requestGradeLevelNeeded: documentRequests.gradeLevelNeeded,
+      requestStrandNeeded: documentRequests.strandNeeded,
       requestSectionNeeded: documentRequests.sectionNeeded,
       firstName: students.firstName,
       middleName: students.middleName,
@@ -467,6 +474,7 @@ async function loadCertificateDisplayRow(certificateId: string) {
       suffix: students.suffix,
       overrideStudentName: certificates.overrideStudentName,
       overrideGradeLevel: certificates.overrideGradeLevel,
+      overrideStrand: certificates.overrideStrand,
       overrideSection: certificates.overrideSection,
       overridePurpose: certificates.overridePurpose,
       overrideDateGenerated: certificates.overrideDateGenerated,
@@ -491,11 +499,13 @@ function toDisplayRow(row: CertificateDisplayDbRow): CertificateDisplayRow {
     lastName: row.lastName,
     suffix: row.suffix,
     gradeLevel: row.requestGradeLevelNeeded,
+    strand: row.requestStrandNeeded,
     section: row.requestSectionNeeded,
     requestPurpose: row.requestPurpose,
     generatedAt: row.generatedAt,
     overrideStudentName: row.overrideStudentName,
     overrideGradeLevel: row.overrideGradeLevel,
+    overrideStrand: row.overrideStrand,
     overrideSection: row.overrideSection,
     overridePurpose: row.overridePurpose,
     overrideDateGenerated: row.overrideDateGenerated,
@@ -519,6 +529,7 @@ export async function getCertificateEditView(certificateId: string): Promise<Cer
     certificateNumber: row.certificateNumber,
     studentName: fields.name,
     gradeLevel: fields.gradeLevel,
+    strand: fields.strand,
     section: fields.section,
     purpose: fields.purpose,
     dateGenerated: fields.dateGenerated.toISOString(),
@@ -527,6 +538,7 @@ export async function getCertificateEditView(certificateId: string): Promise<Cer
     hasOverride: {
       studentName: effectiveOverride(row.overrideStudentName) !== null,
       gradeLevel: effectiveOverride(row.overrideGradeLevel) !== null,
+      strand: effectiveOverride(row.overrideStrand) !== null,
       section: effectiveOverride(row.overrideSection) !== null,
       purpose: effectiveOverride(row.overridePurpose) !== null,
       dateGenerated: row.overrideDateGenerated !== null,
@@ -536,7 +548,7 @@ export async function getCertificateEditView(certificateId: string): Promise<Cer
   };
 }
 
-const OVERRIDE_FIELDS = ["studentName", "gradeLevel", "section", "purpose", "dateGenerated", "registrarName", "principalName"] as const;
+const OVERRIDE_FIELDS = ["studentName", "gradeLevel", "strand", "section", "purpose", "dateGenerated", "registrarName", "principalName"] as const;
 
 type OverrideField = (typeof OVERRIDE_FIELDS)[number];
 
@@ -550,6 +562,7 @@ export function buildOverrideUpdates(
   const updates: Partial<typeof certificates.$inferInsert> = {};
   if (provided.includes("studentName")) updates.overrideStudentName = parsed.studentName ?? null;
   if (provided.includes("gradeLevel")) updates.overrideGradeLevel = parsed.gradeLevel ?? null;
+  if (provided.includes("strand")) updates.overrideStrand = parsed.strand ?? null;
   if (provided.includes("section")) updates.overrideSection = parsed.section ?? null;
   if (provided.includes("purpose")) updates.overridePurpose = parsed.purpose ?? null;
   if (provided.includes("dateGenerated")) updates.overrideDateGenerated = parsed.dateGenerated ?? null;
@@ -631,7 +644,7 @@ export async function generateCertificatePdf(certificateId: string) {
       template: pickCertificateTemplate(certificate.certificateType, gradeLevel),
       blanks: {
         name,
-        grade: [gradeLevel, section].filter(Boolean).join(" - "),
+        grade: composeGradeValue(gradeLevel, display.strand || section),
         schoolYear,
         lrn: certificate.lrn ?? "",
         purpose,

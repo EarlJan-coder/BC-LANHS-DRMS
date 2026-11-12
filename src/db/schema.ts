@@ -145,6 +145,7 @@ export const documentRequests = pgTable(
     purpose: text("purpose").notNull(),
     schoolYearNeeded: varchar("school_year_needed", { length: 40 }),
     gradeLevelNeeded: varchar("grade_level_needed", { length: 40 }),
+    strandNeeded: varchar("strand_needed", { length: 40 }),
     sectionNeeded: varchar("section_needed", { length: 40 }),
     remarks: text("remarks"),
     status: requestStatusEnum("status").notNull().default("pending"),
@@ -204,6 +205,7 @@ export const certificates = pgTable(
     // for school year / certificate number / type (blockchain hash inputs).
     overrideStudentName: varchar("override_student_name", { length: 200 }),
     overrideGradeLevel: varchar("override_grade_level", { length: 100 }),
+    overrideStrand: varchar("override_strand", { length: 100 }),
     overrideSection: varchar("override_section", { length: 100 }),
     overridePurpose: text("override_purpose"),
     overrideDateGenerated: timestamp("override_date_generated", { withTimezone: true }),
