@@ -1,0 +1,1 @@
+ALTER TABLE "students" ADD COLUMN "last_school_year_attended" varchar(40);
