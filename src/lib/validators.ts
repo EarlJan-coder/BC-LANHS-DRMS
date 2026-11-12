@@ -4,7 +4,6 @@ import { requestStatusEnum } from "@/db/schema";
 export const documentRequestSchema = z.object({
   documentType: z.string().min(2, "Select a document type."),
   purpose: z.string().min(10, "Please describe the request purpose in at least 10 characters."),
-  schoolYearNeeded: z.string().min(1, "School year needed is required."),
   gradeLevelNeeded: z.string().min(1, "Grade level needed is required."),
   sectionNeeded: z.string().trim().max(40, "Section must be 40 characters or fewer.").optional().default(""),
   remarks: z.string().optional(),

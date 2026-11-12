@@ -37,7 +37,6 @@ export function RequestForm() {
         body: JSON.stringify({
           documentType: formData.get("documentType"),
           purpose: formData.get("purpose"),
-          schoolYearNeeded: formData.get("schoolYearNeeded"),
           gradeLevelNeeded: formData.get("gradeLevelNeeded"),
           sectionNeeded: formData.get("sectionNeeded"),
           remarks: formData.get("remarks"),
@@ -92,10 +91,6 @@ export function RequestForm() {
               />
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="schoolYearNeeded">School year needed</Label>
-                <Input id="schoolYearNeeded" name="schoolYearNeeded" required placeholder="2026-2027" />
-              </div>
               <div className="grid gap-2">
                 <Label htmlFor="gradeLevelNeeded">Grade level needed</Label>
                 <Input id="gradeLevelNeeded" name="gradeLevelNeeded" required placeholder="Grade 12" />

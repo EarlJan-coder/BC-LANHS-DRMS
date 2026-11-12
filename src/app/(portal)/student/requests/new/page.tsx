@@ -12,7 +12,9 @@ export default async function SubmitRequestPage() {
     const message =
       reason === "no_record"
         ? "We couldn't find a student record for your account. Set up your profile and add your LRN before submitting a document request."
-        : "Your student profile has no LRN yet. Add your Learner Reference Number on your profile page before submitting a document request.";
+        : reason === "no_school_year"
+          ? "Your student profile has no last school year attended yet. Add it on your profile page before submitting a document request."
+          : "Your student profile has no LRN yet. Add your Learner Reference Number on your profile page before submitting a document request.";
 
     return (
       <div>

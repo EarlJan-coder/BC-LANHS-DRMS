@@ -1,6 +1,24 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { certificateOverrideSchema, profileUpdateSchema, registrationDecisionSchema } from "@/lib/validators";
+import { certificateOverrideSchema, documentRequestSchema, profileUpdateSchema, registrationDecisionSchema } from "@/lib/validators";
+
+describe("documentRequestSchema", () => {
+  it("no longer takes school year needed — it is snapshotted from the profile", () => {
+    const parsed = documentRequestSchema.parse({
+      documentType: "Form 137",
+      purpose: "College scholarship application requirement",
+      gradeLevelNeeded: "Grade 12",
+      schoolYearNeeded: "2026-2027",
+    });
+    assert.equal("schoolYearNeeded" in parsed, false);
+  });
+
+  it("still requires document type, purpose, and grade level", () => {
+    assert.throws(() => documentRequestSchema.parse({ purpose: "x".repeat(11), gradeLevelNeeded: "Grade 12" }));
+    assert.throws(() => documentRequestSchema.parse({ documentType: "Form 137", gradeLevelNeeded: "Grade 12" }));
+    assert.throws(() => documentRequestSchema.parse({ documentType: "Form 137", purpose: "Too short" }));
+  });
+});
 
 describe("certificateOverrideSchema", () => {
   it("accepts the seven editable content fields", () => {
