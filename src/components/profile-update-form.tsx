@@ -29,6 +29,15 @@ export function ProfileUpdateForm({
   const initialAddress = parseAddress(editableValue(address));
   const [addressCity, setAddressCity] = useState(initialAddress.city);
   const [addressBarangay, setAddressBarangay] = useState(initialAddress.barangay);
+  const [addressStreetLine, setAddressStreetLine] = useState(initialAddress.streetLine);
+
+  // Address fields are only required (and only sent) once the student starts
+  // editing the address. A legacy free-text address must not block editing
+  // the school year — the whole point of the no_school_year unblock flow.
+  const addressDirty =
+    addressCity !== initialAddress.city ||
+    addressBarangay !== initialAddress.barangay ||
+    addressStreetLine !== initialAddress.streetLine;
 
   // onSubmit (not <form action>): form actions suppress mid-flight state and
   // auto-reset uncontrolled fields on completion (same fix as auth-form).
@@ -45,9 +54,13 @@ export function ProfileUpdateForm({
           contactNumber: formData.get("contactNumber") ?? undefined,
           email: formData.get("email") ?? undefined,
           lastSchoolYearAttended: formData.get("lastSchoolYearAttended") ?? undefined,
-          addressCity: formData.get("addressCity") ?? undefined,
-          addressBarangay: formData.get("addressBarangay") ?? undefined,
-          addressStreetLine: formData.get("addressStreetLine") ?? undefined,
+          ...(addressDirty
+            ? {
+                addressCity,
+                addressBarangay,
+                addressStreetLine,
+              }
+            : {}),
         }),
       });
       const data = await response.json();
@@ -131,7 +144,7 @@ export function ProfileUpdateForm({
                       <Select
                         id="profile-addressCity"
                         name="addressCity"
-                        required
+                        required={addressDirty}
                         disabled={!hasStudentRecord}
                         value={addressCity}
                         onChange={(event) => {
@@ -156,7 +169,7 @@ export function ProfileUpdateForm({
                       <Select
                         id="profile-addressBarangay"
                         name="addressBarangay"
-                        required
+                        required={addressDirty}
                         disabled={!hasStudentRecord || !addressCity}
                         value={addressBarangay}
                         onChange={(event) => setAddressBarangay(event.target.value)}
@@ -182,9 +195,10 @@ export function ProfileUpdateForm({
                       name="addressStreetLine"
                       autoComplete="address-line1"
                       maxLength={500}
-                      required
+                      required={addressDirty}
                       disabled={!hasStudentRecord}
-                      defaultValue={initialAddress.streetLine}
+                      value={addressStreetLine}
+                      onChange={(event) => setAddressStreetLine(event.target.value)}
                       placeholder="123 Mabini St."
                     />
                   </div>

@@ -88,4 +88,30 @@ describe("updateStudentRecord last school year (integration, local DB)", {
       await cleanup(fixture.userId);
     }
   });
+
+  it("keeps the last school year when the PATCH omits the key entirely", async () => {
+    const fixture = await createStudentFixture();
+    try {
+      await updateStudentRecord(fixture.studentId, {
+        lrn: fixture.lrn,
+        firstName: "Jamie",
+        lastName: "Santos",
+        lastSchoolYearAttended: "2025-2026",
+        enrollmentStatus: "enrolled",
+      });
+      await updateStudentRecord(fixture.studentId, {
+        lrn: fixture.lrn,
+        firstName: "Jamie",
+        lastName: "Santos",
+        enrollmentStatus: "transferred",
+      });
+      const student = await getDb().query.students.findFirst({
+        where: eq(students.id, fixture.studentId),
+      });
+      assert.equal(student?.lastSchoolYearAttended, "2025-2026");
+      assert.equal(student?.enrollmentStatus, "transferred");
+    } finally {
+      await cleanup(fixture.userId);
+    }
+  });
 });

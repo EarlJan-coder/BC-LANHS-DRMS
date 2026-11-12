@@ -163,6 +163,22 @@ describe("student signup (integration, local DB)", { skip: hasDb ? false : "DATA
     assert.match(body.error, /last school year/i);
   });
 
+  it("rejects a city that is not in the offered list", async () => {
+    const payload = signupPayload({ addressCity: "Nowhereville" });
+    const response = await postSignup(payload);
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.match(body.error, /city/i);
+  });
+
+  it("rejects a barangay that does not belong to the chosen city", async () => {
+    const payload = signupPayload({ addressBarangay: "Milagrosa" }); // Milagrosa is Carmona, not Trece Martires
+    const response = await postSignup(payload);
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.match(body.error, /barangay/i);
+  });
+
   for (const field of ["addressCity", "addressBarangay", "addressStreetLine"] as const) {
     it(`rejects signup when ${field} is missing`, async () => {
       const payload = signupPayload();

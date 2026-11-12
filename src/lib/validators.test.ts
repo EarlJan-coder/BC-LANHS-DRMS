@@ -130,6 +130,20 @@ describe("profileUpdateSchema", () => {
     assert.throws(() => profileUpdateSchema.parse({ lastSchoolYearAttended: "x".repeat(41) }));
   });
 
+  it("rejects a city or barangay outside the static dataset", () => {
+    assert.throws(
+      () => profileUpdateSchema.parse({ addressCity: "Nowhereville", addressBarangay: "Aguado" }),
+      /city/i,
+    );
+    assert.throws(
+      () => profileUpdateSchema.parse({ addressCity: "Tanza", addressBarangay: "Milagrosa" }),
+      /barangay/i,
+    );
+    assert.doesNotThrow(() =>
+      profileUpdateSchema.parse({ addressCity: "Tanza", addressBarangay: "Biga", addressStreetLine: "123 Mabini St." }),
+    );
+  });
+
   it("keeps contact number and email optional", () => {
     assert.deepEqual(profileUpdateSchema.parse({}), {});
     assert.deepEqual(profileUpdateSchema.parse({ contactNumber: "09171234567" }), {

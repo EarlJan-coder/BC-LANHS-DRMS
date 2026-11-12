@@ -1,5 +1,30 @@
 import { z } from "zod";
 import { requestStatusEnum } from "@/db/schema";
+import { CITIES } from "@/lib/ph-address";
+
+/**
+ * Server-side guard for the cascading City → Barangay selects: reject pairs
+ * that are not in the static dataset so a crafted POST cannot store an
+ * address the profile form can never prefill.
+ */
+export function refineAddressParts(
+  values: { addressCity?: string; addressBarangay?: string },
+  ctx: z.RefinementCtx,
+) {
+  if (!values.addressCity) return;
+  const barangays = CITIES[values.addressCity];
+  if (!barangays) {
+    ctx.addIssue({ code: "custom", path: ["addressCity"], message: "Select a city from the list." });
+    return;
+  }
+  if (values.addressBarangay && !barangays.includes(values.addressBarangay)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["addressBarangay"],
+      message: "Select a barangay from the list.",
+    });
+  }
+}
 
 export const documentRequestSchema = z.object({
   documentType: z.string().min(2, "Select a document type."),
@@ -31,7 +56,7 @@ export const profileUpdateSchema = z.object({
   addressCity: z.string().trim().min(1, "City is required.").max(100).optional(),
   addressBarangay: z.string().trim().min(1, "Barangay is required.").max(100).optional(),
   addressStreetLine: z.string().trim().min(1, "House no. / street is required.").max(500).optional(),
-});
+}).superRefine(refineAddressParts);
 
 export const studentRecordSchema = z.object({
   lrn: z.string().trim().min(1, "LRN is required."),
