@@ -106,6 +106,7 @@ async function main() {
           email: "student@lanhs.edu.ph",
           contactNumber: "09170000001",
           address: "Luis Aguado community",
+          lastSchoolYearAttended: "2025-2026",
           studentType: "current",
           status: "enrolled",
           enrollmentStatus: "enrolled",

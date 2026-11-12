@@ -42,6 +42,7 @@ export const studentRecordSchema = z.object({
   email: z.union([z.string().trim().email("Enter a valid email address.").max(191), z.literal("")]).optional(),
   contactNumber: z.string().trim().optional(),
   address: z.string().trim().optional(),
+  lastSchoolYearAttended: z.string().trim().max(40).optional(),
   enrollmentStatus: z.enum(["enrolled", "alumni", "transferred", "inactive"]).default("enrolled"),
   registrationStatus: z.enum(["pending", "approved", "declined"]).optional(),
   registrationNote: z.string().trim().max(2000).optional(),

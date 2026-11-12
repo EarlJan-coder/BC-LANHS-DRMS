@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { certificateOverrideSchema, documentRequestSchema, profileUpdateSchema, registrationDecisionSchema } from "@/lib/validators";
+import { certificateOverrideSchema, documentRequestSchema, profileUpdateSchema, registrationDecisionSchema, studentRecordSchema } from "@/lib/validators";
 
 describe("documentRequestSchema", () => {
   it("no longer takes school year needed — it is snapshotted from the profile", () => {
@@ -135,5 +135,19 @@ describe("profileUpdateSchema", () => {
     assert.deepEqual(profileUpdateSchema.parse({ contactNumber: "09171234567" }), {
       contactNumber: "09171234567",
     });
+  });
+});
+
+describe("studentRecordSchema", () => {
+  const base = { lrn: "123456789012", firstName: "Jamie", lastName: "Santos" };
+
+  it("accepts an optional last school year attended and trims it", () => {
+    const parsed = studentRecordSchema.parse({ ...base, lastSchoolYearAttended: " 2025-2026 " });
+    assert.equal(parsed.lastSchoolYearAttended, "2025-2026");
+    assert.equal(studentRecordSchema.parse(base).lastSchoolYearAttended, undefined);
+  });
+
+  it("rejects an over-long last school year attended", () => {
+    assert.throws(() => studentRecordSchema.parse({ ...base, lastSchoolYearAttended: "x".repeat(41) }));
   });
 });

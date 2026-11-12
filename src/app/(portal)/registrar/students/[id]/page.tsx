@@ -37,6 +37,7 @@ export default async function RegistrarStudentDetailsPage({
           <Detail label="Status" value={data.profile.status} />
           <Detail label="Email" value={data.profile.email} />
           <Detail label="Contact" value={data.profile.contactNumber} />
+          <Detail label="Last school year attended" value={data.profile.lastSchoolYearAttended} />
           <Detail label="Address" value={data.profile.address} />
         </CardContent>
       </Card>

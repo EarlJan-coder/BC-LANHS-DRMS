@@ -107,6 +107,7 @@ export async function updateStudentRecord(id: string, values: StudentRecordValue
         email: nextEmail,
         contactNumber: optionalText(values.contactNumber),
         address: optionalText(values.address),
+        lastSchoolYearAttended: optionalText(values.lastSchoolYearAttended),
         status: values.enrollmentStatus,
         enrollmentStatus: values.enrollmentStatus,
         updatedAt: new Date(),
