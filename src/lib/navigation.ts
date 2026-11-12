@@ -37,7 +37,7 @@ export const navigationByRole: Record<
     { label: "Student records", href: "/registrar/students", icon: "GraduationCap" },
     { label: "Certificates", href: "/registrar/certificates", icon: "FileBadge" },
     { label: "Reports", href: "/registrar/reports", icon: "BarChart3" },
-    { label: "Audit logs", href: "/registrar/audit-logs", icon: "ShieldCheck" },
+    { label: "Logs", href: "/registrar/audit-logs", icon: "ShieldCheck" },
   ],
   admin: [
     { label: "Dashboard", href: "/admin/dashboard", icon: "LayoutDashboard" },
