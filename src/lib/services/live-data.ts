@@ -366,6 +366,7 @@ export async function listStudentViews(options: PageOptions | { all?: true } = {
       registrationStatus: users.registrationStatus,
       contactNumber: students.contactNumber,
       address: students.address,
+      lastSchoolYearAttended: students.lastSchoolYearAttended,
       enrollmentStatus: students.enrollmentStatus,
       hasLinkedRecords: sql<boolean>`exists (select 1 from document_requests where document_requests.student_id = ${students.id}) or exists (select 1 from certificates where certificates.student_id = ${students.id})`,
     })
@@ -400,6 +401,7 @@ export async function listStudentViews(options: PageOptions | { all?: true } = {
     phone: row.contactNumber ?? "",
     contactNumber: row.contactNumber ?? "",
     address: row.address ?? "",
+    lastSchoolYearAttended: row.lastSchoolYearAttended ?? "",
     status: row.enrollmentStatus,
     hasLinkedRecords: row.hasLinkedRecords,
   }));
@@ -422,6 +424,7 @@ export async function getStudentDetailView(id: string) {
       userEmail: users.email,
       contactNumber: students.contactNumber,
       address: students.address,
+      lastSchoolYearAttended: students.lastSchoolYearAttended,
       status: students.status,
     })
     .from(students)
@@ -468,6 +471,7 @@ export async function getStudentDetailView(id: string) {
       email: student.email ?? student.userEmail ?? "Not set",
       contactNumber: student.contactNumber ?? "Not set",
       address: student.address ?? "Not set",
+      lastSchoolYearAttended: student.lastSchoolYearAttended ?? "Not set",
       status: student.status,
     },
     requests,
@@ -496,6 +500,7 @@ export async function getCurrentStudentProfile() {
       lrn: students.lrn,
       contactNumber: students.contactNumber,
       address: students.address,
+      lastSchoolYearAttended: students.lastSchoolYearAttended,
     })
     .from(students)
     .where(eq(students.userId, profile.userId))
@@ -510,6 +515,7 @@ export async function getCurrentStudentProfile() {
       lrn: "No student profile linked",
       contactNumber: "Not set",
       address: "Not set",
+      lastSchoolYearAttended: "Not set",
       hasStudentRecord: false,
     } satisfies StudentProfileView;
   }
@@ -520,6 +526,7 @@ export async function getCurrentStudentProfile() {
     lrn: student.lrn,
     contactNumber: student.contactNumber ?? "Not set",
     address: student.address ?? "Not set",
+    lastSchoolYearAttended: student.lastSchoolYearAttended ?? "Not set",
     hasStudentRecord: true,
   } satisfies StudentProfileView;
 }

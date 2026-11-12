@@ -17,6 +17,23 @@ export const updateRequestStatusSchema = z.object({
   rejectionReason: z.string().optional(),
 });
 
+// Student self-service profile edit. Address parts are composed server-side
+// into students.address; each part is optional but must be non-blank when sent
+// (the form sends all three together — the service rejects partial addresses).
+export const profileUpdateSchema = z.object({
+  contactNumber: z.string().trim().max(30).optional(),
+  email: z.string().trim().toLowerCase().email("Enter a valid email address.").max(191).optional(),
+  lastSchoolYearAttended: z
+    .string()
+    .trim()
+    .min(1, "Last school year attended is required.")
+    .max(40, "Last school year attended must be 40 characters or fewer.")
+    .optional(),
+  addressCity: z.string().trim().min(1, "City is required.").max(100).optional(),
+  addressBarangay: z.string().trim().min(1, "Barangay is required.").max(100).optional(),
+  addressStreetLine: z.string().trim().min(1, "House no. / street is required.").max(500).optional(),
+});
+
 export const studentRecordSchema = z.object({
   lrn: z.string().trim().min(1, "LRN is required."),
   firstName: z.string().trim().min(1, "First name is required."),

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { CITIES, CITY_NAMES, composeAddress, barangaysFor } from "./ph-address";
+import { CITIES, CITY_NAMES, composeAddress, barangaysFor, parseAddress } from "./ph-address";
 
 describe("CITIES", () => {
   it("lists the approved cities", () => {
@@ -51,5 +51,32 @@ describe("composeAddress", () => {
       composeAddress({ streetLine: "  123 Mabini St. ", barangay: " Aguado ", city: "Tanza" }),
       "123 Mabini St., Brgy. Aguado, Tanza",
     );
+  });
+});
+
+describe("parseAddress", () => {
+  it("splits a composed address back into its parts", () => {
+    assert.deepEqual(parseAddress("123 Mabini St., Brgy. Aguado, Trece Martires City"), {
+      streetLine: "123 Mabini St.",
+      barangay: "Aguado",
+      city: "Trece Martires City",
+    });
+  });
+
+  it("keeps a legacy free-text address as the street line", () => {
+    assert.deepEqual(parseAddress("12 Mabini Street"), {
+      streetLine: "12 Mabini Street",
+      barangay: "",
+      city: "",
+    });
+  });
+
+  it("round-trips through composeAddress", () => {
+    const parts = { streetLine: "Blk 7 Lot 3 Sampaguita St.", barangay: "Poblacion 2", city: "Tanza" };
+    assert.deepEqual(parseAddress(composeAddress(parts)), parts);
+  });
+
+  it("returns empty parts for an empty string", () => {
+    assert.deepEqual(parseAddress(""), { streetLine: "", barangay: "", city: "" });
   });
 });

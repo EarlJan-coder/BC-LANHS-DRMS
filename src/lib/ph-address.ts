@@ -317,6 +317,36 @@ export function barangaysFor(city: string): string[] {
 }
 
 /**
+ * Split a stored address back into parts. Inverse of {@link composeAddress}
+ * for composed values; legacy free-text addresses come back whole as the
+ * street line with empty city/barangay.
+ */
+export function parseAddress(composed: string): {
+  streetLine: string;
+  barangay: string;
+  city: string;
+} {
+  const trimmed = composed.trim();
+  if (!trimmed) return { streetLine: "", barangay: "", city: "" };
+
+  const segments = trimmed.split(",").map((segment) => segment.trim());
+  let city = "";
+  let barangay = "";
+
+  const last = segments[segments.length - 1];
+  if (CITY_NAMES.includes(last)) {
+    city = segments.pop() ?? "";
+  }
+
+  const next = segments[segments.length - 1];
+  if (next?.startsWith("Brgy. ")) {
+    barangay = (segments.pop() ?? "").slice("Brgy. ".length).trim();
+  }
+
+  return { streetLine: segments.join(", ").trim(), barangay, city };
+}
+
+/**
  * Compose the free-text address stored in `students.address`:
  * `"123 Mabini St., Brgy. Aguado, Trece Martires City"`.
  * Parts are trimmed; empty parts are skipped.

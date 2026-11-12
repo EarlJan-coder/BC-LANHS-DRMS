@@ -27,6 +27,8 @@ export default async function StudentProfilePage() {
           <ProfileUpdateForm
             email={profile.email}
             contactNumber={profile.contactNumber}
+            address={profile.address}
+            lastSchoolYearAttended={profile.lastSchoolYearAttended}
             hasStudentRecord={profile.hasStudentRecord}
             triggerClassName="border-transparent bg-white text-brand hover:bg-rose-50"
           />
@@ -73,6 +75,7 @@ export default async function StudentProfilePage() {
             {profile.hasStudentRecord ? (
               <dl className="grid gap-4 sm:grid-cols-1">
                 <Field label="LRN" value={profile.lrn} />
+                <Field label="Last school year attended" value={profile.lastSchoolYearAttended} />
               </dl>
             ) : (
               <p className="text-sm text-slate-500">No student profile linked.</p>
@@ -87,6 +90,9 @@ export default async function StudentProfilePage() {
                 <MapPin className="h-4 w-4" aria-hidden />
               </SectionIcon>
               <CardTitle>Address</CardTitle>
+              <span className="ml-auto rounded-full bg-brand-soft px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-brand">
+                Editable
+              </span>
             </div>
           </CardHeader>
           <CardContent>
