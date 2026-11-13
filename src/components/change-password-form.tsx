@@ -5,7 +5,8 @@ import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input, Label } from "@/components/ui/input";
+import { Label } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export function ChangePasswordForm({ mustChangePassword }: { mustChangePassword: boolean }) {
   const router = useRouter();
@@ -66,10 +67,9 @@ export function ChangePasswordForm({ mustChangePassword }: { mustChangePassword:
 
         <div className="grid gap-2">
           <Label htmlFor="currentPassword">Current password</Label>
-          <Input
+          <PasswordInput
             id="currentPassword"
             name="currentPassword"
-            type="password"
             autoComplete="current-password"
             minLength={8}
             maxLength={72}
@@ -79,10 +79,9 @@ export function ChangePasswordForm({ mustChangePassword }: { mustChangePassword:
 
         <div className="grid gap-2">
           <Label htmlFor="newPassword">New password</Label>
-          <Input
+          <PasswordInput
             id="newPassword"
             name="newPassword"
-            type="password"
             autoComplete="new-password"
             minLength={8}
             maxLength={72}
@@ -93,10 +92,9 @@ export function ChangePasswordForm({ mustChangePassword }: { mustChangePassword:
 
         <div className="grid gap-2">
           <Label htmlFor="confirmPassword">Confirm new password</Label>
-          <Input
+          <PasswordInput
             id="confirmPassword"
             name="confirmPassword"
-            type="password"
             autoComplete="new-password"
             minLength={8}
             maxLength={72}

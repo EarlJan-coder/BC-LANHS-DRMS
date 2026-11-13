@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label, Select } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 
 type FormState = {
   email: string;
@@ -201,10 +202,9 @@ export function AddAccountForm() {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="password">Placeholder password</Label>
-                  <Input
+                  <PasswordInput
                     id="password"
                     name="password"
-                    type="password"
                     value={form.password}
                     onChange={(event) => updateField("password", event.target.value)}
                     required

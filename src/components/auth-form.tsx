@@ -7,6 +7,7 @@ import { Clock3, MailCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input, Label, Select } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { CITY_NAMES, barangaysFor } from "@/lib/ph-address";
 
 /** Marks a required field label. */
@@ -55,6 +56,13 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
 
     const formData = new FormData(event.currentTarget);
     const signupEmail = isSignup ? String(formData.get("email") ?? "") : "";
+
+    if (isSignup && formData.get("password") !== formData.get("confirmPassword")) {
+      setError("Those passwords do not match.");
+      setLoading(false);
+      return;
+    }
+
     const payload = isSignup
       ? {
           email: formData.get("email"),
@@ -290,10 +298,9 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
           <Label htmlFor="password">
             Password {isSignup ? <Required /> : null}
           </Label>
-          <Input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             autoComplete={isSignup ? "new-password" : "current-password"}
             minLength={isSignup ? 8 : undefined}
             maxLength={72}
@@ -301,6 +308,22 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
           />
           {isSignup ? <p className="text-xs text-slate-500">Use at least 8 characters.</p> : null}
         </div>
+
+        {isSignup ? (
+          <div className="grid gap-2">
+            <Label htmlFor="confirmPassword">
+              Confirm password <Required />
+            </Label>
+            <PasswordInput
+              id="confirmPassword"
+              name="confirmPassword"
+              autoComplete="new-password"
+              minLength={8}
+              maxLength={72}
+              required
+            />
+          </div>
+        ) : null}
 
         {error ? (
           <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

@@ -5,7 +5,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input, Label } from "@/components/ui/input";
+import { Label } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export function ResetPasswordForm({ userId, email }: { userId: string; email: string }) {
   const router = useRouter();
@@ -102,9 +103,8 @@ export function ResetPasswordForm({ userId, email }: { userId: string; email: st
             <form onSubmit={handleSubmit} className="space-y-3 pt-4">
               <div className="space-y-1.5">
                 <Label htmlFor={`reset-password-${userId}`}>New password for {email}</Label>
-                <Input
+                <PasswordInput
                   id={`reset-password-${userId}`}
-                  type="password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   required
