@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { certificates, documentRequests, documentTypes, notifications, students, users } from "@/db/schema";
 import { buildNewRequestNotification, buildRegistrationDecisionNotification } from "@/lib/notifications";
@@ -175,13 +175,22 @@ export async function getNotificationDetail(userId: string, notificationId: stri
     if (!registration || !owner || (owner.role === "student" && registration.id !== userId)) {
       throw new AppError("Notification not found.", 404);
     }
+    // Earliest-created student row, matching listPendingRegistrations: an
+    // account can carry several (shared LRNs, later-linked registrar records).
+    const [studentRecord] = await db
+      .select({ lrn: students.lrn, lastSchoolYearAttended: students.lastSchoolYearAttended })
+      .from(students)
+      .where(eq(students.userId, registration.id))
+      .orderBy(asc(students.createdAt))
+      .limit(1);
     return {
       kind: "registration" as const,
       record: {
         id: registration.id,
         name: [registration.firstName, registration.middleName, registration.lastName].filter(Boolean).join(" "),
         email: registration.email,
-        lrn: registration.lrn ?? "",
+        lrn: registration.lrn?.trim() || studentRecord?.lrn?.trim() || "",
+        lastSchoolYearAttended: studentRecord?.lastSchoolYearAttended ?? "",
         registrationStatus: registration.registrationStatus,
         createdAt: registration.createdAt.toISOString(),
         notification: notificationSummary,

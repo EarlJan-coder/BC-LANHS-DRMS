@@ -15,6 +15,7 @@ export type PendingRegistrationView = {
   name: string;
   email: string;
   lrn: string;
+  lastSchoolYearAttended: string;
   createdAt: string;
 };
 

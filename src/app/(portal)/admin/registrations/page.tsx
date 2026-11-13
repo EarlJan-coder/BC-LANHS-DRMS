@@ -6,7 +6,13 @@ import type { PendingRegistrationView } from "@/lib/types";
 
 const columns = [
   { key: "name", label: "Name", render: (row: PendingRegistrationView) => row.name },
+  { key: "lrn", label: "LRN", render: (row: PendingRegistrationView) => row.lrn },
   { key: "email", label: "Email", render: (row: PendingRegistrationView) => row.email },
+  {
+    key: "lastSchoolYearAttended",
+    label: "Last school year attended",
+    render: (row: PendingRegistrationView) => row.lastSchoolYearAttended,
+  },
   { key: "approve", label: "Approve", render: () => null },
   { key: "decline", label: "Decline", render: () => null },
   { key: "note", label: "Note", render: () => null },

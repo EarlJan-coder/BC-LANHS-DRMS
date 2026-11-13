@@ -42,7 +42,9 @@ export function RegistrationApproveActions({ registration }: { registration: Pen
   return (
     <tr className="hover:bg-rose-50/40">
       <td className="px-4 py-3 font-medium text-slate-800">{registration.name}</td>
+      <td className="px-4 py-3 text-slate-700">{registration.lrn}</td>
       <td className="px-4 py-3 text-slate-700">{registration.email}</td>
+      <td className="px-4 py-3 text-slate-700">{registration.lastSchoolYearAttended}</td>
       <td className="px-4 py-3">
         <Button type="button" onClick={() => decide("approved")} loading={busy === "approved"} disabled={busy !== null}>
           Approve

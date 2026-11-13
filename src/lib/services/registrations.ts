@@ -1,6 +1,6 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/db";
-import { users, type UserRole } from "@/db/schema";
+import { students, users, type UserRole } from "@/db/schema";
 import { sendRegistrationDecisionEmail } from "@/lib/email";
 import type { PendingRegistrationView, RegistrationStatus } from "@/lib/types";
 import { AppError } from "@/lib/utils";
@@ -22,13 +22,39 @@ export async function listPendingRegistrations(): Promise<PendingRegistrationVie
     .where(and(eq(users.role, "student"), eq(users.registrationStatus, "pending")))
     .orderBy(asc(users.createdAt));
 
-  return rows.map((row) => ({
-    id: row.id,
-    name: [row.firstName, row.middleName, row.lastName].filter(Boolean).join(" "),
-    email: row.email,
-    lrn: row.lrn ?? "",
-    createdAt: row.createdAt.toISOString(),
-  }));
+  if (rows.length === 0) return [];
+
+  // Signup creates one student row per registration, but an account can end up
+  // with several (shared LRNs, registrar-created records that link later). Take
+  // the earliest-created row per user so no registration is ever listed twice.
+  const studentRows = await getDb()
+    .select({
+      userId: students.userId,
+      lrn: students.lrn,
+      lastSchoolYearAttended: students.lastSchoolYearAttended,
+    })
+    .from(students)
+    .where(inArray(students.userId, rows.map((row) => row.id)))
+    .orderBy(asc(students.createdAt));
+
+  const studentByUser = new Map<string, (typeof studentRows)[number]>();
+  for (const student of studentRows) {
+    if (student.userId && !studentByUser.has(student.userId)) studentByUser.set(student.userId, student);
+  }
+
+  return rows.map((row) => {
+    const student = studentByUser.get(row.id);
+    return {
+      id: row.id,
+      name: [row.firstName, row.middleName, row.lastName].filter(Boolean).join(" "),
+      email: row.email,
+      // users.lrn is nullable for accounts that predate it; the linked student
+      // record carries the LRN for those.
+      lrn: row.lrn?.trim() || student?.lrn?.trim() || "Not set",
+      lastSchoolYearAttended: student?.lastSchoolYearAttended?.trim() || "Not set",
+      createdAt: row.createdAt.toISOString(),
+    };
+  });
 }
 
 type DecideRegistrationInput = {

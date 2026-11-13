@@ -10,9 +10,9 @@ require("@next/env").loadEnvConfig(process.cwd());
 
 const { eq, inArray, or } = await import("drizzle-orm");
 const { getDb, closeDb } = await import("@/db");
-const { notifications, users } = await import("@/db/schema");
+const { notifications, students, users } = await import("@/db/schema");
 const { buildRegistrationDecisionEmailContent } = await import("@/lib/email");
-const { decideRegistration } = await import("@/lib/services/registrations");
+const { decideRegistration, listPendingRegistrations } = await import("@/lib/services/registrations");
 const { fanOutNewRegistrationNotification } = await import("@/lib/services/notifications");
 
 const hasDb = Boolean(process.env.DATABASE_URL);
@@ -212,6 +212,83 @@ describe("registration decisions and fan-out (integration, local DB)", { skip: h
       assert.equal(status, "declined");
     } finally {
       await cleanup([student.id, actor.id]);
+    }
+  });
+});
+
+describe("listPendingRegistrations (integration, local DB)", { skip: hasDb ? false : "DATABASE_URL not configured" }, () => {
+  it("shows the LRN and last school year attended for each pending registration", async () => {
+    const fromStudentRecord = await createUser("student");
+    const fromUserLrnOnly = await createUser("student");
+    const bare = await createUser("student");
+    const studentLrn = "310000000001";
+    try {
+      await getDb()
+        .insert(students)
+        .values({
+          userId: fromStudentRecord.id,
+          lrn: studentLrn,
+          firstName: "Riley",
+          lastName: "Santos",
+          lastSchoolYearAttended: "2025-2026",
+        });
+      await getDb().update(users).set({ lrn: "310000000002" }).where(eq(users.id, fromUserLrnOnly.id));
+
+      const rows = await listPendingRegistrations();
+
+      const withRecord = rows.find((row) => row.id === fromStudentRecord.id);
+      assert.ok(withRecord);
+      assert.equal(withRecord.lrn, studentLrn);
+      assert.equal(withRecord.lastSchoolYearAttended, "2025-2026");
+
+      const withUserLrn = rows.find((row) => row.id === fromUserLrnOnly.id);
+      assert.ok(withUserLrn);
+      assert.equal(withUserLrn.lrn, "310000000002");
+      assert.equal(withUserLrn.lastSchoolYearAttended, "Not set");
+
+      const withoutDetails = rows.find((row) => row.id === bare.id);
+      assert.ok(withoutDetails);
+      assert.equal(withoutDetails.lrn, "Not set");
+      assert.equal(withoutDetails.lastSchoolYearAttended, "Not set");
+    } finally {
+      await getDb()
+        .delete(students)
+        .where(inArray(students.userId, [fromStudentRecord.id, fromUserLrnOnly.id, bare.id]));
+      await cleanup([fromStudentRecord.id, fromUserLrnOnly.id, bare.id]);
+    }
+  });
+
+  it("lists a registration once even when the account has several student records", async () => {
+    const student = await createUser("student");
+    try {
+      await getDb()
+        .insert(students)
+        .values([
+          {
+            userId: student.id,
+            lrn: "310000000003",
+            firstName: "Riley",
+            lastName: "Santos",
+            lastSchoolYearAttended: "2024-2025",
+            createdAt: new Date("2024-06-01T00:00:00Z"),
+          },
+          {
+            userId: student.id,
+            lrn: "310000000004",
+            firstName: "Riley",
+            lastName: "Santos",
+            lastSchoolYearAttended: "2025-2026",
+            createdAt: new Date("2025-06-01T00:00:00Z"),
+          },
+        ]);
+
+      const rows = await listPendingRegistrations();
+      const matches = rows.filter((row) => row.id === student.id);
+      assert.equal(matches.length, 1);
+      assert.equal(matches[0]?.lastSchoolYearAttended, "2024-2025");
+    } finally {
+      await getDb().delete(students).where(inArray(students.userId, [student.id]));
+      await cleanup([student.id]);
     }
   });
 });

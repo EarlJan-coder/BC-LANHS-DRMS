@@ -310,6 +310,39 @@ describe("getNotificationDetail (integration, local DB)", {
     }
   });
 
+  it("resolves a notification's referenced registration with LRN and school year", async () => {
+    const registrar = await createFixtureUser({ role: "registrar" });
+    const applicant = await createFixtureUser({ role: "student" });
+    const studentLrn = String(Date.now()).slice(-12).padStart(12, "0");
+    const db = getDb();
+    const [student] = await db.insert(students).values({
+      userId: applicant.id,
+      lrn: studentLrn,
+      firstName: "Detail",
+      lastName: "Fixture",
+      email: applicant.email,
+      lastSchoolYearAttended: "2025-2026",
+    }).returning({ id: students.id });
+    const notification = await createFixtureNotification(registrar.id, {
+      title: "New registration",
+      message: "Registration pending review",
+      referenceType: "registration",
+      referenceId: applicant.id,
+    });
+
+    try {
+      const detail = await getNotificationDetail(registrar.id, notification.id);
+      assert.equal(detail.kind, "registration");
+      const record = detail.record as { lrn: string; lastSchoolYearAttended: string };
+      assert.equal(record.lrn, studentLrn);
+      assert.equal(record.lastSchoolYearAttended, "2025-2026");
+    } finally {
+      await db.delete(notifications).where(eq(notifications.id, notification.id));
+      await db.delete(students).where(eq(students.id, student.id));
+      await deleteFixtureUsers([registrar.id, applicant.id]);
+    }
+  });
+
   it("returns a message-only detail when a notification has no reference", async () => {
     const owner = await createFixtureUser({ role: "student" });
     try {
