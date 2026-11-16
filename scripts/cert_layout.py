@@ -20,6 +20,7 @@ Dev-only. Requires pdfminer.six, pdfplumber, and Pillow. Not used at runtime.
 from __future__ import annotations
 
 import hashlib
+import copy
 import json
 import re
 import sys
@@ -552,6 +553,116 @@ def build_template(page_data, blank_fields):
     }
 
 
+def derive_good_moral_jhs(good_moral, page_data):
+    """Derive the junior-high good moral template from the reference page.
+
+    The reference body reads "classified under the Grade ____ strand"; the
+    junior-high wording is "classified as Grade ____" instead. Only the middle
+    body line is re-typeset (its word shapes and inter-word gaps come from the
+    reference line's own glyph metrics); every other line is copied from
+    good-moral unchanged.
+    """
+    layout = copy.deepcopy(good_moral)
+
+    mid = None
+    for i in layout["bodyLineIndices"]:
+        text = "".join(t["t"] for t in layout["lines"][i] if t["kind"] == "text")
+        if "classifiedunderthe" in text:
+            mid = i
+            break
+    if mid is None:
+        raise ValueError("good-moral has no body line with the strand wording")
+
+    ref_line = layout["lines"][mid]
+    blank_tok = next(t for t in ref_line if t["kind"] == "blank")
+    y = ref_line[0]["y"]
+    chars = sorted(
+        (c for c in page_data["chars"] if abs(c["y"] - y) <= 0.6),
+        key=lambda c: c["x"],
+    )
+    runs = split_runs(chars)
+    texts = [run_text(r) for r in runs]
+    blank_i = next((i for i, t in enumerate(texts) if "_" in t), None)
+    if (
+        blank_i is None
+        or texts[:blank_i] != ["National", "High", "School", "classified", "under", "the", "Grade"]
+        or texts[blank_i + 1 :] != ["strand", "for", "the", "school"]
+    ):
+        raise ValueError(f"unexpected good-moral body line: {texts}")
+    if abs(runs[blank_i]["x1"] - blank_tok["x1"]) > 0.01:
+        # The flow below advances past the blank by the run width while the
+        # token ends at the last underscore; a "____."-style run would drift.
+        raise ValueError("good-moral grade blank run and token widths disagree")
+
+    # Inter-word gaps measured on the reference line. The JHS line reuses the
+    # gap at the matching boundary: "classified|as" keeps "classified|under"'s
+    # gap, "as|Grade" keeps "the|Grade"'s, and the tail after the blank keeps
+    # the "blank|strand" onward gaps.
+    gaps = [runs[k + 1]["x"] - runs[k]["x1"] for k in range(len(runs) - 1)]
+    adv = {c["t"]: c["x1"] - c["x"] for c in chars}
+    seed = chars[0]
+
+    seq = [
+        ("copy", runs[0], gaps[0]),
+        ("copy", runs[1], gaps[1]),
+        ("copy", runs[2], gaps[2]),
+        ("copy", runs[3], gaps[3]),
+        ("as", None, gaps[5]),
+        ("copy", runs[6], gaps[6]),
+        ("blank", runs[7], gaps[7]),
+        ("copy", runs[9], gaps[8]),
+        ("copy", runs[10], gaps[9]),
+        ("copy", runs[11], None),
+    ]
+
+    x = runs[0]["x"]
+    tokens = []
+    for kind, run, gap in seq:
+        if kind == "copy":
+            for c in run["chars"]:
+                tokens.append(
+                    {
+                        "kind": "text",
+                        "t": c["t"],
+                        "x": round(x + c["x"] - run["x"], 2),
+                        "y": c["y"],
+                        "size": c["size"],
+                        "font": c["font"],
+                        "color": c["color"],
+                    }
+                )
+            x += run["x1"] - run["x"]
+        elif kind == "as":
+            for t, rel in (("a", 0.0), ("s", adv["a"])):
+                tokens.append(
+                    {
+                        "kind": "text",
+                        "t": t,
+                        "x": round(x + rel, 2),
+                        "y": seed["y"],
+                        "size": seed["size"],
+                        "font": seed["font"],
+                        "color": seed["color"],
+                    }
+                )
+            x += adv["a"] + adv["s"]
+        else:
+            token = copy.deepcopy(blank_tok)
+            delta = x - token["x"]
+            token["x"] = round(x, 2)
+            token["x1"] = round(token["x1"] + delta, 2)
+            if token.get("underline"):
+                token["underline"]["x"] = round(token["underline"]["x"] + delta, 2)
+                token["underline"]["x1"] = round(token["underline"]["x1"] + delta, 2)
+            tokens.append(token)
+            x += run["x1"] - run["x"]
+        if gap is not None:
+            x += gap
+
+    layout["lines"][mid] = tokens
+    return layout
+
+
 def ts_escape(text: str) -> str:
     out = []
     for ch in text:
@@ -634,6 +745,8 @@ def generate() -> None:
                     src = TMP_IMG_DIR / im["src"]
                     asset_hashes[im["asset"]] = (src, hashlib.md5(src.read_bytes()).hexdigest())
             layouts[spec["key"]] = build_template(data, spec["blanks"])
+            if spec["key"] == "good-moral":
+                layouts["good-moral-jhs"] = derive_good_moral_jhs(layouts["good-moral"], data)
 
     # Write deduped canonical PNG assets.
     from PIL import Image
@@ -651,6 +764,7 @@ def generate() -> None:
         print(f"asset: {dest.relative_to(ROOT)} <- {src.name}")
 
     # Emit the TypeScript layout module.
+    key_union = " | ".join(f'"{k}"' for k in layouts)
     chunks = []
     for key, layout in layouts.items():
         lines_ts = ",\n".join(
@@ -708,7 +822,7 @@ export type CertToken =
   | {{ kind: "rule"; x: number; x1: number; y: number; h: number }}
   | {{ kind: "image"; asset: string; x: number; y: number; w: number; h: number }};
 
-export type CertTemplateKey = "good-moral" | "enrolment-jhs" | "enrolment-shs" | "graduation";
+export type CertTemplateKey = {key_union};
 
 export interface CertTemplateLayout {{
   lines: CertToken[][];

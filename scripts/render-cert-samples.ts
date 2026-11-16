@@ -22,12 +22,19 @@ import type { CertTemplateKey } from "../src/lib/services/certificate-layouts";
 
 const OUT_DIR = join(process.cwd(), "out", "cert-samples");
 
-const TEMPLATES: CertTemplateKey[] = ["good-moral", "enrolment-jhs", "enrolment-shs", "graduation"];
+const TEMPLATES: CertTemplateKey[] = ["good-moral", "good-moral-jhs", "enrolment-jhs", "enrolment-shs", "graduation"];
 
 const FILLED: Record<CertTemplateKey, CertBlankValues> = {
   "good-moral": {
     name: "Maria Clara Santos Dela Cruz",
     grade: "11 - STEM",
+    schoolYear: "2026-2027",
+    day: "12",
+    month: "November 2026",
+  },
+  "good-moral-jhs": {
+    name: "Maria Clara Santos Dela Cruz",
+    grade: "9 - Diamond",
     schoolYear: "2026-2027",
     day: "12",
     month: "November 2026",

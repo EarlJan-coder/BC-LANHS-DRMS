@@ -17,6 +17,16 @@ function blankFields(key: CertTemplateKey): string[] {
     .flatMap((token) => (token.kind === "blank" ? [token.field] : []));
 }
 
+/** Body wording of a template, normalized so glyph-level token splitting is invisible. */
+function bodyText(key: CertTemplateKey): string {
+  const layout = CERT_LAYOUTS[key];
+  return layout.bodyLineIndices
+    .flatMap((index) => layout.lines[index])
+    .map((token) => (token.kind === "blank" ? `[${token.field}]` : token.kind === "text" ? token.t : ""))
+    .join("")
+    .replace(/\s+/g, "");
+}
+
 describe("pickCertificateTemplate", () => {
   it("routes the three reference certificate types to their templates", () => {
     assert.equal(pickCertificateTemplate("Good Moral Certificate", "11"), "good-moral");
@@ -34,6 +44,22 @@ describe("pickCertificateTemplate", () => {
     assert.equal(pickCertificateTemplate("Certificate of Enrollment", "12"), "enrolment-shs");
     assert.equal(pickCertificateTemplate("Certificate of Enrollment", "9 - Diamond"), "enrolment-jhs");
     assert.equal(pickCertificateTemplate("Certificate of Enrollment", "10"), "enrolment-jhs");
+  });
+
+  it("uses the junior-high good moral wording for grades 7-10", () => {
+    assert.equal(pickCertificateTemplate("Good Moral Certificate", "7"), "good-moral-jhs");
+    assert.equal(pickCertificateTemplate("Good Moral Certificate", "9 - Diamond"), "good-moral-jhs");
+    assert.equal(pickCertificateTemplate("Good Moral Certificate", "10"), "good-moral-jhs");
+    assert.equal(pickCertificateTemplate("Good Moral Certificate", "Grade 8"), "good-moral-jhs");
+    // Unparsable grades fall back to the junior-high wording.
+    assert.equal(pickCertificateTemplate("Good Moral Certificate", "unknown"), "good-moral-jhs");
+  });
+
+  it("keeps the strand good moral wording for grade 11/12", () => {
+    assert.equal(pickCertificateTemplate("Good Moral Certificate", "11"), "good-moral");
+    assert.equal(pickCertificateTemplate("Good Moral Certificate", "11 - ABM"), "good-moral");
+    assert.equal(pickCertificateTemplate("Good Moral Certificate", "Grade 12"), "good-moral");
+    assert.equal(pickCertificateTemplate("Good Moral Certificate", "12"), "good-moral");
   });
 
   it("returns null for certificate types without a reference template", () => {
@@ -58,6 +84,21 @@ describe("CERT_LAYOUTS", () => {
       assert.ok(layout.firstBodyY > 0, `${key} has a body baseline`);
       assert.ok(layout.bodyLeading > 10 && layout.bodyLeading < 30, `${key} leading`);
     }
+  });
+
+  it("gives the junior-high good moral template the same blank slots", () => {
+    assert.deepEqual(blankFields("good-moral-jhs"), ["name", "grade", "schoolYear", "day", "month"]);
+  });
+
+  it("uses the junior-high wording in the good moral body", () => {
+    assert.equal(
+      bodyText("good-moral-jhs"),
+      "Thisistocertifythat[name]isabonafidestudentofLuisAguadoNationalHighSchoolclassifiedasGrade[grade]fortheschoolyear[schoolYear].",
+    );
+    assert.equal(
+      bodyText("good-moral"),
+      "Thisistocertifythat[name]isabonafidestudentofLuisAguadoNationalHighSchoolclassifiedundertheGrade[grade]strandfortheschoolyear[schoolYear].",
+    );
   });
 });
 
@@ -88,14 +129,14 @@ describe("manilaDateParts", () => {
 
 describe("composeGradeValue", () => {
   it("composes the grade with the strand or section qualifier", () => {
-    assert.equal(composeGradeValue("11", "Academic-Track"), "11 - Academic-Track");
+    assert.equal(composeGradeValue("11", "ABM"), "11 - ABM");
     assert.equal(composeGradeValue("9", "Sampaguita"), "9 - Sampaguita");
-    assert.equal(composeGradeValue("12", "Technical-Track"), "12 - Technical-Track");
+    assert.equal(composeGradeValue("12", "HUMSS"), "12 - HUMSS");
     assert.equal(composeGradeValue("9", ""), "9");
   });
 
   it("strips a legacy 'Grade ' prefix so templates never print it twice", () => {
-    assert.equal(composeGradeValue("Grade 12", "Academic-Track"), "12 - Academic-Track");
+    assert.equal(composeGradeValue("Grade 12", "ABM"), "12 - ABM");
     assert.equal(composeGradeValue("grade 10", null), "10");
     assert.equal(composeGradeValue(null, "Sampaguita"), "Sampaguita");
     assert.equal(composeGradeValue(undefined, undefined), "");
@@ -104,7 +145,7 @@ describe("composeGradeValue", () => {
 
 describe("renderCertificatePdf", () => {
   it("renders every reference template to a PDF buffer", async () => {
-    for (const template of ["good-moral", "enrolment-jhs", "enrolment-shs", "graduation"] as const) {
+    for (const template of ["good-moral", "good-moral-jhs", "enrolment-jhs", "enrolment-shs", "graduation"] as const) {
       const bytes = await renderCertificatePdf({
         template,
         blanks: { name: "Test Student", schoolYear: "2026-2027" },

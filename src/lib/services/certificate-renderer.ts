@@ -65,16 +65,17 @@ export interface CertificateRenderOptions {
 }
 
 /** Matches the certificate-type routing the body text already uses. The COE
- * template has two reference pages: grades 7-10 use the junior-high wording
- * ("classified as Grade ____") and grades 11-12 the senior-high wording
- * ("classified under the Grade ____ strand"). Legacy free-text grade values
- * ("Grade 12") are parsed by their first number; unparsable grades are JHS. */
+ * and Good Moral templates have two wordings each: grades 7-10 use the
+ * junior-high wording ("classified as Grade ____") and grades 11-12 the
+ * senior-high wording ("classified under the Grade ____ strand"). Legacy
+ * free-text grade values ("Grade 12") are parsed by their first number;
+ * unparsable grades are JHS. */
 export function pickCertificateTemplate(type: string, gradeLevel: string): CertTemplateKey | null {
   const value = type.toLowerCase();
   const grade = Number.parseInt((gradeLevel.match(/\d+/) ?? [])[0] ?? "", 10);
   const seniorHigh = grade === 11 || grade === 12;
   if (value.includes("good moral")) {
-    return "good-moral";
+    return seniorHigh ? "good-moral" : "good-moral-jhs";
   }
   if (value.includes("graduat")) {
     return "graduation";
