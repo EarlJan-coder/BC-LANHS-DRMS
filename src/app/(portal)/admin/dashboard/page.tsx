@@ -38,7 +38,7 @@ export default async function AdminDashboardPage() {
           columns={[
             { key: "action", label: "Action", render: (row) => row.action },
             { key: "reference", label: "Reference", render: (row) => row.referenceId },
-            { key: "role", label: "Actor role", render: (row) => row.actorRole },
+            { key: "role", label: "Role", render: (row) => row.actorRole },
             { key: "status", label: "Chain status", render: (row) => row.status },
             { key: "created", label: "Created", render: (row) => row.createdAt },
           ]}
