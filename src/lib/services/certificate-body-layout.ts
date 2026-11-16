@@ -79,31 +79,49 @@ function isPlaceholderField(name: string): name is CertBlankField {
   return (PLACEHOLDER_FIELDS as readonly string[]).includes(name);
 }
 
-/** Split one whitespace-free word into text and placeholder runs; `**` toggles bold. */
-function tokenizeWord(word: string): Run[] {
-  const segments = word.split("**");
-  const balanced = segments.length % 2 === 1;
-  const parts = balanced ? segments.map((text, index) => ({ text, bold: index % 2 === 1 })) : [{ text: word, bold: false }];
-
+/** Split a whitespace-free piece into text and placeholder runs sharing one bold flag. */
+function tokenizePiece(piece: string, bold: boolean): Run[] {
   const runs: Run[] = [];
-  for (const part of parts) {
-    let cursor = 0;
-    for (const match of part.text.matchAll(PLACEHOLDER_PATTERN)) {
-      if (!isPlaceholderField(match[1])) continue;
-      if (match.index > cursor) runs.push({ kind: "text", text: part.text.slice(cursor, match.index), bold: part.bold });
-      runs.push({ kind: "field", field: match[1] });
-      cursor = match.index + match[0].length;
-    }
-    if (cursor < part.text.length) runs.push({ kind: "text", text: part.text.slice(cursor), bold: part.bold });
+  let cursor = 0;
+  for (const match of piece.matchAll(PLACEHOLDER_PATTERN)) {
+    if (!isPlaceholderField(match[1])) continue;
+    if (match.index > cursor) runs.push({ kind: "text", text: piece.slice(cursor, match.index), bold });
+    runs.push({ kind: "field", field: match[1] });
+    cursor = match.index + match[0].length;
   }
+  if (cursor < piece.length) runs.push({ kind: "text", text: piece.slice(cursor), bold });
   return runs;
+}
+
+/** `**` toggles bold across a paragraph (odd segments bold); an unbalanced paragraph is literal. Words may span segments. */
+function parseParagraph(paragraph: string): Run[][] {
+  const split = paragraph.split("**");
+  const balanced = split.length % 2 === 1;
+  const segments = balanced ? split : [paragraph];
+
+  const words: Run[][] = [];
+  let current: Run[] = [];
+  segments.forEach((segment, index) => {
+    const bold = balanced && index % 2 === 1;
+    for (const piece of segment.split(/(\s+)/)) {
+      if (!piece) continue;
+      if (/^\s+$/.test(piece)) {
+        if (current.length) words.push(current);
+        current = [];
+      } else {
+        current.push(...tokenizePiece(piece, bold));
+      }
+    }
+  });
+  if (current.length) words.push(current);
+  return words;
 }
 
 function parseParagraphs(body: string): Run[][][] {
   const normalized = body.replace(PLACEHOLDER_PATTERN, "{{$1}}");
   return normalized
     .split(/\n\s*\n/)
-    .map((paragraph) => paragraph.split(/\s+/).filter(Boolean).map(tokenizeWord))
+    .map(parseParagraph)
     .filter((words) => words.length > 0);
 }
 

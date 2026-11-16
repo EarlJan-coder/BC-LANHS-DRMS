@@ -99,6 +99,19 @@ describe("planBodyLayout", () => {
     assert.equal(ops.find((o) => o.text === "school")?.font, "bookman");
   });
 
+  it("renders a multi-word **bold phrase** bold with no literal asterisks", () => {
+    const { ops } = plan("is a **bold phrase** here, **{{name}}** and **GRADUATE**,", { name: "Ana Reyes" });
+    for (const text of ["bold", "phrase", "Ana Reyes", "GRADUATE"]) {
+      assert.equal(ops.find((o) => o.text === text)?.font, "bookmanBold", text);
+    }
+    assert.equal(ops.find((o) => o.text === "here,")?.font, "bookman");
+    assert.ok(ops.every((o) => !o.text.includes("*")), "no literal asterisks");
+    const grad = ops.find((o) => o.text === "GRADUATE");
+    const comma = ops.find((o) => o.text === ",");
+    assert.ok(grad && comma);
+    assert.ok(Math.abs(comma.x - (grad.x + opWidth(grad))) < 0.01, "punctuation hugs the bold word");
+  });
+
   it("treats unbalanced ** literally", () => {
     const { ops } = plan("odd **word here");
     assert.ok(ops.some((o) => o.text === "**word" && o.font === "bookman"));
