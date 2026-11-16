@@ -9,16 +9,32 @@ import { z } from "zod";
 const TEMPLATE_KEYS = Object.keys(DEFAULT_WORDING) as [CertTemplateKey, ...CertTemplateKey[]];
 const templateKeySchema = z.enum(TEMPLATE_KEYS);
 
-const PLACEHOLDER_PATTERN = /\{\{\s*[A-Za-z]+\s*\}\}/g;
 const PLACEHOLDER_MESSAGE =
   "Check the placeholders — use {{name}}, {{grade}}, {{schoolYear}}, {{lrn}}, {{purpose}}, {{day}} or {{month}}.";
 
+/**
+ * Every `{{` occurrence must be the start of a full placeholder match with a
+ * known field, and every `}}` occurrence must be the end of such a match.
+ * Anything else — unknown fields, malformed placeholders, or braces that
+ * straddle a match boundary — is invalid.
+ */
 function hasValidPlaceholders(body: string): boolean {
   const known: readonly string[] = PLACEHOLDER_FIELDS;
-  const matches = body.match(PLACEHOLDER_PATTERN) ?? [];
-  if (!matches.every((match) => known.includes(match.slice(2, -2).trim()))) return false;
-  const rest = body.replace(PLACEHOLDER_PATTERN, "");
-  return !rest.includes("{{") && !rest.includes("}}");
+  const starts = new Set<number>();
+  const ends = new Set<number>();
+  const pattern = /\{\{\s*([A-Za-z]+)\s*\}\}/g;
+  for (let match = pattern.exec(body); match !== null; match = pattern.exec(body)) {
+    if (!known.includes(match[1])) return false;
+    starts.add(match.index);
+    ends.add(match.index + match[0].length);
+  }
+  for (let i = body.indexOf("{{"); i !== -1; i = body.indexOf("{{", i + 1)) {
+    if (!starts.has(i)) return false;
+  }
+  for (let i = body.indexOf("}}"); i !== -1; i = body.indexOf("}}", i + 1)) {
+    if (!ends.has(i + 2)) return false;
+  }
+  return true;
 }
 
 const documentTemplateWordingSchema = z.object({

@@ -125,6 +125,36 @@ describe("document template wording (integration, local DB)", {
     assert.equal(await readRow(), undefined);
   });
 
+  it("rejects stray braces that are not part of a placeholder", async () => {
+    const defaults = DEFAULT_WORDING[TEMPLATE];
+    for (const body of ["{{{name}}", "{{name}}}"]) {
+      await assert.rejects(
+        saveDocumentTemplateWording({
+          template: TEMPLATE,
+          title: defaults.title,
+          body,
+          principalTitle: defaults.principalTitle,
+          registrarTitle: defaults.registrarTitle,
+        }),
+        (error: unknown) => error instanceof ZodError && /placeholder/.test(error.message),
+        body,
+      );
+    }
+    assert.equal(await readRow(), undefined);
+  });
+
+  it("accepts text with single braces", async () => {
+    const defaults = DEFAULT_WORDING[TEMPLATE];
+    const saved = await saveDocumentTemplateWording({
+      template: TEMPLATE,
+      title: defaults.title,
+      body: "Grade {A} for {{name}}.",
+      principalTitle: defaults.principalTitle,
+      registrarTitle: defaults.registrarTitle,
+    });
+    assert.equal(saved.body, "Grade {A} for {{name}}.");
+  });
+
   it("accepts every known placeholder, including spaced ones", async () => {
     const defaults = DEFAULT_WORDING[TEMPLATE];
     const saved = await saveDocumentTemplateWording({
