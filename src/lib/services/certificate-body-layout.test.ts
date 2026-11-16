@@ -112,6 +112,57 @@ describe("planBodyLayout", () => {
     assert.ok(Math.abs(comma.x - (grad.x + opWidth(grad))) < 0.01, "punctuation hugs the bold word");
   });
 
+  describe("value boundaries inside a word", () => {
+    const values = { schoolYear: "2025-2026", name: "Ana Reyes", grade: "11 - STEM" };
+    const gapBetween = (ops: BodyOp[], a: string, b: string): number => {
+      const left = ops.find((o) => o.text === a);
+      const right = ops.find((o) => o.text === b);
+      assert.ok(left && right, `ops "${a}" and "${b}" present`);
+      return right.x - (left.x + opWidth(left));
+    };
+    const space = () => fonts.bookman.widthOfTextAtSize(" ", 12);
+
+    it("forces a space between text and a value when both sides are alphanumeric", () => {
+      const { ops } = plan("the year{{schoolYear}}.", values);
+      assert.ok(gapBetween(ops, "year", "2025-2026") >= 0.9 * space());
+      assert.ok(Math.abs(gapBetween(ops, "2025-2026", ".")) <= 0.01);
+    });
+
+    it("keeps punctuation flush on either side of a value", () => {
+      const comma = plan("{{name}},bearing", values).ops;
+      assert.ok(Math.abs(gapBetween(comma, "Ana Reyes", ",bearing")) <= 0.01);
+      const parens = plan("({{name}})", values).ops;
+      assert.ok(Math.abs(gapBetween(parens, "(", "Ana Reyes")) <= 0.01);
+      assert.ok(Math.abs(gapBetween(parens, "Ana Reyes", ")")) <= 0.01);
+    });
+
+    it("separates two adjacent values", () => {
+      const { ops } = plan("{{name}}{{grade}}", values);
+      assert.ok(gapBetween(ops, "Ana Reyes", "11 - STEM") >= 0.9 * space());
+    });
+
+    it("spaces an empty value's underscore run from glued text", () => {
+      const { ops } = plan("year{{schoolYear}}.");
+      const run = ops.find((o) => /^_+$/.test(o.text));
+      assert.ok(run);
+      assert.ok(gapBetween(ops, "year", run.text) >= 0.9 * space());
+    });
+
+    it("never auto-spaces text against text, including across bold segments", () => {
+      const { ops } = plan("**GRADUATE**of", values);
+      assert.ok(Math.abs(gapBetween(ops, "GRADUATE", "of")) <= 0.01);
+    });
+
+    it("counts the forced gap in the word width so lines stay inside the margins", () => {
+      const filler = Array.from({ length: 40 }, () => "wording").join(" ");
+      const { ops } = plan(`${filler} year{{schoolYear}} ${filler}`, values);
+      for (const row of lines(ops)) {
+        const last = row[row.length - 1];
+        assert.ok(last.x + opWidth(last) <= RIGHT_EDGE + 0.01);
+      }
+    });
+  });
+
   it("treats unbalanced ** literally", () => {
     const { ops } = plan("odd **word here");
     assert.ok(ops.some((o) => o.text === "**word" && o.font === "bookman"));

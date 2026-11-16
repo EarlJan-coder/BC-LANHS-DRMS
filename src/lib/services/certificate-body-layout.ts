@@ -64,6 +64,8 @@ const BOLD_VARIANT: Record<CertFontKey, CertFontKey> = {
   wingdings: "wingdings",
 };
 
+/** A value glued to a neighbouring letter or digit would read as one word, so it is forced a space. */
+const ALPHANUMERIC = /[\p{L}\p{N}]/u;
 const PLACEHOLDER_PATTERN = /\{\{\s*([A-Za-z]+)\s*\}\}/g;
 
 type Run = { kind: "text"; text: string; bold: boolean } | { kind: "field"; field: CertBlankField };
@@ -73,6 +75,14 @@ interface MeasuredRun {
   font: CertFontKey;
   width: number;
   isValue: boolean;
+  isField: boolean;
+  gapBefore: number;
+  /** Underscore runs stand in for a word, so they count as alphanumeric at both edges. */
+  wordy: boolean;
+}
+
+function isWordChar(run: MeasuredRun, char: string): boolean {
+  return run.wordy || ALPHANUMERIC.test(char);
 }
 
 function isPlaceholderField(name: string): name is CertBlankField {
@@ -135,17 +145,25 @@ function measureWord(runs: Run[], input: PlanBodyInput, size: number): Word {
   const measured = runs.map((run): MeasuredRun => {
     if (run.kind === "text") {
       const font = run.bold ? boldFont : bodyFont;
-      return { text: run.text, font, width: fonts[font].widthOfTextAtSize(run.text, size), isValue: false };
+      return { text: run.text, font, width: fonts[font].widthOfTextAtSize(run.text, size), isValue: false, isField: false, gapBefore: 0, wordy: false };
     }
     const value = (values[run.field] ?? "").trim();
     if (value) {
-      return { text: value, font: boldFont, width: fonts[boldFont].widthOfTextAtSize(value, size), isValue: true };
+      return { text: value, font: boldFont, width: fonts[boldFont].widthOfTextAtSize(value, size), isValue: true, isField: true, gapBefore: 0, wordy: false };
     }
     const glyph = fonts[boldFont].widthOfTextAtSize("_", size);
     const text = "_".repeat(Math.max(1, Math.round(slotWidth(run.field) / glyph)));
-    return { text, font: boldFont, width: fonts[boldFont].widthOfTextAtSize(text, size), isValue: false };
+    return { text, font: boldFont, width: fonts[boldFont].widthOfTextAtSize(text, size), isValue: false, isField: true, gapBefore: 0, wordy: true };
   });
-  return { runs: measured, width: measured.reduce((sum, run) => sum + run.width, 0) };
+  const space = fonts[bodyFont].widthOfTextAtSize(" ", size);
+  for (let i = 1; i < measured.length; i++) {
+    const prev = measured[i - 1];
+    const next = measured[i];
+    if ((prev.isField || next.isField) && isWordChar(prev, prev.text.slice(-1)) && isWordChar(next, next.text[0])) {
+      next.gapBefore = space;
+    }
+  }
+  return { runs: measured, width: measured.reduce((sum, run) => sum + run.gapBefore + run.width, 0) };
 }
 
 /** Greedy wrap one paragraph; returns null when a line cannot hold its words at this size. */
@@ -198,6 +216,7 @@ function typesetAtSize(input: PlanBodyInput, paragraphs: Run[][][], size: number
       let cursor = bodyMargin + (i === 0 ? bodyIndent : 0);
       for (const word of line) {
         for (const run of word.runs) {
+          cursor += run.gapBefore;
           const op: BodyOp = { text: run.text, x: cursor, y, size, font: run.font };
           if (run.isValue) op.underline = { x: cursor, width: run.width };
           ops.push(op);
