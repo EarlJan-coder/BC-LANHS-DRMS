@@ -76,12 +76,20 @@ export async function saveDocumentTemplateWording(input: unknown): Promise<Templ
   await assertBodyFits(template, values.body);
 
   const defaults = DEFAULT_WORDING[template];
+  // A value equal to its default stores null; a blank on a null-default field
+  // means "no opinion" and also stores null, while "" on a string-default
+  // field is a deliberate blank and stores "".
   const columns = {
-    title: values.title === defaults.title ? null : values.title,
-    body: values.body === defaults.body ? null : values.body,
-    principalTitle: values.principalTitle === defaults.principalTitle ? null : values.principalTitle,
-    registrarTitle: values.registrarTitle === defaults.registrarTitle ? null : values.registrarTitle,
+    title: values.title === (defaults.title ?? "") ? null : values.title,
+    body: values.body === (defaults.body ?? "") ? null : values.body,
+    principalTitle: values.principalTitle === (defaults.principalTitle ?? "") ? null : values.principalTitle,
+    registrarTitle: values.registrarTitle === (defaults.registrarTitle ?? "") ? null : values.registrarTitle,
   };
+  if (Object.values(columns).every((value) => value === null)) {
+    // A save identical to the defaults stores no override row at all.
+    await getDb().delete(documentTemplateWording).where(eq(documentTemplateWording.templateKey, template));
+    return mergeWithDefaults(template, undefined);
+  }
   const [row] = await getDb()
     .insert(documentTemplateWording)
     .values({ templateKey: template, ...columns, updatedAt: new Date() })

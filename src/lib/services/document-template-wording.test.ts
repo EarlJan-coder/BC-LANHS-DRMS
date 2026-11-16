@@ -18,32 +18,42 @@ const { TooLongBodyError } = await import("@/lib/services/certificate-body-layou
 
 const hasDb = Boolean(process.env.DATABASE_URL);
 const TEMPLATE = "good-moral";
+const ENROLMENT = "enrolment-jhs";
 
 type WordingRow = typeof documentTemplateWording.$inferSelect;
-let savedRow: WordingRow | undefined;
+const savedRows = new Map<string, WordingRow>();
 
-async function readRow() {
-  const [row] = await getDb().select().from(documentTemplateWording).where(eq(documentTemplateWording.templateKey, TEMPLATE));
+async function readRow(template: string = TEMPLATE) {
+  const [row] = await getDb().select().from(documentTemplateWording).where(eq(documentTemplateWording.templateKey, template));
   return row;
 }
 
-async function clearRow() {
-  await getDb().delete(documentTemplateWording).where(eq(documentTemplateWording.templateKey, TEMPLATE));
+async function clearRow(template: string = TEMPLATE) {
+  await getDb().delete(documentTemplateWording).where(eq(documentTemplateWording.templateKey, template));
 }
 
 before(async () => {
   if (!hasDb) return;
-  savedRow = await readRow();
+  for (const template of [TEMPLATE, ENROLMENT]) {
+    const row = await readRow(template);
+    if (row) savedRows.set(template, row);
+  }
 });
 
 beforeEach(async () => {
-  if (hasDb) await clearRow();
+  if (hasDb) {
+    await clearRow(TEMPLATE);
+    await clearRow(ENROLMENT);
+  }
 });
 
 after(async () => {
   if (hasDb) {
-    await clearRow();
-    if (savedRow) await getDb().insert(documentTemplateWording).values(savedRow);
+    await clearRow(TEMPLATE);
+    await clearRow(ENROLMENT);
+    for (const row of savedRows.values()) {
+      await getDb().insert(documentTemplateWording).values(row);
+    }
   }
   await closeDb();
 });
@@ -90,6 +100,43 @@ describe("document template wording (integration, local DB)", {
     assert.equal((await readRow()).registrarTitle, "");
     const all = await getDocumentTemplateWording();
     assert.equal(all[TEMPLATE].registrarTitle, "");
+  });
+
+  it("stores no override when a save matches the defaults", async () => {
+    const defaults = DEFAULT_WORDING[ENROLMENT];
+    assert.equal(defaults.registrarTitle, null);
+    // A blank on a null-default field means "no opinion", so a save with the
+    // exact effective values must write no override row at all.
+    const saved = await saveDocumentTemplateWording({
+      template: ENROLMENT,
+      title: defaults.title,
+      body: defaults.body,
+      principalTitle: defaults.principalTitle,
+      registrarTitle: "",
+    });
+    assert.deepEqual(saved, defaults);
+    assert.equal(await readRow(ENROLMENT), undefined);
+    assert.deepEqual((await getDocumentTemplateWording())[ENROLMENT], defaults);
+
+    // The same save over an existing override removes it: the template must
+    // print identically to a fresh install.
+    await saveDocumentTemplateWording({
+      template: ENROLMENT,
+      title: "Custom",
+      body: defaults.body,
+      principalTitle: defaults.principalTitle,
+      registrarTitle: "",
+    });
+    assert.ok(await readRow(ENROLMENT));
+    await saveDocumentTemplateWording({
+      template: ENROLMENT,
+      title: defaults.title,
+      body: defaults.body,
+      principalTitle: defaults.principalTitle,
+      registrarTitle: "",
+    });
+    assert.equal(await readRow(ENROLMENT), undefined);
+    assert.deepEqual((await getDocumentTemplateWording())[ENROLMENT], defaults);
   });
 
   it("trims values before comparing and storing", async () => {
