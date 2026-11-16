@@ -263,6 +263,20 @@ describe("renderCertificatePdf wording integration", () => {
       token.t = original;
     }
   });
+
+  it("falls back to the verbatim path when a fill-in value cannot fit", async () => {
+    // Real stored values can exceed the WORST_CASE_BLANKS validation envelope;
+    // rendering must still produce the complete verbatim path, never throw.
+    const options = {
+      template: "good-moral" as const,
+      blanks: { name: "X".repeat(200) },
+      signatureNames: TEST_NAMES,
+    };
+    const bytes = await renderCertificatePdf({ ...options, wording: DEFAULT_WORDING["good-moral"] });
+    assert.equal(Buffer.from(bytes.slice(0, 5)).toString("latin1"), "%PDF-");
+    const verbatim = await renderCertificatePdf(options);
+    assert.deepEqual(await drawStream(bytes), await drawStream(verbatim), "an unfittable body draws exactly the verbatim path");
+  });
 });
 
 describe("planWordingDraw", () => {

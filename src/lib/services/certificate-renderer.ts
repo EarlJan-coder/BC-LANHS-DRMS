@@ -12,7 +12,7 @@ import type {
   CertTemplateLayout,
   CertToken,
 } from "@/lib/services/certificate-layouts";
-import { bodyFontAndSize, planBodyLayout } from "@/lib/services/certificate-body-layout";
+import { bodyFontAndSize, planBodyLayout, TooLongBodyError } from "@/lib/services/certificate-body-layout";
 import type { BodyOp } from "@/lib/services/certificate-body-layout";
 import { DEFAULT_WORDING, SAMPLE_BLANKS } from "@/lib/services/certificate-wording-defaults";
 import type { TemplateWording } from "@/lib/services/certificate-wording-defaults";
@@ -76,8 +76,8 @@ export interface CertificateRenderOptions {
   genericTitle?: string;
   genericBody?: string;
   /** Editable wording for template renders (ignored for the generic fallback,
-   * and ignored entirely when the layout has drifted from the default
-   * wording). */
+   * and ignored entirely when the layout has drifted from the default wording
+   * or the body cannot fit the block). */
   wording?: TemplateWording;
   /** Verification URL encoded into the bottom-right QR code. */
   qrUrl?: string;
@@ -331,8 +331,9 @@ interface WordingTextDraw {
  * Plans how `wording` replaces the layout's own text: the body region is always
  * re-typeset from the wording, while the title and signatory title lines stay
  * verbatim until edited (`""` drops a line). Returns null when the layout's
- * body letters no longer match the default wording (layout drift): the caller
- * must fall back to the complete verbatim path.
+ * body letters no longer match the default wording (layout drift), or when the
+ * body cannot fit the block even at minimum size: the caller must fall back to
+ * the complete verbatim path.
  */
 export function planWordingDraw(
   layout: CertTemplateLayout,
@@ -389,21 +390,29 @@ export function planWordingDraw(
   const { font, boldFont, size } = bodyFontAndSize(layout, regions);
   const sigNameYs = layout.lines.flat().flatMap((token) => (token.kind === "sigName" ? [token.y] : []));
   const blockBottom = Math.min(...sigNameYs) - SIGNATURE_CLEARANCE;
-  const { ops: bodyOps } = planBodyLayout({
-    body: wording.body,
-    fonts,
-    bodyFont: font,
-    boldFont,
-    bodySize: size,
-    firstBodyY: layout.firstBodyY,
-    bodyLeading: layout.bodyLeading,
-    bodyMargin: layout.bodyMargin,
-    bodyIndent: layout.bodyIndent,
-    rightEdge: BODY_RIGHT,
-    blockBottom,
-    values,
-    slotWidth: (field) => widths[field] ?? FALLBACK_SLOT_WIDTH,
-  });
+  let bodyOps: BodyOp[];
+  try {
+    bodyOps = planBodyLayout({
+      body: wording.body,
+      fonts,
+      bodyFont: font,
+      boldFont,
+      bodySize: size,
+      firstBodyY: layout.firstBodyY,
+      bodyLeading: layout.bodyLeading,
+      bodyMargin: layout.bodyMargin,
+      bodyIndent: layout.bodyIndent,
+      rightEdge: BODY_RIGHT,
+      blockBottom,
+      values,
+      slotWidth: (field) => widths[field] ?? FALLBACK_SLOT_WIDTH,
+    }).ops;
+  } catch (error) {
+    // A stored fill-in value can exceed the WORST_CASE_BLANKS envelope; the
+    // body cannot be re-typeset, so fall back to the complete verbatim path.
+    if (error instanceof TooLongBodyError) return null;
+    throw error;
+  }
 
   return { skipLines, redraws, bodyOps };
 }
