@@ -40,6 +40,16 @@ function toDraft(wording: TemplateWording): DraftWording {
   };
 }
 
+/** Field-by-field draft comparison for the save/reset in-flight guard. */
+function draftsEqual(a: DraftWording, b: DraftWording): boolean {
+  return (
+    a.title === b.title &&
+    a.body === b.body &&
+    a.principalTitle === b.principalTitle &&
+    a.registrarTitle === b.registrarTitle
+  );
+}
+
 export function DocumentTemplateEditor({
   names: initialNames,
   wording,
@@ -69,6 +79,9 @@ export function DocumentTemplateEditor({
   // Set when the preview cannot render here (request failure, PDF viewer
   // disabled) so the spinner never hangs forever.
   const [previewFailed, setPreviewFailed] = useState(false);
+  // Server-provided failure reason (e.g. "Body text is too long for this
+  // document.") to show in place of the generic failure copy.
+  const [previewErrorMessage, setPreviewErrorMessage] = useState<string | null>(null);
 
   const draft = drafts[activeKey];
   const { title, body, principalTitle, registrarTitle } = draft;
@@ -93,6 +106,7 @@ export function DocumentTemplateEditor({
       setPreviewRev((rev) => rev + 1);
       setPreviewLoading(true);
       setPreviewFailed(false);
+      setPreviewErrorMessage(null);
       try {
         const response = await fetch("/api/document-template/preview", {
           method: "POST",
@@ -109,10 +123,31 @@ export function DocumentTemplateEditor({
             registrarName: names.registrarName,
           }),
         });
-        if (!response.ok) throw new Error("Preview request failed.");
+        if (!response.ok) {
+          // Surface the server's reason (e.g. over-long body) instead of a
+          // generic message — the admin needs to know what to fix.
+          let message: string | null = null;
+          try {
+            const data: unknown = await response.json();
+            const serverError =
+              typeof data === "object" && data !== null && "error" in data
+                ? (data as { error?: unknown }).error
+                : undefined;
+            if (typeof serverError === "string" && serverError) message = serverError;
+          } catch {
+            // Non-JSON error body — keep the generic fallback.
+          }
+          if (cancelled) return;
+          setPreviewErrorMessage(message);
+          setPreviewLoading(false);
+          setPreviewFailed(true);
+          return;
+        }
         const blob = await response.blob();
         if (cancelled) return;
         setPreviewUrl(URL.createObjectURL(blob));
+        setPreviewErrorMessage(null);
+        setPreviewFailed(false);
         setPreviewLoading(false);
       } catch {
         if (cancelled) return;
@@ -147,8 +182,11 @@ export function DocumentTemplateEditor({
     setDrafts((current) => ({ ...current, [key]: { ...current[key], ...patch } }));
   }
 
-  function replaceDraft(key: CertTemplateKey, next: TemplateWording) {
-    setDrafts((current) => ({ ...current, [key]: toDraft(next) }));
+  function replaceDraft(key: CertTemplateKey, next: TemplateWording, sent: DraftWording) {
+    // Only refresh from the server response if the user hasn't typed since the
+    // request went out — otherwise their in-flight keystrokes win (the server
+    // already holds the saved state either way).
+    setDrafts((current) => (draftsEqual(current[key], sent) ? { ...current, [key]: toDraft(next) } : current));
   }
 
   function insertPlaceholder(field: (typeof PLACEHOLDER_FIELDS)[number]) {
@@ -192,6 +230,7 @@ export function DocumentTemplateEditor({
   }
 
   async function saveWording() {
+    const sent: DraftWording = { title, body, principalTitle, registrarTitle };
     setSaving(true);
     try {
       const response = await fetch("/api/document-template/wording", {
@@ -210,7 +249,7 @@ export function DocumentTemplateEditor({
         toast.error(result.error ?? "Unable to save the document template.");
         return;
       }
-      replaceDraft(activeKey, result.data);
+      replaceDraft(activeKey, result.data, sent);
       toast.success("Document template saved.");
     } catch {
       toast.error("Unable to save the document template. Check your connection and try again.");
@@ -220,6 +259,7 @@ export function DocumentTemplateEditor({
   }
 
   async function resetWording() {
+    const sent: DraftWording = { title, body, principalTitle, registrarTitle };
     setResetting(true);
     try {
       const response = await fetch(`/api/document-template/wording?template=${activeKey}`, { method: "DELETE" });
@@ -228,7 +268,7 @@ export function DocumentTemplateEditor({
         toast.error(result.error ?? "Unable to reset the wording.");
         return;
       }
-      replaceDraft(activeKey, result.data);
+      replaceDraft(activeKey, result.data, sent);
       toast.success("Original wording restored.");
     } catch {
       toast.error("Unable to reset the wording. Check your connection and try again.");
@@ -292,7 +332,7 @@ export function DocumentTemplateEditor({
                 </li>
                 <li className="flex gap-3">
                   <ShieldCheck className="mt-1 h-4 w-4 shrink-0 text-brand" aria-hidden />
-                  <span>Wording edits apply to future re-renders — certificates already generated keep their printed wording.</span>
+                  <span>Certificates already printed on paper keep their wording; re-downloads use the latest wording.</span>
                 </li>
               </ul>
             </div>
@@ -423,7 +463,9 @@ export function DocumentTemplateEditor({
             ) : null}
             {previewFailed && !previewLoading ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-md border border-border bg-slate-50 p-6 text-center">
-                <p className="text-sm font-medium text-slate-700">Preview unavailable in this browser.</p>
+                <p className="text-sm font-medium text-slate-700">
+                  {previewErrorMessage ?? "Preview unavailable in this browser."}
+                </p>
               </div>
             ) : null}
           </div>

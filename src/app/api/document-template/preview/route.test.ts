@@ -126,6 +126,15 @@ describe("document template preview route", () => {
     }
   });
 
+  it("maps TooLongBodyError to 400 Body text is too long for this document.", async () => {
+    mockUser(userWithRole("admin"));
+    // Passes the 4000-character schema limit but overflows the body block.
+    const huge = Array.from({ length: 500 }, () => "lorem").join(" ");
+    const response = await callPost(previewPayload("good-moral", { body: huge }));
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: "Body text is too long for this document." });
+  });
+
   it("rejects an unknown template with 400", async () => {
     mockUser(userWithRole("admin"));
     const response = await callPost(previewPayload("good-moral", { template: "bogus" }));

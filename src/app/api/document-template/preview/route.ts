@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { requireAdmin } from "@/lib/api-guards";
 import type { CertTemplateKey } from "@/lib/services/certificate-layouts";
-import { TooLongBodyError } from "@/lib/services/certificate-body-layout";
+import { assertBodyFits, TooLongBodyError } from "@/lib/services/certificate-body-layout";
 import { renderSampleCertificate } from "@/lib/services/certificate-renderer";
 import { DEFAULT_WORDING } from "@/lib/services/certificate-wording-defaults";
 
@@ -31,6 +31,11 @@ export async function POST(request: Request) {
     const { template, title, body, principalTitle, registrarTitle, principalName, registrarName } = previewSchema.parse(
       await request.json(),
     );
+    // Strict draft validation: the render layer falls back to the default
+    // wording when the body overflows the block, so an over-long draft would
+    // silently preview as the default certificate. Enforce the same
+    // worst-case-values check the save service uses instead.
+    await assertBodyFits(template, body);
     const pdf = await renderSampleCertificate(
       template,
       { title, body, principalTitle, registrarTitle },
