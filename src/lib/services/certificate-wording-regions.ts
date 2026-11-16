@@ -32,10 +32,12 @@ export function deriveWordingRegions(layout: CertTemplateLayout): WordingRegions
     const sigNames = sigNameTokens(line);
     if (sigNames.length !== 1) return;
     const [sigName] = sigNames;
-    const titleIndex = lines.findIndex((candidate, candidateIndex) => candidateIndex > index && isTextLine(candidate));
+    const titleIndex = lines.findIndex((candidate, candidateIndex) => {
+      if (candidateIndex <= index || !isTextLine(candidate)) return false;
+      const gap = sigName.y - candidate[0].y;
+      return gap >= SIGNATORY_TITLE_MIN_GAP && gap <= SIGNATORY_TITLE_MAX_GAP;
+    });
     if (titleIndex === -1) return;
-    const gap = sigName.y - lines[titleIndex][0].y;
-    if (gap < SIGNATORY_TITLE_MIN_GAP || gap > SIGNATORY_TITLE_MAX_GAP) return;
     signatoryTitles.push({ field: sigName.field, line: titleIndex });
   });
 
