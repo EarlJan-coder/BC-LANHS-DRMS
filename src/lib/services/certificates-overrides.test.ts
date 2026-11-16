@@ -37,14 +37,14 @@ describe("resolveCertificateDisplayFields", () => {
       ...liveRow,
       overrideStudentName: "Juan Dela Cruz",
       overrideGradeLevel: "12",
-      overrideStrand: "Academic-Track",
+      overrideStrand: "ABM",
       overrideSection: "Rosal",
       overridePurpose: "Employment requirement",
       overrideDateGenerated: new Date("2026-06-01T00:00:00Z"),
     });
     assert.equal(fields.name, "Juan Dela Cruz");
     assert.equal(fields.gradeLevel, "12");
-    assert.equal(fields.strand, "Academic-Track");
+    assert.equal(fields.strand, "ABM");
     assert.equal(fields.section, "Rosal");
     assert.equal(fields.purpose, "Employment requirement");
     assert.deepEqual(fields.dateGenerated, new Date("2026-06-01T00:00:00Z"));

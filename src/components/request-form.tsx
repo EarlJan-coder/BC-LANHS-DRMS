@@ -96,7 +96,7 @@ export function RequestForm() {
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="gradeLevelNeeded">Grade level needed</Label>
+                <Label htmlFor="gradeLevelNeeded">Grade level</Label>
                 <Select
                   id="gradeLevelNeeded"
                   name="gradeLevelNeeded"

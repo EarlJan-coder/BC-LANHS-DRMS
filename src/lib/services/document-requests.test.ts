@@ -141,7 +141,7 @@ const requestPayload = {
   documentType: "Form 137",
   purpose: "College scholarship application requirement",
   gradeLevelNeeded: "12",
-  strandNeeded: "Academic-Track",
+  strandNeeded: "ABM",
   sectionNeeded: "",
 };
 

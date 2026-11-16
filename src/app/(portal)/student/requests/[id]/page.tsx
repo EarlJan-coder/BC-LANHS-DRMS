@@ -48,7 +48,7 @@ export default async function StudentRequestDetailsPage({
             <div className="grid gap-3 sm:grid-cols-2">
               <Detail label="Status" value={<StatusBadge status={request.status} />} />
               <Detail label="School year needed" value={request.schoolYearNeeded} />
-              <Detail label="Grade level needed" value={request.gradeLevelNeeded} />
+              <Detail label="Grade level" value={request.gradeLevelNeeded} />
               {request.strandNeeded ? <Detail label="Strand" value={request.strandNeeded} /> : null}
               <Detail label="Requested date" value={request.requestedAt} />
               <Detail label="Last update" value={request.updatedAt} />

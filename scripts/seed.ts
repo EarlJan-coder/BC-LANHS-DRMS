@@ -127,7 +127,7 @@ async function main() {
           purpose: "College scholarship application",
           schoolYearNeeded: "2026-2027",
           gradeLevelNeeded: "12",
-          strandNeeded: "Academic-Track",
+          strandNeeded: "ABM",
           remarks: "Please include supporting school records.",
           status: "under_review",
           registrarRemarks: "Validated student profile.",

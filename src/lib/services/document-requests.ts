@@ -286,7 +286,7 @@ export async function renderRequestSlipPdf(request: DocumentRequestView) {
   const infoFields = [
     { x: 62, labelY: 614, valueY: 600, label: "Student Name", value: request.studentName, valueFont: bold },
     { x: 310, labelY: 614, valueY: 600, label: "LRN", value: request.lrn ?? "Not set", valueFont: regular },
-    { x: 62, labelY: 578, valueY: 566, label: "Grade Level Needed", value: composeGradeValue(request.gradeLevelNeeded, request.strandNeeded || request.sectionNeeded), valueFont: regular },
+    { x: 62, labelY: 578, valueY: 566, label: "Grade Level", value: composeGradeValue(request.gradeLevelNeeded, request.strandNeeded || request.sectionNeeded), valueFont: regular },
     { x: 310, labelY: 578, valueY: 566, label: "School Year Needed", value: request.schoolYearNeeded, valueFont: regular },
   ];
   for (const field of infoFields) {

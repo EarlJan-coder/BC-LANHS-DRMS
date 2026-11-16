@@ -8,7 +8,7 @@ describe("documentRequestSchema", () => {
       documentType: "Form 137",
       purpose: "College scholarship application requirement",
       gradeLevelNeeded: "12",
-      strandNeeded: "Academic-Track",
+      strandNeeded: "ABM",
       schoolYearNeeded: "2026-2027",
     });
     assert.equal("schoolYearNeeded" in parsed, false);
@@ -40,9 +40,9 @@ describe("documentRequestSchema", () => {
       documentType: "Form 137",
       purpose: "x".repeat(11),
       gradeLevelNeeded: "11",
-      strandNeeded: "Technical-Track",
+      strandNeeded: "HUMSS",
     });
-    assert.equal(parsed.strandNeeded, "Technical-Track");
+    assert.equal(parsed.strandNeeded, "HUMSS");
   });
 
   it("rejects unknown strands and stores no strand for grades 7-10", () => {
@@ -58,7 +58,7 @@ describe("documentRequestSchema", () => {
       documentType: "Form 137",
       purpose: "x".repeat(11),
       gradeLevelNeeded: "9",
-      strandNeeded: "Academic-Track",
+      strandNeeded: "ABM",
       sectionNeeded: "Sampaguita",
     });
     assert.equal(parsed.strandNeeded, "");
@@ -71,7 +71,7 @@ describe("certificateOverrideSchema", () => {
     const parsed = certificateOverrideSchema.parse({
       studentName: "Juan Dela Cruz",
       gradeLevel: "11",
-      strand: "Academic-Track",
+      strand: "ABM",
       section: "Sampaguita",
       purpose: "Scholarship application",
       dateGenerated: "2026-10-24",
@@ -79,7 +79,7 @@ describe("certificateOverrideSchema", () => {
     assert.deepEqual(parsed, {
       studentName: "Juan Dela Cruz",
       gradeLevel: "11",
-      strand: "Academic-Track",
+      strand: "ABM",
       section: "Sampaguita",
       purpose: "Scholarship application",
       dateGenerated: new Date("2026-10-24"),

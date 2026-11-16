@@ -69,7 +69,7 @@ export function RegistrarRequestDetailsView({
               <Detail label="LRN" value={request.lrn ?? "Not linked"} />
               <Detail label="Status" value={<StatusBadge status={currentStatus} />} />
               <Detail label="School year needed" value={request.schoolYearNeeded} />
-              <Detail label="Grade level needed" value={request.gradeLevelNeeded} />
+              <Detail label="Grade level" value={request.gradeLevelNeeded} />
               {request.strandNeeded ? <Detail label="Strand" value={request.strandNeeded} /> : null}
               <Detail label="Requested" value={request.requestedAt} />
               <Detail label="Updated" value={currentUpdatedAt} />

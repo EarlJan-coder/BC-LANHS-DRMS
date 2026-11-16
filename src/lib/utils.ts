@@ -26,7 +26,7 @@ export function formatDateTime(date: Date | null | undefined) {
 }
 
 /** Printed grade value for certificates and request slips: e.g.
- * "11 - Academic-Track" (senior high) or "9 - Mabini" (junior high).
+ * "11 - ABM" (senior high) or "9 - Mabini" (junior high).
  * The qualifier slot takes the strand when present, else the section.
  * A legacy "Grade " prefix is stripped so old free-text rows don't print
  * "Grade Grade 12" against templates that already print the word "Grade". */
