@@ -141,6 +141,13 @@
       "when": 1794486550372,
       "tag": "0019_crazy_iron_fist",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1794831485911,
+      "tag": "0020_majestic_sunfire",
+      "breakpoints": true
     }
   ]
 }

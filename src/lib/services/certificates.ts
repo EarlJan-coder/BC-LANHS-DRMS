@@ -22,6 +22,7 @@ import {
 } from "@/lib/validators";
 import { recordAuditedAction } from "./audit-log";
 import { getDocumentSignatoryTemplate } from "./document-signatory-template";
+import { getDocumentTemplateWording } from "./document-template-wording";
 import {
   manilaDateParts,
   pickCertificateTemplate,
@@ -638,10 +639,12 @@ export async function generateCertificatePdf(certificateId: string) {
   const section = display.section || "";
   const purpose = display.purpose || "school record validation";
   const { day, monthYear } = manilaDateParts(display.dateGenerated);
+  const template = pickCertificateTemplate(certificate.certificateType, gradeLevel);
+  const wordingMap = await getDocumentTemplateWording();
 
   return Buffer.from(
     await renderCertificatePdf({
-      template: pickCertificateTemplate(certificate.certificateType, gradeLevel),
+      template,
       blanks: {
         name,
         grade: composeGradeValue(gradeLevel, display.strand || section),
@@ -665,6 +668,7 @@ export async function generateCertificatePdf(certificateId: string) {
         schoolYear,
         purpose,
       }),
+      wording: template ? wordingMap[template] : undefined,
       qrUrl: certificate.qrCodeData,
     }),
   );

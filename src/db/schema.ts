@@ -133,6 +133,15 @@ export const documentSignatoryTemplate = pgTable("document_signatory_template", 
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const documentTemplateWording = pgTable("document_template_wording", {
+  templateKey: varchar("template_key", { length: 40 }).primaryKey(),
+  title: text("title"),
+  body: text("body"),
+  principalTitle: text("principal_title"),
+  registrarTitle: text("registrar_title"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const documentRequests = pgTable(
   "document_requests",
   {

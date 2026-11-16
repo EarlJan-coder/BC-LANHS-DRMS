@@ -6,10 +6,18 @@ import { embedQrCode, fitSignatureNameSize } from "@/lib/services/pdf-brand";
 import { CERT_FALLBACK_FRAME, CERT_LAYOUTS } from "@/lib/services/certificate-layouts";
 import type {
   CertBlankField,
+  CertFontKey,
+  CertSigField,
   CertTemplateKey,
   CertTemplateLayout,
   CertToken,
 } from "@/lib/services/certificate-layouts";
+import { bodyFontAndSize, planBodyLayout, TooLongBodyError } from "@/lib/services/certificate-body-layout";
+import type { BodyOp } from "@/lib/services/certificate-body-layout";
+import { DEFAULT_WORDING, SAMPLE_BLANKS } from "@/lib/services/certificate-wording-defaults";
+import type { TemplateWording } from "@/lib/services/certificate-wording-defaults";
+import { bodySlotWidths, deriveWordingRegions } from "@/lib/services/certificate-wording-regions";
+import type { WordingRegions } from "@/lib/services/certificate-wording-regions";
 import { embedCertificateFonts } from "@/lib/services/pdf-fonts";
 import type { EmbeddedCertFonts } from "@/lib/services/pdf-fonts";
 
@@ -17,7 +25,10 @@ import type { EmbeddedCertFonts } from "@/lib/services/pdf-fonts";
  * Renders certificate PDFs from the layouts extracted from the school's real
  * reference templates (see scripts/cert_layout.py). Static text, rules, and
  * images are drawn verbatim at their reference coordinates; only the fill-in
- * blanks and signatory names are dynamic. The layout's own coordinate space is
+ * blanks and signatory names are dynamic. When `wording` is supplied, the body
+ * region is re-typeset from it and edited titles replace their lines — unless
+ * the layout's body has drifted from the default wording, in which case the
+ * complete verbatim path is used. The layout's own coordinate space is
  * pdf-lib's bottom-left origin, so token `y` values are baselines directly.
  */
 
@@ -27,6 +38,10 @@ export const CERT_PAGE_HEIGHT = 841.89;
 const BODY_RIGHT = 524.9;
 const BLACK = rgb(0, 0, 0);
 const MIN_BLANK_SIZE = 8;
+const SIGNATURE_CLEARANCE = 24;
+const FALLBACK_SLOT_WIDTH = 60;
+const VALUE_UNDERLINE_DROP = 2.11;
+const VALUE_UNDERLINE_HEIGHT = 0.7;
 
 /** Assets sourced as PNG files from public/pdf-assets. The logos are the
  * school's original files (the reference PDFs' embedded copies were degraded). */
@@ -60,6 +75,10 @@ export interface CertificateRenderOptions {
   /** Fallback mode only: document title and body paragraph text. */
   genericTitle?: string;
   genericBody?: string;
+  /** Editable wording for template renders (ignored for the generic fallback,
+   * and ignored entirely when the layout has drifted from the default wording
+   * or the body cannot fit the block). */
+  wording?: TemplateWording;
   /** Verification URL encoded into the bottom-right QR code. */
   qrUrl?: string;
 }
@@ -248,6 +267,156 @@ function drawJustifiedBody(
   });
 }
 
+/** The most frequent (font, size) among a line's text tokens. */
+function dominantTextStyle(tokens: CertToken[]): { font: CertFontKey; size: number } | null {
+  const counts = new Map<string, { font: CertFontKey; size: number; count: number }>();
+  for (const token of tokens) {
+    if (token.kind !== "text") continue;
+    const key = `${token.font}@${token.size}`;
+    const entry = counts.get(key) ?? { font: token.font, size: token.size, count: 0 };
+    entry.count += 1;
+    counts.set(key, entry);
+  }
+  let best: { font: CertFontKey; size: number; count: number } | undefined;
+  for (const entry of counts.values()) {
+    if (!best || entry.count > best.count) best = entry;
+  }
+  return best ? { font: best.font, size: best.size } : null;
+}
+
+/** Body-region letters: text tokens verbatim, blanks as `{{field}}` placeholders. */
+function bodyRegionLetters(layout: CertTemplateLayout, regions: WordingRegions): string {
+  let letters = "";
+  for (let index = regions.bodyLines.first; index <= regions.bodyLines.last; index++) {
+    for (const token of layout.lines[index] ?? []) {
+      if (token.kind === "text") {
+        letters += token.t;
+      } else if (token.kind === "blank") {
+        letters += `{{${token.field}}}`;
+      }
+    }
+  }
+  return letters;
+}
+
+/** Spaces, `*` bold markers, and newlines are invisible to the drift check. */
+function stripWordingNoise(text: string): string {
+  return text.replace(/[\s*]/g, "");
+}
+
+/** Which wording field replaces each signatory's title line. */
+const SIGNATORY_WORDING: Record<CertSigField, keyof TemplateWording> = {
+  registrarName: "registrarTitle",
+  principalName: "principalTitle",
+};
+
+export interface WordingDrawPlan {
+  /** Layout lines replaced by the wording; skipped while drawing the lines. */
+  skipLines: Set<number>;
+  /** Replacement draws for edited title / signatory title lines. */
+  redraws: WordingTextDraw[];
+  /** Re-typeset body draws (filled values underlined). */
+  bodyOps: BodyOp[];
+}
+
+interface WordingTextDraw {
+  text: string;
+  centerX: number;
+  y: number;
+  size: number;
+  font: CertFontKey;
+}
+
+/**
+ * Plans how `wording` replaces the layout's own text: the body region is always
+ * re-typeset from the wording, while the title and signatory title lines stay
+ * verbatim until edited (`""` drops a line). Returns null when the layout's
+ * body letters no longer match the default wording (layout drift), or when the
+ * body cannot fit the block even at minimum size: the caller must fall back to
+ * the complete verbatim path.
+ */
+export function planWordingDraw(
+  layout: CertTemplateLayout,
+  template: CertTemplateKey,
+  wording: TemplateWording,
+  fonts: EmbeddedCertFonts,
+  values: CertBlankValues,
+): WordingDrawPlan | null {
+  const regions = deriveWordingRegions(layout);
+  const defaults = DEFAULT_WORDING[template];
+  if (stripWordingNoise(bodyRegionLetters(layout, regions)) !== stripWordingNoise(defaults.body)) {
+    return null;
+  }
+
+  const skipLines = new Set<number>();
+  const redraws: WordingTextDraw[] = [];
+
+  for (let index = regions.bodyLines.first; index <= regions.bodyLines.last; index++) {
+    skipLines.add(index);
+  }
+
+  const titleTokens = layout.lines[regions.titleLine] ?? [];
+  if (wording.title !== defaults.title) {
+    skipLines.add(regions.titleLine);
+    const style = wording.title ? dominantTextStyle(titleTokens) : null;
+    const y = titleTokens.find((token) => token.kind === "text")?.y;
+    if (style && y !== undefined) {
+      redraws.push({ text: wording.title, centerX: CERT_PAGE_WIDTH / 2, y, ...style });
+    }
+  }
+
+  for (const { field, line } of regions.signatoryTitles) {
+    const key = SIGNATORY_WORDING[field];
+    const value = wording[key];
+    if (value === defaults[key]) continue;
+    skipLines.add(line);
+    if (!value) continue;
+    const tokens = layout.lines[line] ?? [];
+    const style = dominantTextStyle(tokens);
+    const y = tokens.find((token) => token.kind === "text")?.y;
+    if (!style || y === undefined) continue;
+    // Center on the line's own visual center so the redraw follows the layout.
+    let minX = Infinity;
+    let maxX = -Infinity;
+    for (const token of tokens) {
+      if (token.kind !== "text") continue;
+      minX = Math.min(minX, token.x);
+      maxX = Math.max(maxX, token.x + fonts[token.font].widthOfTextAtSize(token.t, token.size));
+    }
+    redraws.push({ text: value, centerX: (minX + maxX) / 2, y, ...style });
+  }
+
+  const widths = bodySlotWidths(layout, regions);
+  const { font, boldFont, size } = bodyFontAndSize(layout, regions);
+  const sigNameYs = layout.lines.flat().flatMap((token) => (token.kind === "sigName" ? [token.y] : []));
+  const blockBottom = Math.min(...sigNameYs) - SIGNATURE_CLEARANCE;
+  let bodyOps: BodyOp[];
+  try {
+    bodyOps = planBodyLayout({
+      body: wording.body,
+      fonts,
+      bodyFont: font,
+      boldFont,
+      bodySize: size,
+      firstBodyY: layout.firstBodyY,
+      bodyLeading: layout.bodyLeading,
+      bodyMargin: layout.bodyMargin,
+      bodyIndent: layout.bodyIndent,
+      rightEdge: BODY_RIGHT,
+      blockBottom,
+      values,
+      slotWidth: (field) => widths[field] ?? FALLBACK_SLOT_WIDTH,
+    }).ops;
+  } catch (error) {
+    // A stored fill-in value can exceed the WORST_CASE_BLANKS envelope; the
+    // body cannot be re-typeset, so fall back to the complete verbatim path.
+    if (error instanceof TooLongBodyError) return null;
+    throw error;
+  }
+
+  return { skipLines, redraws, bodyOps };
+}
+
 async function embedAssets(pdf: PDFDocument): Promise<Record<string, EmbeddedAsset>> {
   const out: Record<string, EmbeddedAsset> = {};
   for (const [asset, file] of Object.entries(PNG_ASSET_FILES)) {
@@ -318,6 +487,10 @@ export async function renderCertificatePdf(options: CertificateRenderOptions): P
   }
 
   const bodyLines = new Set(layout.bodyLineIndices);
+  const wordingPlan =
+    options.template && options.wording
+      ? planWordingDraw(layout, options.template, options.wording, fonts, options.blanks)
+      : null;
   layout.lines.forEach((tokens, index) => {
     if (!tokens.length) {
       return;
@@ -325,8 +498,36 @@ export async function renderCertificatePdf(options: CertificateRenderOptions): P
     if (generic && (bodyLines.has(index) || index === layout.titleLineIndex)) {
       return;
     }
+    if (wordingPlan?.skipLines.has(index)) {
+      return;
+    }
     drawLineTokens(page, tokens, fonts, options.blanks, options.signatureNames);
   });
+
+  if (wordingPlan) {
+    for (const op of wordingPlan.bodyOps) {
+      page.drawText(op.text, { x: op.x, y: op.y, size: op.size, font: fonts[op.font], color: BLACK });
+      if (op.underline) {
+        page.drawRectangle({
+          x: op.underline.x,
+          y: op.y - VALUE_UNDERLINE_DROP,
+          width: op.underline.width,
+          height: VALUE_UNDERLINE_HEIGHT,
+          color: BLACK,
+        });
+      }
+    }
+    for (const redraw of wordingPlan.redraws) {
+      const width = fonts[redraw.font].widthOfTextAtSize(redraw.text, redraw.size);
+      page.drawText(redraw.text, {
+        x: redraw.centerX - width / 2,
+        y: redraw.y,
+        size: redraw.size,
+        font: fonts[redraw.font],
+        color: BLACK,
+      });
+    }
+  }
 
   if (generic) {
     const titleToken = layout.lines[layout.titleLineIndex]?.find((t) => t.kind === "text" && t.size >= 15);
@@ -362,4 +563,21 @@ export async function renderCertificatePdf(options: CertificateRenderOptions): P
   }
 
   return pdf.save();
+}
+
+/**
+ * Renders a template sample with its wording and SAMPLE_BLANKS values and no QR
+ * code — the surface used for wording previews and manual QA.
+ */
+export function renderSampleCertificate(
+  template: CertTemplateKey,
+  wording: TemplateWording,
+  names: { registrarName?: string; principalName?: string },
+): Promise<Uint8Array> {
+  return renderCertificatePdf({
+    template,
+    blanks: SAMPLE_BLANKS[template],
+    signatureNames: names,
+    wording,
+  });
 }
