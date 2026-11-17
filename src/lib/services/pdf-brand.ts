@@ -92,10 +92,12 @@ export function drawDocumentHeader(page: PDFPage, logo: PDFImage | null, regular
     page.drawText("LANHS", { x: 68, y: 773, size: 13, font: bold, color: BRAND_RED });
   }
 
-  drawCenteredText(page, "Republic of the Philippines", 792, regular, 10, MUTED_TEXT);
-  drawCenteredText(page, "Department of Education", 777, bold, 11, DARK_TEXT);
-  drawCenteredText(page, SCHOOL_NAME, 759, bold, 15, BRAND_RED);
-  drawCenteredText(page, SCHOOL_ADDRESS, 742, regular, 9, MUTED_TEXT);
+  // Line gaps sized to the type above them so the four header lines read as
+  // separate bands instead of crowding each other.
+  drawCenteredText(page, "Republic of the Philippines", 798, regular, 10, MUTED_TEXT);
+  drawCenteredText(page, "Department of Education", 780, bold, 11, DARK_TEXT);
+  drawCenteredText(page, SCHOOL_NAME, 758, bold, 15, BRAND_RED);
+  drawCenteredText(page, SCHOOL_ADDRESS, 738, regular, 9, MUTED_TEXT);
   page.drawLine({ start: { x: 50, y: 720 }, end: { x: 545, y: 720 }, thickness: 1.5, color: BRAND_RED });
 }
 

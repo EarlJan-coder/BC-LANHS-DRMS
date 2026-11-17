@@ -25,7 +25,7 @@ import {
   appUrl,
 } from "@/lib/services/pdf-brand";
 import { drawTable, type TableColumn } from "@/lib/services/pdf-table";
-import { statusLabel, formatDateTime } from "@/lib/utils";
+import { statusLabel } from "@/lib/utils";
 import { paginateRows, PAGE_SIZE } from "@/lib/pagination";
 
 export const REPORT_KEYS = [
@@ -135,15 +135,47 @@ export function parseReportRange(from?: string, to?: string): ReportRange {
   };
 }
 
+const MONTH_ABBREVIATIONS = [
+  "Jan.",
+  "Feb.",
+  "Mar.",
+  "Apr.",
+  "May",
+  "Jun.",
+  "Jul.",
+  "Aug.",
+  "Sep.",
+  "Oct.",
+  "Nov.",
+  "Dec.",
+];
+
+/** Formats an ISO day (`YYYY-MM-DD`) for display, e.g. "Nov. 11, 2026".
+ * Unparseable values pass through untouched. */
+export function formatReportDate(value: string) {
+  const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!parts) return value;
+  const [, year, month, day] = parts;
+  const label = MONTH_ABBREVIATIONS[Number(month) - 1];
+  if (!label) return value;
+  return `${label} ${Number(day)}, ${year}`;
+}
+
+/** Formats a timestamp for display, e.g. "Nov. 11, 2026 09:01". */
+export function formatReportDateTime(value: Date) {
+  const iso = value.toISOString();
+  return `${formatReportDate(iso.slice(0, 10))} ${iso.slice(11, 16)}`;
+}
+
 export function formatPeriodLabel(range: ReportRange) {
   if (range.fromLabel && range.toLabel) {
-    return `${range.fromLabel} to ${range.toLabel}`;
+    return `${formatReportDate(range.fromLabel)} to ${formatReportDate(range.toLabel)}`;
   }
   if (range.fromLabel) {
-    return `From ${range.fromLabel}`;
+    return `From ${formatReportDate(range.fromLabel)}`;
   }
   if (range.toLabel) {
-    return `Up to ${range.toLabel}`;
+    return `Up to ${formatReportDate(range.toLabel)}`;
   }
   return "All time";
 }
@@ -238,7 +270,7 @@ export async function getReportData(
       row.documentTypeName ?? "\u2014",
       personName(row),
       statusLabel(row.status),
-      row.requestedAt.toISOString().slice(0, 10),
+      formatReportDate(row.requestedAt.toISOString().slice(0, 10)),
     ]);
   } else if (key === "claimed-documents") {
     columns = [
@@ -270,14 +302,14 @@ export async function getReportData(
       row.trackingNumber,
       row.documentTypeName ?? "\u2014",
       personName(row),
-      row.claimedAt ? row.claimedAt.toISOString().slice(0, 10) : "Not set",
+      row.claimedAt ? formatReportDate(row.claimedAt.toISOString().slice(0, 10)) : "Not set",
     ]);
   } else if (key === "generated-certificates") {
     columns = [
-      { header: "Certificate No.", width: 150 },
+      { header: "Certificate No.", width: 140 },
       { header: "Type", width: 130 },
       { header: "Student", width: 145 },
-      { header: "Generated", width: 70, align: "right" },
+      { header: "Generated", width: 80, align: "right" },
     ];
     const conditions = rangeFilters(certificates.generatedAt, range);
     if (filters.documentType) conditions.push(eq(certificates.certificateType, filters.documentType));
@@ -300,7 +332,7 @@ export async function getReportData(
       row.certificateNumber,
       row.certificateType,
       personName(row),
-      row.generatedAt.toISOString().slice(0, 10),
+      formatReportDate(row.generatedAt.toISOString().slice(0, 10)),
     ]);
   } else {
     columns = [
@@ -328,7 +360,7 @@ export async function getReportData(
       row.lrn,
       personName(row),
       humanStatus(row.status),
-      row.createdAt.toISOString().slice(0, 10),
+      formatReportDate(row.createdAt.toISOString().slice(0, 10)),
     ]);
   }
 
@@ -404,7 +436,7 @@ export async function renderReportPdf(
     font: regular,
     color: MUTED_TEXT,
   });
-  const generatedLabel = `Generated: ${formatDateTime(new Date())}`;
+  const generatedLabel = `Generated: ${formatReportDateTime(new Date())}`;
   page.drawText(generatedLabel, {
     x: 545 - regular.widthOfTextAtSize(generatedLabel, 9),
     y: metaY,
@@ -425,7 +457,8 @@ export async function renderReportPdf(
     borderColor: BRAND_RED,
     borderWidth: 0.8,
   });
-  page.drawText("TOTAL RECORDS IN PERIOD", {
+  const countLabel = "TOTAL RECORDS IN PERIOD";
+  page.drawText(countLabel, {
     x: 64,
     y: boxTop - 22,
     size: 8,
@@ -439,9 +472,12 @@ export async function renderReportPdf(
     font: bold,
     color: BRAND_RED,
   });
-  page.drawText(data.helper, { x: 175, y: boxTop - 30, size: 11, font: bold, color: DARK_TEXT });
+  // Anchor the heading clear of the count label: at 8pt the label runs to
+  // ~x=179, so a fixed x=175 used to collide with it.
+  const headingX = 64 + regular.widthOfTextAtSize(countLabel, 8) + 24;
+  page.drawText(data.helper, { x: headingX, y: boxTop - 30, size: 11, font: bold, color: DARK_TEXT });
   page.drawText(data.periodNoun.charAt(0).toUpperCase() + data.periodNoun.slice(1), {
-    x: 175,
+    x: headingX,
     y: boxTop - 48,
     size: 9,
     font: regular,

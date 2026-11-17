@@ -11,6 +11,8 @@ const { getDb, closeDb } = await import("@/db");
 const { certificates, documentRequests, documentTypes } = await import("@/db/schema");
 const {
   REPORT_KEYS,
+  formatPeriodLabel,
+  formatReportDate,
   getReportData,
   parseReportFilters,
   parseReportRange,
@@ -36,6 +38,24 @@ describe("parseReportFilters", () => {
     const filters = parseReportFilters("   ", "not_a_status");
     assert.equal(filters.documentType, undefined);
     assert.equal(filters.status, undefined);
+  });
+});
+
+describe("report date formatting", () => {
+  it("renders an ISO day as a human-readable date", () => {
+    assert.equal(formatReportDate("2026-11-11"), "Nov. 11, 2026");
+    assert.equal(formatReportDate("2026-01-05"), "Jan. 5, 2026");
+  });
+
+  it("passes unparseable values through untouched", () => {
+    assert.equal(formatReportDate("not-a-date"), "not-a-date");
+    assert.equal(formatReportDate(""), "");
+  });
+
+  it("humanizes the coverage period label", () => {
+    const range = parseReportRange("2026-11-01", "2026-11-17");
+    assert.equal(formatPeriodLabel(range), "Nov. 1, 2026 to Nov. 17, 2026");
+    assert.equal(formatPeriodLabel({}), "All time");
   });
 });
 
