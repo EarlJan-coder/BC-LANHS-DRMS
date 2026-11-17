@@ -76,6 +76,9 @@ export async function decideRegistration(
   effects: DecisionEffects = {},
 ): Promise<RegistrationStatus> {
   const note = input.note.trim();
+  if (input.decision === "declined" && note.length === 0) {
+    throw new AppError("A reason is required to decline a registration.", 400);
+  }
 
   const db = getDb();
   const [student] = await db.select().from(users).where(eq(users.id, input.id)).limit(1);

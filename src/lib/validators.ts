@@ -169,10 +169,16 @@ export const userPasswordResetSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters.").max(72),
 });
 
-export const registrationDecisionSchema = z.object({
-  decision: z.enum(["approved", "declined"]),
-  note: z.string().trim().max(2000, "The note must be 2,000 characters or fewer.").default(""),
-});
+export const registrationDecisionSchema = z
+  .object({
+    decision: z.enum(["approved", "declined"]),
+    note: z.string().trim().max(2000, "The note must be 2,000 characters or fewer.").default(""),
+  })
+  .superRefine((value, ctx) => {
+    if (value.decision === "declined" && value.note.length === 0) {
+      ctx.addIssue({ code: "custom", message: "A reason is required to decline a registration." });
+    }
+  });
 
 export const passwordChangeSchema = z.object({
   currentPassword: z.string().min(1, "Enter your current password.").max(72),

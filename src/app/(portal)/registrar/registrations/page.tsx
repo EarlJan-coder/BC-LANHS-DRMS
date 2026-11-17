@@ -13,8 +13,7 @@ const columns = [
     label: "Last school year attended",
     render: (row: PendingRegistrationView) => row.lastSchoolYearAttended,
   },
-  { key: "approve", label: "Approve", render: () => null },
-  { key: "decline", label: "Decline", render: () => null },
+  { key: "status", label: "Status", render: () => null },
   { key: "note", label: "Note", render: () => null },
 ];
 

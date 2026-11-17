@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/input";
 import type { UserRole } from "@/db/schema";
 
@@ -23,6 +24,7 @@ export function NotificationDetailModal({
   onDecisionComplete: () => void;
 }) {
   const [note, setNote] = useState("");
+  const [confirmingDecline, setConfirmingDecline] = useState(false);
   const [busy, setBusy] = useState(false);
   if (!detail) return null;
 
@@ -32,14 +34,14 @@ export function NotificationDetailModal({
   const status = String(record.registrationStatus ?? "");
   const canReview = (viewerRole === "admin" || viewerRole === "registrar") && detail.kind === "registration" && (status === "pending" || status === "declined");
 
-  async function decide(decision: "approved" | "declined") {
+  async function decide(decision: "approved" | "declined", reason = "") {
     if (busy) return;
     setBusy(true);
     try {
       const response = await fetch(`/api/registrations/${String(record.id)}/decision`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ decision, note: note.trim() }),
+        body: JSON.stringify({ decision, note: decision === "declined" ? reason.trim() : note.trim() }),
       });
       const result = await response.json();
       if (!response.ok) {
@@ -47,6 +49,7 @@ export function NotificationDetailModal({
         return;
       }
       toast.success(decision === "approved" ? "Registration approved." : "Registration declined.");
+      setConfirmingDecline(false);
       onDecisionComplete();
     } catch {
       toast.error("Unable to review this registration. Check your connection and try again.");
@@ -113,12 +116,30 @@ export function NotificationDetailModal({
             <label htmlFor="notification-registration-note" className="text-sm font-medium text-slate-700">Decision note sent by email</label>
             <Textarea id="notification-registration-note" value={note} onChange={(event) => setNote(event.target.value)} maxLength={2000} rows={3} className="mt-2" placeholder="Optional note for the student" />
             <div className="mt-3 flex justify-end gap-2">
-              {status === "pending" ? <Button type="button" tone="danger" onClick={() => decide("declined")} loading={busy} disabled={busy}>Decline</Button> : null}
+              {status === "pending" ? <Button type="button" tone="danger" onClick={() => setConfirmingDecline(true)} disabled={busy}>Decline</Button> : null}
               <Button type="button" onClick={() => decide("approved")} loading={busy} disabled={busy}>{status === "declined" ? "Restore and approve" : "Approve"}</Button>
             </div>
           </div>
         ) : null}
       </section>
+
+      <ConfirmDialog
+        open={confirmingDecline}
+        title="Decline this registration?"
+        message="A reason is required. It will be emailed to the student."
+        confirmLabel="Decline"
+        tone="danger"
+        loading={busy}
+        reason={{
+          label: "Reason for declining (required)",
+          placeholder: "Explain why this registration is being declined…",
+          defaultValue: note.trim(),
+        }}
+        onConfirm={(reason) => decide("declined", reason)}
+        onCancel={() => {
+          if (!busy) setConfirmingDecline(false);
+        }}
+      />
     </div>
   );
 }

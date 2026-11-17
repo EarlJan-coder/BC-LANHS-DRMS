@@ -134,15 +134,27 @@ describe("certificateOverrideSchema", () => {
 });
 
 describe("registrationDecisionSchema", () => {
-  it("allows a decision with a blank note", () => {
+  it("allows an approval with a blank note", () => {
     const parsed = registrationDecisionSchema.parse({ decision: "approved", note: "   " });
     assert.deepEqual(parsed, { decision: "approved", note: "" });
   });
 
   it("defaults a missing note to an empty string", () => {
-    assert.deepEqual(registrationDecisionSchema.parse({ decision: "declined" }), {
-      decision: "declined",
+    assert.deepEqual(registrationDecisionSchema.parse({ decision: "approved" }), {
+      decision: "approved",
       note: "",
+    });
+  });
+
+  it("requires a reason when declining", () => {
+    assert.throws(
+      () => registrationDecisionSchema.parse({ decision: "declined", note: "   " }),
+      /reason is required/i,
+    );
+    assert.throws(() => registrationDecisionSchema.parse({ decision: "declined" }), /reason is required/i);
+    assert.deepEqual(registrationDecisionSchema.parse({ decision: "declined", note: "Wrong LRN submitted." }), {
+      decision: "declined",
+      note: "Wrong LRN submitted.",
     });
   });
 

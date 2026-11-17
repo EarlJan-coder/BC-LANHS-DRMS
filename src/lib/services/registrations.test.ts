@@ -116,25 +116,39 @@ describe("registration decisions and fan-out (integration, local DB)", { skip: h
     }
   });
 
-  it("a decision can be made without a note", async () => {
+  it("an approval can be made without a note", async () => {
     const student = await createUser("student");
     const actor = await createUser("registrar", "approved");
     try {
-      const status = await decide(student.id, actor, "declined", "   ", {
+      const status = await decide(student.id, actor, "approved", "   ", {
         sendEmail: async () => ({ ok: true }),
       });
-      assert.equal(status, "declined");
+      assert.equal(status, "approved");
       assert.equal(
         (await getDb().query.users.findFirst({ where: eq(users.id, student.id) }))?.registrationStatus,
-        "declined",
+        "approved",
       );
       const email = buildRegistrationDecisionEmailContent({
         studentName: "Riley Mae Santos",
-        decision: "declined",
+        decision: "approved",
         note: "",
       });
       assert.doesNotMatch(email.message, /Registrar note/i);
-      assert.match(email.message, /contact the registrar/i);
+      assert.match(email.message, /Sign-in link/i);
+    } finally {
+      await cleanup([student.id, actor.id]);
+    }
+  });
+
+  it("declining without a reason is rejected and the registration stays pending", async () => {
+    const student = await createUser("student");
+    const actor = await createUser("registrar", "approved");
+    try {
+      await assert.rejects(() => decide(student.id, actor, "declined", "   "), /reason is required/i);
+      assert.equal(
+        (await getDb().query.users.findFirst({ where: eq(users.id, student.id) }))?.registrationStatus,
+        "pending",
+      );
     } finally {
       await cleanup([student.id, actor.id]);
     }
