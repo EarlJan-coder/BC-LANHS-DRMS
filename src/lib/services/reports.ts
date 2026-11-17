@@ -6,7 +6,9 @@ import {
   certificates,
   documentRequests,
   documentTypes,
+  requestStatusEnum,
   students,
+  type RequestStatus,
 } from "@/db/schema";
 import { SCHOOL_NAME } from "@/lib/constants";
 import {
@@ -40,6 +42,18 @@ export type ReportRange = {
   to?: Date;
   fromLabel?: string;
   toLabel?: string;
+};
+
+/** Row filters shared by the on-screen tables and every exported PDF.
+ *
+ * - `documentType` matches `documentTypes.name` on request reports and
+ *   `certificates.certificateType` on generated certificates.
+ * - `status` is a document request status; it only applies to the request-based
+ *   reports (student records use the separate student status enum and are
+ *   intentionally left unfiltered). */
+export type ReportFilters = {
+  documentType?: string;
+  status?: RequestStatus;
 };
 
 export type ReportData = {
@@ -134,6 +148,21 @@ export function formatPeriodLabel(range: ReportRange) {
   return "All time";
 }
 
+/** Parses `?documentType=&status=` into row filters. Blank values and
+ * unknown statuses are ignored so a stale link never breaks the page. */
+export function parseReportFilters(documentType?: string, status?: string): ReportFilters {
+  const trimmedType = documentType?.trim();
+  const trimmedStatus = status?.trim();
+  const isRequestStatus =
+    !!trimmedStatus &&
+    (requestStatusEnum.enumValues as readonly string[]).includes(trimmedStatus);
+
+  return {
+    documentType: trimmedType || undefined,
+    status: isRequestStatus ? (trimmedStatus as RequestStatus) : undefined,
+  };
+}
+
 function personName(row: {
   studentFirstName?: string | null;
   studentMiddleName?: string | null;
@@ -164,7 +193,11 @@ function rangeFilters(column: Parameters<typeof gte>[0], range: ReportRange) {
   return conditions;
 }
 
-export async function getReportData(key: ReportKey, range: ReportRange): Promise<ReportData> {
+export async function getReportData(
+  key: ReportKey,
+  range: ReportRange,
+  filters: ReportFilters = {},
+): Promise<ReportData> {
   const db = getDb();
   const meta = REPORT_META[key];
   const periodLabel = formatPeriodLabel(range);
@@ -181,6 +214,8 @@ export async function getReportData(key: ReportKey, range: ReportRange): Promise
       { header: "Requested", width: 76, align: "right" },
     ];
     const conditions = rangeFilters(documentRequests.createdAt, range);
+    if (filters.documentType) conditions.push(eq(documentTypes.name, filters.documentType));
+    if (filters.status) conditions.push(eq(documentRequests.status, filters.status));
     const records = await db
       .select({
         trackingNumber: documentRequests.trackingNumber,
@@ -213,6 +248,8 @@ export async function getReportData(key: ReportKey, range: ReportRange): Promise
       { header: "Claimed", width: 80, align: "right" },
     ];
     const conditions = [eq(documentRequests.status, "claimed"), ...rangeFilters(documentRequests.claimedAt, range)];
+    if (filters.documentType) conditions.push(eq(documentTypes.name, filters.documentType));
+    if (filters.status) conditions.push(eq(documentRequests.status, filters.status));
     const records = await db
       .select({
         trackingNumber: documentRequests.trackingNumber,
@@ -243,6 +280,7 @@ export async function getReportData(key: ReportKey, range: ReportRange): Promise
       { header: "Generated", width: 70, align: "right" },
     ];
     const conditions = rangeFilters(certificates.generatedAt, range);
+    if (filters.documentType) conditions.push(eq(certificates.certificateType, filters.documentType));
     const records = await db
       .select({
         certificateNumber: certificates.certificateNumber,
@@ -307,8 +345,12 @@ export async function getReportData(key: ReportKey, range: ReportRange): Promise
   };
 }
 
-export async function listReports(range: ReportRange, pages: Partial<Record<ReportKey, number>> = {}): Promise<ReportData[]> {
-  const reports = await Promise.all(REPORT_KEYS.map((key) => getReportData(key, range)));
+export async function listReports(
+  range: ReportRange,
+  pages: Partial<Record<ReportKey, number>> = {},
+  filters: ReportFilters = {},
+): Promise<ReportData[]> {
+  const reports = await Promise.all(REPORT_KEYS.map((key) => getReportData(key, range, filters)));
   return reports.map((report) => {
     const paged = paginateRows(report.rows, pages[report.key] ?? 1, PAGE_SIZE);
     return { ...report, rows: paged.rows, page: paged.page, pageSize: paged.pageSize };
@@ -334,8 +376,12 @@ function drawContinuationHeader(page: PDFPage, bold: PDFFont, title: string) {
   });
 }
 
-export async function renderReportPdf(key: ReportKey, range: ReportRange): Promise<Uint8Array> {
-  const data = await getReportData(key, range);
+export async function renderReportPdf(
+  key: ReportKey,
+  range: ReportRange,
+  filters: ReportFilters = {},
+): Promise<Uint8Array> {
+  const data = await getReportData(key, range, filters);
   const pdfDoc = await PDFDocument.create();
   const [regular, bold] = await Promise.all([
     pdfDoc.embedFont(StandardFonts.Helvetica),
@@ -476,4 +522,23 @@ export async function renderReportPdf(key: ReportKey, range: ReportRange): Promi
   }
 
   return pdfDoc.save();
+}
+
+/** Renders every report under the same period + filters and merges the pages
+ * into a single branded PDF — one section per report, in `REPORT_KEYS` order,
+ * each keeping its own title block, summary box, and signature lines. */
+export async function renderAllReportsPdf(
+  range: ReportRange,
+  filters: ReportFilters = {},
+): Promise<Uint8Array> {
+  const combined = await PDFDocument.create();
+
+  for (const key of REPORT_KEYS) {
+    const sectionBytes = await renderReportPdf(key, range, filters);
+    const section = await PDFDocument.load(sectionBytes);
+    const pages = await combined.copyPages(section, section.getPageIndices());
+    for (const page of pages) combined.addPage(page);
+  }
+
+  return combined.save();
 }

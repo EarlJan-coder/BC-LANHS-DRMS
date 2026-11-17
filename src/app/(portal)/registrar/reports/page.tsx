@@ -3,16 +3,31 @@ import { SectionHeading } from "@/components/section-heading";
 import { DataTable, type TableColumn } from "@/components/data-table";
 import { DownloadButton } from "@/components/ui/download-button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ReportDateFilter } from "@/components/report-date-filter";
-import { formatPeriodLabel, listReports, parseReportRange } from "@/lib/services/reports";
+import { ReportFilterBar } from "@/components/report-filter-bar";
+import {
+  formatPeriodLabel,
+  listReports,
+  parseReportFilters,
+  parseReportRange,
+  type ReportFilters,
+  type ReportRange,
+} from "@/lib/services/reports";
+import { listDocumentTypeViews } from "@/lib/services/live-data";
 import { Pagination } from "@/components/ui/pagination";
 import { parsePage } from "@/lib/pagination";
 
-function pdfHref(key: string, from?: string, to?: string) {
+function reportQuery(range: ReportRange, filters: ReportFilters) {
   const params = new URLSearchParams();
-  if (from) params.set("from", from);
-  if (to) params.set("to", to);
-  const query = params.toString();
+  if (range.fromLabel) params.set("from", range.fromLabel);
+  if (range.toLabel) params.set("to", range.toLabel);
+  if (filters.documentType) params.set("documentType", filters.documentType);
+  if (filters.status) params.set("status", filters.status);
+  return params.toString();
+}
+
+/** `key` is a report key, or `all` for the combined PDF. */
+function pdfHref(key: string, range: ReportRange, filters: ReportFilters) {
+  const query = reportQuery(range, filters);
   return query ? `/api/reports/${key}/pdf?${query}` : `/api/reports/${key}/pdf`;
 }
 
@@ -26,12 +41,23 @@ export default async function ReportsPage({
   const to = typeof params.to === "string" ? params.to : undefined;
   const range = parseReportRange(from, to);
   const periodLabel = formatPeriodLabel(range);
-  const reports = await listReports(range, {
-    "request-summary": parsePage(params["page-request-summary"]),
-    "claimed-documents": parsePage(params["page-claimed-documents"]),
-    "generated-certificates": parsePage(params["page-generated-certificates"]),
-    "student-records": parsePage(params["page-student-records"]),
-  });
+  const filters = parseReportFilters(
+    typeof params.documentType === "string" ? params.documentType : undefined,
+    typeof params.status === "string" ? params.status : undefined,
+  );
+  const documentTypes = (await listDocumentTypeViews())
+    .filter((type) => type.isActive)
+    .map((type) => type.name);
+  const reports = await listReports(
+    range,
+    {
+      "request-summary": parsePage(params["page-request-summary"]),
+      "claimed-documents": parsePage(params["page-claimed-documents"]),
+      "generated-certificates": parsePage(params["page-generated-certificates"]),
+      "student-records": parsePage(params["page-student-records"]),
+    },
+    filters,
+  );
   const pageQuery = Object.fromEntries(
     reports.map((report) => [`page-${report.key}`, report.page && report.page > 1 ? String(report.page) : undefined]),
   );
@@ -40,15 +66,28 @@ export default async function ReportsPage({
     <div>
       <SectionHeading
         title="Reports"
-        description="Registrar reports for school document and certificate workflows. Pick a date range, then export any report as a PDF."
+        description="Registrar reports for school document and certificate workflows. Pick a period and filters, then export one report or all of them as a single PDF."
+        actions={
+          <DownloadButton
+            href={pdfHref("all", range, filters)}
+            tone="primary"
+            loadingLabel="Preparing PDFs…"
+          >
+            <FileDown className="h-4 w-4" aria-hidden />
+            Export All PDF
+          </DownloadButton>
+        }
       />
 
       <Card className="mb-6">
         <CardContent>
-          <ReportDateFilter
+          <ReportFilterBar
             initialFrom={range.fromLabel}
             initialTo={range.toLabel}
+            initialDocumentType={filters.documentType}
+            initialStatus={filters.status}
             periodLabel={periodLabel}
+            documentTypes={documentTypes}
           />
         </CardContent>
       </Card>
@@ -73,7 +112,7 @@ export default async function ReportsPage({
                     {report.periodNoun} &middot; {report.periodLabel}
                   </p>
                 </div>
-                <DownloadButton href={pdfHref(report.key, range.fromLabel, range.toLabel)} tone="primary" loadingLabel="Preparing PDF…">
+                <DownloadButton href={pdfHref(report.key, range, filters)} tone="primary" loadingLabel="Preparing PDF…">
                   <FileDown className="h-4 w-4" aria-hidden />
                   Export PDF
                 </DownloadButton>
@@ -82,7 +121,7 @@ export default async function ReportsPage({
               <DataTable
                 columns={columns}
                 rows={report.rows}
-                emptyMessage="No records for the selected period."
+                emptyMessage="No records match the selected filters."
               />
               <Pagination
                 page={page}
@@ -91,7 +130,7 @@ export default async function ReportsPage({
                 pageSize={pageSize}
                 basePath="/registrar/reports"
                 pageParam={`page-${report.key}`}
-                query={{ from, to, ...pageQuery }}
+                query={{ from, to, documentType: filters.documentType, status: filters.status, ...pageQuery }}
               />
             </section>
           );

@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { getCurrentRole } from "@/lib/auth";
-import { isReportKey, parseReportRange, renderReportPdf } from "@/lib/services/reports";
+import {
+  isReportKey,
+  parseReportFilters,
+  parseReportRange,
+  renderReportPdf,
+} from "@/lib/services/reports";
 
 export async function GET(
   request: Request,
@@ -22,8 +27,12 @@ export async function GET(
       url.searchParams.get("from") ?? undefined,
       url.searchParams.get("to") ?? undefined,
     );
+    const filters = parseReportFilters(
+      url.searchParams.get("documentType") ?? undefined,
+      url.searchParams.get("status") ?? undefined,
+    );
 
-    const pdf = await renderReportPdf(report, range);
+    const pdf = await renderReportPdf(report, range, filters);
 
     return new Response(new Uint8Array(pdf), {
       headers: {
