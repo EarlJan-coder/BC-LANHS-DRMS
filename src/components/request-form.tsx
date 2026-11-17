@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/dialog";
-import { Input, Label, Select, Textarea } from "@/components/ui/input";
+import { Input, Label, Required, Select, Textarea } from "@/components/ui/input";
 import { DOCUMENT_TYPES, GRADE_LEVELS, SHS_STRANDS } from "@/lib/constants";
 
 export function RequestForm() {
@@ -73,7 +73,7 @@ export function RequestForm() {
         <CardContent>
           <form onSubmit={handleFormSubmit} className="grid gap-5">
             <div className="grid gap-2">
-              <Label htmlFor="documentType">Document type</Label>
+              <Label htmlFor="documentType">Document type <Required /></Label>
               <Select id="documentType" name="documentType" required defaultValue="">
                 <option value="" disabled>
                   Select document type
@@ -86,7 +86,7 @@ export function RequestForm() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="purpose">Request purpose</Label>
+              <Label htmlFor="purpose">Request purpose <Required /></Label>
               <Textarea
                 id="purpose"
                 name="purpose"
@@ -96,7 +96,7 @@ export function RequestForm() {
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="gradeLevelNeeded">Grade level</Label>
+                <Label htmlFor="gradeLevelNeeded">Grade level <Required /></Label>
                 <Select
                   id="gradeLevelNeeded"
                   name="gradeLevelNeeded"
@@ -116,7 +116,7 @@ export function RequestForm() {
               </div>
               {needsStrand ? (
                 <div className="grid gap-2">
-                  <Label htmlFor="strandNeeded">Strand</Label>
+                  <Label htmlFor="strandNeeded">Strand <Required /></Label>
                   <Select id="strandNeeded" name="strandNeeded" required defaultValue="">
                     <option value="" disabled>
                       Select strand

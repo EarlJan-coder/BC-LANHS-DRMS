@@ -5,7 +5,7 @@ import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/input";
+import { Label, Required } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 
 export function ChangePasswordForm({ mustChangePassword }: { mustChangePassword: boolean }) {
@@ -66,7 +66,7 @@ export function ChangePasswordForm({ mustChangePassword }: { mustChangePassword:
         ) : null}
 
         <div className="grid gap-2">
-          <Label htmlFor="currentPassword">Current password</Label>
+          <Label htmlFor="currentPassword">Current password <Required /></Label>
           <PasswordInput
             id="currentPassword"
             name="currentPassword"
@@ -78,7 +78,7 @@ export function ChangePasswordForm({ mustChangePassword }: { mustChangePassword:
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="newPassword">New password</Label>
+          <Label htmlFor="newPassword">New password <Required /></Label>
           <PasswordInput
             id="newPassword"
             name="newPassword"
@@ -91,7 +91,7 @@ export function ChangePasswordForm({ mustChangePassword }: { mustChangePassword:
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="confirmPassword">Confirm new password</Label>
+          <Label htmlFor="confirmPassword">Confirm new password <Required /></Label>
           <PasswordInput
             id="confirmPassword"
             name="confirmPassword"

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
-import { Input, Label, Select, Textarea } from "@/components/ui/input";
+import { Input, Label, Required, Select, Textarea } from "@/components/ui/input";
 import type { StudentView } from "@/lib/types";
 
 const enrollmentOptions = [
@@ -187,7 +187,9 @@ export function StudentRecordModal({ student }: { student: StudentView }) {
                 </div>
                 {restoresAccount ? (
                   <div className="grid gap-2 sm:col-span-2">
-                    <Label htmlFor={`student-approval-note-${student.id}`}>Approval note sent by email</Label>
+                    <Label htmlFor={`student-approval-note-${student.id}`}>
+                      Approval note sent by email <Required />
+                    </Label>
                     <Textarea
                       id={`student-approval-note-${student.id}`}
                       value={draft.registrationNote}
@@ -256,7 +258,10 @@ function Field({
 }) {
   return (
     <div className="grid gap-2">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id}>
+        {label}
+        {required ? <Required /> : null}
+      </Label>
       <Input id={id} type={type} value={value} maxLength={maxLength} placeholder={placeholder} required={required} onChange={(event) => onChange(event.target.value)} />
     </div>
   );

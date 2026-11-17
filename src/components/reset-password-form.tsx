@@ -5,7 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/input";
+import { Label, Required } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 
 export function ResetPasswordForm({ userId, email }: { userId: string; email: string }) {
@@ -102,7 +102,7 @@ export function ResetPasswordForm({ userId, email }: { userId: string; email: st
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-3 pt-4">
               <div className="space-y-1.5">
-                <Label htmlFor={`reset-password-${userId}`}>New password for {email}</Label>
+                <Label htmlFor={`reset-password-${userId}`}>New password for {email} <Required /></Label>
                 <PasswordInput
                   id={`reset-password-${userId}`}
                   value={password}

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input, Label, Select } from "@/components/ui/input";
+import { Input, Label, Required, Select } from "@/components/ui/input";
 import { CITY_NAMES, barangaysFor, parseAddress } from "@/lib/ph-address";
 
 export function ProfileUpdateForm({
@@ -123,7 +123,7 @@ export function ProfileUpdateForm({
                 <div className="grid max-h-[70vh] gap-4 overflow-y-auto px-5 py-5">
                   <div className="grid gap-2">
                     <Label htmlFor="profile-lastSchoolYearAttended">
-                      Last school year attended <span className="text-red-600">*</span>
+                      Last school year attended <Required />
                     </Label>
                     <Input
                       id="profile-lastSchoolYearAttended"
@@ -139,7 +139,7 @@ export function ProfileUpdateForm({
                   <div className="grid gap-2 sm:grid-cols-2">
                     <div className="grid gap-2">
                       <Label htmlFor="profile-addressCity">
-                        City <span className="text-red-600">*</span>
+                        City {addressDirty ? <Required /> : null}
                       </Label>
                       <Select
                         id="profile-addressCity"
@@ -164,7 +164,7 @@ export function ProfileUpdateForm({
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="profile-addressBarangay">
-                        Barangay <span className="text-red-600">*</span>
+                        Barangay {addressDirty ? <Required /> : null}
                       </Label>
                       <Select
                         id="profile-addressBarangay"
@@ -188,7 +188,7 @@ export function ProfileUpdateForm({
 
                   <div className="grid gap-2">
                     <Label htmlFor="profile-addressStreetLine">
-                      House no. / street <span className="text-red-600">*</span>
+                      House no. / street {addressDirty ? <Required /> : null}
                     </Label>
                     <Input
                       id="profile-addressStreetLine"
@@ -218,7 +218,7 @@ export function ProfileUpdateForm({
                     </p>
                   ) : null}
                   <div className="grid gap-2">
-                    <Label htmlFor="profile-email">Email</Label>
+                    <Label htmlFor="profile-email">Email <Required /></Label>
                     <Input id="profile-email" name="email" type="email" defaultValue={editableValue(email)} required />
                     <p className="text-xs text-slate-500">You will use this email to sign in.</p>
                   </div>

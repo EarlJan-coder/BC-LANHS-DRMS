@@ -5,7 +5,7 @@ import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, Required } from "@/components/ui/input";
 import type { DocumentTypeView } from "@/lib/types";
 
 type Draft = Omit<DocumentTypeView, "id" | "status">;
@@ -138,9 +138,9 @@ export function DocumentTypesManager({ initialTypes }: { initialTypes: DocumentT
   return (
     <div className="space-y-5">
       <form onSubmit={create} className="grid gap-3 rounded-lg border border-border bg-white p-4 sm:grid-cols-[1fr_1fr_10rem_auto] sm:items-end">
-        <label className="grid gap-1 text-sm font-medium text-slate-700">Name<Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} required maxLength={120} /></label>
-        <label className="grid gap-1 text-sm font-medium text-slate-700">Code<Input value={draft.code} onChange={(event) => setDraft({ ...draft, code: event.target.value })} required maxLength={40} /></label>
-        <label className="grid gap-1 text-sm font-medium text-slate-700">Processing days<Input type="number" min={0} max={365} value={draft.processingDays} onChange={(event) => setDraft({ ...draft, processingDays: Number(event.target.value) })} required /></label>
+        <label className="grid gap-1 text-sm font-medium text-slate-700"><span>Name <Required /></span><Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} required maxLength={120} /></label>
+        <label className="grid gap-1 text-sm font-medium text-slate-700"><span>Code <Required /></span><Input value={draft.code} onChange={(event) => setDraft({ ...draft, code: event.target.value })} required maxLength={40} /></label>
+        <label className="grid gap-1 text-sm font-medium text-slate-700"><span>Processing days <Required /></span><Input type="number" min={0} max={365} value={draft.processingDays} onChange={(event) => setDraft({ ...draft, processingDays: Number(event.target.value) })} required /></label>
         <Button type="submit" loading={busy}>Add type</Button>
       </form>
       <DataTable

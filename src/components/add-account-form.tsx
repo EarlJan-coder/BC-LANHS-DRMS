@@ -5,7 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input, Label, Select } from "@/components/ui/input";
+import { Input, Label, Required, Select } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 
 type FormState = {
@@ -152,7 +152,7 @@ export function AddAccountForm() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label htmlFor="firstName">First name</Label>
+                  <Label htmlFor="firstName">First name <Required /></Label>
                   <Input
                     id="firstName"
                     name="firstName"
@@ -163,7 +163,7 @@ export function AddAccountForm() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="lastName">Last name</Label>
+                  <Label htmlFor="lastName">Last name <Required /></Label>
                   <Input
                     id="lastName"
                     name="lastName"
@@ -175,7 +175,7 @@ export function AddAccountForm() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Email <Required /></Label>
                 <Input
                   id="email"
                   name="email"
@@ -188,7 +188,7 @@ export function AddAccountForm() {
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label htmlFor="role">Role</Label>
+                  <Label htmlFor="role">Role <Required /></Label>
                   <Select
                     id="role"
                     name="role"
@@ -201,7 +201,7 @@ export function AddAccountForm() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="password">Placeholder password</Label>
+                  <Label htmlFor="password">Placeholder password <Required /></Label>
                   <PasswordInput
                     id="password"
                     name="password"

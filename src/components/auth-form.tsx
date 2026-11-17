@@ -6,18 +6,9 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Clock3, MailCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input, Label, Select } from "@/components/ui/input";
+import { Input, Label, Required, Select } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { CITY_NAMES, barangaysFor } from "@/lib/ph-address";
-
-/** Marks a required field label. */
-function Required() {
-  return (
-    <span className="text-red-600" aria-hidden="true">
-      *
-    </span>
-  );
-}
 
 type AuthFormMode = "login" | "signup";
 
@@ -288,16 +279,16 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
           </>
         ) : (
           <div className="grid gap-2">
-            <Label htmlFor="identifier">Email or LRN</Label>
+            <Label htmlFor="identifier">
+              Email or LRN <Required />
+            </Label>
             <Input id="identifier" name="identifier" autoComplete="username" required />
             <p className="text-xs text-slate-500">Use your email if multiple accounts share an LRN.</p>
           </div>
         )}
 
         <div className="grid gap-2">
-          <Label htmlFor="password">
-            Password {isSignup ? <Required /> : null}
-          </Label>
+          <Label htmlFor="password">Password <Required /></Label>
           <PasswordInput
             id="password"
             name="password"

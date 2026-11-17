@@ -20,3 +20,19 @@ export function Label({ className, ...props }: LabelHTMLAttributes<HTMLLabelElem
   return <label className={cn("text-sm font-medium text-slate-700", className)} {...props} />;
 }
 
+/**
+ * Marks a required field label.
+ *
+ * Pair with a control that carries the `required` attribute — that attribute is
+ * what actually stops the browser submitting an empty value, so the two must
+ * always be shown together. The `*` is hidden from assistive technology because
+ * the control's own `required` is what gets announced.
+ */
+export function Required() {
+  return (
+    <span className="text-red-600" aria-hidden="true">
+      *
+    </span>
+  );
+}
+
