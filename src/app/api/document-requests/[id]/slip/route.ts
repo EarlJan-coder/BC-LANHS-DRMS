@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentDbUser } from "@/lib/auth";
 import { generateRequestSlipPdf } from "@/lib/services/document-requests";
+import { AppError } from "@/lib/utils";
 
 export async function GET(
   _request: Request,
@@ -23,7 +24,12 @@ export async function GET(
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to generate request slip.";
-    const status = message.includes("not found") ? 404 : 500;
+    const status =
+      error instanceof AppError
+        ? error.status
+        : message.includes("not found")
+          ? 404
+          : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

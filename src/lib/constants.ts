@@ -20,6 +20,16 @@ export const REQUEST_STATUSES: Array<{ value: RequestStatus; label: string; tone
   { value: "cancelled", label: "Cancelled", tone: "bg-zinc-200 text-zinc-800 ring-zinc-300" },
 ];
 
+/** Only this status unlocks a student's request-slip download. Staff bypass
+ * the gate (see `canAccessRequestSlip`), so it is enforced in one place on
+ * the server and read from here by the student-facing UI. */
+export const SLIP_DOWNLOAD_STATUS: RequestStatus = "ready_for_pickup";
+
+/** Shown wherever the slip download is locked: a hover tooltip on the disabled
+ * control, a visible hint on the request detail page, and the 403 the slip
+ * endpoint returns to an owner who tries early. */
+export const SLIP_DOWNLOAD_HINT = "Available once your document is Ready for Pickup";
+
 export const DOCUMENT_TYPES = [
   "Good Moral Certificate",
   "Certificate of Enrollment",

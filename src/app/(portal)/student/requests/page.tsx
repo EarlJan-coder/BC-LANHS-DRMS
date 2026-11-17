@@ -3,9 +3,9 @@ import { DataTable } from "@/components/data-table";
 import { RequestFilterForm } from "@/components/request-filter-form";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBadge } from "@/components/status-badge";
+import { SlipDownloadButton } from "@/components/slip-download";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { DownloadButton } from "@/components/ui/download-button";
 import { PendingLink } from "@/components/ui/pending-link";
 import { listDocumentRequestViews } from "@/lib/services/live-data";
 import { Pagination } from "@/components/ui/pagination";
@@ -71,7 +71,8 @@ export default async function MyRequestsPage({
                   icon={<Eye className="h-4 w-4" />}
                   className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-slate-600 hover:text-brand"
                 />
-                <DownloadButton
+                <SlipDownloadButton
+                  status={row.status}
                   href={`/api/document-requests/${row.id}/slip`}
                   tone="secondary"
                   size="icon"
@@ -79,7 +80,7 @@ export default async function MyRequestsPage({
                   aria-label="Download request slip"
                 >
                   <FileDown className="h-4 w-4" />
-                </DownloadButton>
+                </SlipDownloadButton>
               </div>
             ),
           },

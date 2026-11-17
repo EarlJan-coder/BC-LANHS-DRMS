@@ -12,7 +12,7 @@ import {
   type UserRole,
 } from "@/db/schema";
 import { ensureCurrentDbUser, getCurrentProfile, getCurrentRole } from "@/lib/auth";
-import { REQUEST_STATUSES } from "@/lib/constants";
+import { REQUEST_STATUSES, SLIP_DOWNLOAD_HINT, SLIP_DOWNLOAD_STATUS } from "@/lib/constants";
 import { AppError } from "@/lib/utils";
 import { sendWorkflowEmail } from "@/lib/email";
 import { composeGradeValue, generateTrackingNumber } from "@/lib/utils";
@@ -60,15 +60,18 @@ export type CreateDocumentRequestEffects = {
 };
 
 /** Slip PDFs carry student PII (name, LRN, purpose): staff may read any slip,
- * everyone else only the slip of a request they made. */
+ * everyone else only the slip of a request they made — and only once it is
+ * `ready_for_pickup`, so a slip can never vouch for a document that is not
+ * ready to claim. */
 export function canAccessRequestSlip(
-  request: { requestedByUserId: string | null },
+  request: { requestedByUserId: string | null; status: RequestStatus },
   viewer: { id: string; role: UserRole },
 ): boolean {
+  if (viewer.role === "registrar" || viewer.role === "admin") return true;
   return (
-    viewer.role === "registrar" ||
-    viewer.role === "admin" ||
-    (request.requestedByUserId !== null && request.requestedByUserId === viewer.id)
+    request.requestedByUserId !== null &&
+    request.requestedByUserId === viewer.id &&
+    request.status === SLIP_DOWNLOAD_STATUS
   );
 }
 
@@ -413,15 +416,19 @@ export async function generateRequestSlipPdf(requestId: string, viewer: { id: st
     where: sql`${documentRequests.id}::text = ${requestId} OR ${documentRequests.trackingNumber} = ${requestId}`,
   });
 
-  // "Not found" for both missing and unauthorized so the endpoint is not an
-  // existence oracle for request ids.
   if (!row || !canAccessRequestSlip(row, viewer)) {
-    throw new Error("Document request not found.");
+    // The owner is told *why* their slip is locked; everyone else gets the
+    // same "not found" as a missing id so the endpoint is not an existence
+    // oracle for request ids.
+    if (row && row.requestedByUserId === viewer.id) {
+      throw new AppError(SLIP_DOWNLOAD_HINT, 403);
+    }
+    throw new AppError("Document request not found.", 404);
   }
 
   const request = await getDocumentRequestView(requestId);
   if (!request) {
-    throw new Error("Document request not found.");
+    throw new AppError("Document request not found.", 404);
   }
 
   return renderRequestSlipPdf(request);
@@ -518,7 +525,7 @@ export async function updateDocumentRequestStatus(requestId: string, input: unkn
       subject: `LANHS DRMS request update: ${referenceId}`,
       instruction:
         values.status === "ready_for_pickup"
-          ? "Your document is ready for pickup at the registrar office. Please bring a valid ID."
+          ? "Your document is ready for pickup at the registrar office. Please bring a valid ID. If you do not have a valid ID, download your request slip from the portal and bring it for confirmation."
           : values.status === "claimed"
             ? "Your document has been marked as claimed. Thank you for using LANHS DRMS."
             : values.status === "rejected"

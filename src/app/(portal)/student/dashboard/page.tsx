@@ -3,8 +3,8 @@ import { DashboardCard } from "@/components/dashboard-card";
 import { DataTable } from "@/components/data-table";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBadge } from "@/components/status-badge";
+import { SlipDownloadButton } from "@/components/slip-download";
 import { ButtonLink } from "@/components/ui/button";
-import { DownloadButton } from "@/components/ui/download-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getStudentDashboardData } from "@/lib/services/live-data";
 
@@ -43,14 +43,15 @@ export default async function StudentDashboardPage() {
               key: "slip",
               label: "Slip",
               render: (row) => (
-                <DownloadButton
+                <SlipDownloadButton
+                  status={row.status}
                   href={`/api/document-requests/${row.id}/slip`}
                   tone="secondary"
                   size="icon"
                   aria-label={`Download request slip for ${row.trackingNumber}`}
                 >
                   <FileDown className="h-4 w-4" aria-hidden />
-                </DownloadButton>
+                </SlipDownloadButton>
               ),
             },
           ]}

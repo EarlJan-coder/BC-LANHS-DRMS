@@ -22,11 +22,16 @@ after(async () => {
 });
 
 describe("canAccessRequestSlip", () => {
-  const owned = { requestedByUserId: "user-1" };
-  const unowned = { requestedByUserId: null };
+  const owned = { requestedByUserId: "user-1", status: "ready_for_pickup" } as const;
+  const notReady = { requestedByUserId: "user-1", status: "pending" } as const;
+  const unowned = { requestedByUserId: null, status: "pending" } as const;
 
   it("lets the requesting user download their own slip", () => {
     assert.equal(canAccessRequestSlip(owned, { id: "user-1", role: "student" }), true);
+  });
+
+  it("holds the requesting user's slip until the request is ready for pickup", () => {
+    assert.equal(canAccessRequestSlip(notReady, { id: "user-1", role: "student" }), false);
   });
 
   it("denies one student another student's slip", () => {
@@ -35,6 +40,10 @@ describe("canAccessRequestSlip", () => {
 
   it("lets registrars download any slip", () => {
     assert.equal(canAccessRequestSlip(owned, { id: "user-9", role: "registrar" }), true);
+  });
+
+  it("lets registrars download a slip that is not ready for pickup", () => {
+    assert.equal(canAccessRequestSlip(notReady, { id: "user-9", role: "registrar" }), true);
   });
 
   it("lets admins download any slip", () => {
@@ -73,6 +82,40 @@ describe("generateRequestSlipPdf access (integration, local DB)", {
       assert.ok(pdf.length > 0);
     } finally {
       await db.delete(documentRequests).where(eq(documentRequests.id, created.id));
+    }
+  });
+
+  it("only lets the owner download once the request is ready for pickup", async () => {
+    const db = getDb();
+    const user = await createStudentUser("2025-2026");
+    const [created] = await db
+      .insert(documentRequests)
+      .values({
+        trackingNumber: `TEST-SLIP-STATUS-${Date.now()}`,
+        purpose: "Slip readiness test",
+        requestedByUserId: user.id,
+        status: "pending",
+      })
+      .returning();
+
+    try {
+      // Downloading early is explained (403 + why), not disguised as a 404.
+      await assert.rejects(
+        () => generateRequestSlipPdf(created.id, { id: user.id, role: "student" }),
+        (error: unknown) =>
+          error instanceof AppError && error.status === 403 && /ready for pickup/i.test(error.message),
+      );
+
+      await db
+        .update(documentRequests)
+        .set({ status: "ready_for_pickup" })
+        .where(eq(documentRequests.id, created.id));
+
+      const pdf = await generateRequestSlipPdf(created.id, { id: user.id, role: "student" });
+      assert.ok(pdf.length > 0);
+    } finally {
+      await db.delete(documentRequests).where(eq(documentRequests.id, created.id));
+      await cleanupStudentUser(user.id);
     }
   });
 });

@@ -2,9 +2,10 @@ import { FileDown } from "lucide-react";
 import { notFound } from "next/navigation";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBadge } from "@/components/status-badge";
+import { SlipDownloadButton } from "@/components/slip-download";
 import { ButtonLink } from "@/components/ui/button";
-import { DownloadButton } from "@/components/ui/download-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SLIP_DOWNLOAD_HINT, SLIP_DOWNLOAD_STATUS } from "@/lib/constants";
 import { getDocumentRequestView, listRequestStatusHistoryViews } from "@/lib/services/live-data";
 
 export const dynamic = "force-dynamic";
@@ -29,11 +30,20 @@ export default async function StudentRequestDetailsPage({
         title="Request details"
         description={request.trackingNumber}
         actions={
-          <div className="flex flex-wrap gap-2">
-            <DownloadButton href={`/api/document-requests/${request.id}/slip`} tone="primary" loadingLabel="Preparing slip…">
+          <div className="flex flex-wrap items-center gap-2">
+            <SlipDownloadButton
+              status={request.status}
+              href={`/api/document-requests/${request.id}/slip`}
+              tone="primary"
+              loadingLabel="Preparing slip…"
+              aria-label="Download request slip"
+            >
               <FileDown className="h-4 w-4" aria-hidden />
               Download slip
-            </DownloadButton>
+            </SlipDownloadButton>
+            {request.status !== SLIP_DOWNLOAD_STATUS ? (
+              <span className="text-sm text-slate-500">{SLIP_DOWNLOAD_HINT}</span>
+            ) : null}
             <ButtonLink href="/student/requests" tone="secondary">Back to requests</ButtonLink>
           </div>
         }
