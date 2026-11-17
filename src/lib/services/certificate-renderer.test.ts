@@ -1,15 +1,22 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { PDFDocument, StandardFonts } from "pdf-lib";
+import { inflateSync } from "node:zlib";
+import { PDFDocument, PDFRawStream, StandardFonts } from "pdf-lib";
+import type { PDFArray, PDFStream } from "pdf-lib";
 import { CERT_LAYOUTS } from "@/lib/services/certificate-layouts";
-import type { CertTemplateKey } from "@/lib/services/certificate-layouts";
+import type { CertTemplateKey, CertToken } from "@/lib/services/certificate-layouts";
 import { composeGradeValue } from "@/lib/utils";
+import { embedCertificateFonts } from "@/lib/services/pdf-fonts";
 import {
+  CERT_PAGE_WIDTH,
   manilaDateParts,
   pickCertificateTemplate,
   placeholderUnderscores,
+  planWordingDraw,
   renderCertificatePdf,
+  renderSampleCertificate,
 } from "@/lib/services/certificate-renderer";
+import { DEFAULT_WORDING, SAMPLE_BLANKS } from "@/lib/services/certificate-wording-defaults";
 
 function blankFields(key: CertTemplateKey): string[] {
   return CERT_LAYOUTS[key].lines
@@ -165,5 +172,192 @@ describe("renderCertificatePdf", () => {
       genericBody: "This certifies that the student has a validated record.",
     });
     assert.equal(Buffer.from(bytes.slice(0, 5)).toString("latin1"), "%PDF-");
+  });
+});
+
+const TEST_NAMES = { registrarName: "Test Registrar", principalName: "Test Principal" };
+
+/**
+ * The page's draw operators as the decompressed content stream. pdf-lib's raw
+ * byte output is not stable run-to-run (asset embedding interleaving renumbers
+ * objects), but the drawn operators are, so "same rendering" comparisons use
+ * these bytes.
+ */
+async function drawStream(bytes: Uint8Array): Promise<Buffer> {
+  const doc = await PDFDocument.load(bytes);
+  const contents = doc.getPage(0).node.Contents();
+  const streams = contents instanceof PDFRawStream ? [contents] : (contents as PDFArray).asArray().map((ref) => doc.context.lookup(ref) as PDFStream);
+  return Buffer.concat(streams.map((stream) => inflateSync(Buffer.from((stream as PDFRawStream).getContents()))));
+}
+
+describe("renderSampleCertificate", () => {
+  it("renders every template with default wording as a valid PDF", async () => {
+    for (const template of Object.keys(DEFAULT_WORDING) as CertTemplateKey[]) {
+      const bytes = await renderSampleCertificate(template, DEFAULT_WORDING[template], TEST_NAMES);
+      assert.equal(Buffer.from(bytes.slice(0, 5)).toString("latin1"), "%PDF-", `${template} header`);
+      assert.ok(bytes.length > 15000, `${template} renders`);
+    }
+  });
+
+  it("reflects edited wording", async () => {
+    const defaults = DEFAULT_WORDING["good-moral"];
+    const baseline = await renderSampleCertificate("good-moral", defaults, TEST_NAMES);
+    const editedBody = await renderSampleCertificate(
+      "good-moral",
+      { ...defaults, body: defaults.body.replace("school year {{schoolYear}}.", "school year {{schoolYear}} **EXTRA**.") },
+      TEST_NAMES,
+    );
+    const editedTitle = await renderSampleCertificate("good-moral", { ...defaults, title: "CERTIFICATE OF ATTAINMENT" }, TEST_NAMES);
+    assert.notDeepEqual(await drawStream(editedBody), await drawStream(baseline), "edited body changes the drawing");
+    assert.notDeepEqual(await drawStream(editedTitle), await drawStream(baseline), "edited title changes the drawing");
+  });
+});
+
+describe("renderCertificatePdf wording integration", () => {
+  it("keeps the verbatim path when wording is absent", async () => {
+    const options = { template: "good-moral" as const, blanks: {}, signatureNames: TEST_NAMES };
+    const without = await renderCertificatePdf(options);
+    const explicit = await renderCertificatePdf({ ...options, wording: undefined });
+    assert.equal(Buffer.from(without.slice(0, 5)).toString("latin1"), "%PDF-");
+    assert.deepEqual(await drawStream(explicit), await drawStream(without), "an absent wording draws exactly like no wording");
+  });
+
+  it("re-typesets the body when the wording matches the layout", async () => {
+    const options = { template: "good-moral" as const, blanks: SAMPLE_BLANKS["good-moral"], signatureNames: TEST_NAMES };
+    const verbatim = await renderCertificatePdf(options);
+    const typeset = await renderCertificatePdf({ ...options, wording: DEFAULT_WORDING["good-moral"] });
+    assert.notDeepEqual(await drawStream(typeset), await drawStream(verbatim), "the body is re-typeset from the wording");
+  });
+
+  it("ignores the wording for the generic fallback frame", async () => {
+    const options = {
+      template: null,
+      blanks: {},
+      signatureNames: TEST_NAMES,
+      genericTitle: "CERTIFICATE OF RECOGNITION",
+      genericBody: "This certifies that the student has a validated record.",
+    };
+    const without = await renderCertificatePdf(options);
+    const withWording = await renderCertificatePdf({ ...options, wording: DEFAULT_WORDING["good-moral"] });
+    assert.deepEqual(await drawStream(withWording), await drawStream(without), "the generic frame ignores the wording");
+  });
+
+  it("falls back to the complete verbatim path when the layout has drifted", async () => {
+    // Simulate a regenerated layout whose body letters no longer match
+    // DEFAULT_WORDING: the wording (including edits) must be ignored entirely.
+    const token = CERT_LAYOUTS["good-moral"].lines[7].find(
+      (candidate): candidate is Extract<CertToken, { kind: "text" }> => candidate.kind === "text",
+    );
+    assert.ok(token);
+    const original = token.t;
+    try {
+      token.t = "X";
+      const options = { template: "good-moral" as const, blanks: SAMPLE_BLANKS["good-moral"], signatureNames: TEST_NAMES };
+      const verbatim = await renderCertificatePdf(options);
+      const drifted = await renderCertificatePdf({
+        ...options,
+        wording: { ...DEFAULT_WORDING["good-moral"], title: "IGNORED TITLE", registrarTitle: "IGNORED REGISTRAR" },
+      });
+      assert.deepEqual(await drawStream(drifted), await drawStream(verbatim), "drift draws exactly the verbatim path");
+    } finally {
+      token.t = original;
+    }
+  });
+
+  it("falls back to the verbatim path when a fill-in value cannot fit", async () => {
+    // Real stored values can exceed the WORST_CASE_BLANKS validation envelope;
+    // rendering must still produce the complete verbatim path, never throw.
+    const options = {
+      template: "good-moral" as const,
+      blanks: { name: "X".repeat(200) },
+      signatureNames: TEST_NAMES,
+    };
+    const bytes = await renderCertificatePdf({ ...options, wording: DEFAULT_WORDING["good-moral"] });
+    assert.equal(Buffer.from(bytes.slice(0, 5)).toString("latin1"), "%PDF-");
+    const verbatim = await renderCertificatePdf(options);
+    assert.deepEqual(await drawStream(bytes), await drawStream(verbatim), "an unfittable body draws exactly the verbatim path");
+  });
+});
+
+describe("planWordingDraw", () => {
+  it("re-typesets the body and keeps unedited title and signatory titles verbatim", async () => {
+    const fonts = await embedCertificateFonts(await PDFDocument.create());
+    const plan = planWordingDraw(CERT_LAYOUTS["good-moral"], "good-moral", DEFAULT_WORDING["good-moral"], fonts, SAMPLE_BLANKS["good-moral"]);
+    assert.ok(plan);
+    assert.deepEqual([...plan.skipLines].sort((a, b) => a - b), [7, 8, 9, 10, 11, 12, 13, 14], "only the body region is replaced");
+    assert.equal(plan.redraws.length, 0, "unedited title and signatory titles stay verbatim");
+    assert.ok(plan.bodyOps.length > 0, "the body is planned from the wording");
+  });
+
+  it("skips an empty title and centers an edited one on the page", async () => {
+    const fonts = await embedCertificateFonts(await PDFDocument.create());
+    const layout = CERT_LAYOUTS["good-moral"];
+
+    const empty = planWordingDraw(layout, "good-moral", { ...DEFAULT_WORDING["good-moral"], title: "" }, fonts, SAMPLE_BLANKS["good-moral"]);
+    assert.ok(empty);
+    assert.ok(empty.skipLines.has(6), "the title line is skipped");
+    assert.equal(empty.redraws.length, 0, "an empty title draws nothing");
+
+    const edited = planWordingDraw(
+      layout,
+      "good-moral",
+      { ...DEFAULT_WORDING["good-moral"], title: "CERTIFICATE OF ATTAINMENT" },
+      fonts,
+      SAMPLE_BLANKS["good-moral"],
+    );
+    assert.ok(edited);
+    assert.ok(edited.skipLines.has(6));
+    assert.deepEqual(edited.redraws, [
+      { text: "CERTIFICATE OF ATTAINMENT", centerX: CERT_PAGE_WIDTH / 2, y: 625.18, size: 16, font: "bookmanBold" },
+    ]);
+  });
+
+  it("skips or recenters edited signatory titles on their own line", async () => {
+    const fonts = await embedCertificateFonts(await PDFDocument.create());
+    const layout = CERT_LAYOUTS["good-moral"];
+
+    const cleared = planWordingDraw(
+      layout,
+      "good-moral",
+      { ...DEFAULT_WORDING["good-moral"], registrarTitle: "" },
+      fonts,
+      SAMPLE_BLANKS["good-moral"],
+    );
+    assert.ok(cleared);
+    assert.ok(cleared.skipLines.has(16), "the registrar title line is skipped");
+    assert.equal(cleared.redraws.length, 0, "an empty signatory title draws nothing");
+
+    const edited = planWordingDraw(
+      layout,
+      "good-moral",
+      { ...DEFAULT_WORDING["good-moral"], principalTitle: "Head Teacher" },
+      fonts,
+      SAMPLE_BLANKS["good-moral"],
+    );
+    assert.ok(edited);
+    assert.ok(edited.skipLines.has(18), "the principal title line is skipped");
+    assert.equal(edited.redraws.length, 1);
+    const [redraw] = edited.redraws;
+    assert.equal(redraw.text, "Head Teacher");
+    assert.equal(redraw.y, 192.63, "the line's own baseline");
+    assert.equal(redraw.font, "bookman");
+    assert.equal(redraw.size, 11);
+    // Centered on the original line's own visual center, with real font metrics.
+    const line = layout.lines[18].filter((t): t is Extract<CertToken, { kind: "text" }> => t.kind === "text");
+    const minX = Math.min(...line.map((t) => t.x));
+    const maxX = Math.max(...line.map((t) => t.x + fonts[t.font].widthOfTextAtSize(t.t, t.size)));
+    assert.ok(Math.abs(redraw.centerX - (minX + maxX) / 2) < 0.01, `centerX ${redraw.centerX} vs ${(minX + maxX) / 2}`);
+  });
+
+  it("returns null when the layout body has drifted from the default wording", async () => {
+    const fonts = await embedCertificateFonts(await PDFDocument.create());
+    const layout = structuredClone(CERT_LAYOUTS["good-moral"]);
+    const token = layout.lines[7].find(
+      (candidate): candidate is Extract<CertToken, { kind: "text" }> => candidate.kind === "text",
+    );
+    assert.ok(token);
+    token.t = "X";
+    assert.equal(planWordingDraw(layout, "good-moral", DEFAULT_WORDING["good-moral"], fonts, SAMPLE_BLANKS["good-moral"]), null);
+    assert.ok(planWordingDraw(CERT_LAYOUTS["good-moral"], "good-moral", DEFAULT_WORDING["good-moral"], fonts, SAMPLE_BLANKS["good-moral"]));
   });
 });
