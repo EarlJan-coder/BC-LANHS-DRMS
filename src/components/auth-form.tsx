@@ -56,24 +56,24 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
 
     const payload = isSignup
       ? {
-          email: formData.get("email"),
-          lrn: formData.get("lrn"),
-          firstName: formData.get("firstName"),
-          middleName: formData.get("middleName"),
-          lastName: formData.get("lastName"),
-          suffix: formData.get("suffix"),
-          phone: formData.get("phone"),
-          addressCity: formData.get("addressCity"),
-          addressBarangay: formData.get("addressBarangay"),
-          addressStreetLine: formData.get("addressStreetLine"),
-          lastSchoolYearAttended: formData.get("lastSchoolYearAttended"),
-          password: formData.get("password"),
-          acceptedTerms: termsAccepted,
-        }
+        email: formData.get("email"),
+        lrn: formData.get("lrn"),
+        firstName: formData.get("firstName"),
+        middleName: formData.get("middleName"),
+        lastName: formData.get("lastName"),
+        suffix: formData.get("suffix"),
+        phone: formData.get("phone"),
+        addressCity: formData.get("addressCity"),
+        addressBarangay: formData.get("addressBarangay"),
+        addressStreetLine: formData.get("addressStreetLine"),
+        lastSchoolYearAttended: formData.get("lastSchoolYearAttended"),
+        password: formData.get("password"),
+        acceptedTerms: termsAccepted,
+      }
       : {
-          identifier: formData.get("identifier"),
-          password: formData.get("password"),
-        };
+        identifier: formData.get("identifier"),
+        password: formData.get("password"),
+      };
 
     try {
       const response = await fetch(`/api/auth/${isSignup ? "signup" : "login"}`, {
@@ -114,7 +114,7 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
             </span>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-800">Registration status</p>
-              <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">On hold</h2>
+              <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">Pending Review</h2>
             </div>
           </div>
 
