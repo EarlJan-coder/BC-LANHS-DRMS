@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { BlockchainVerificationBadge } from "@/components/BlockchainVerificationBadge";
 import { VerificationBackRedirect } from "@/components/verification-back-redirect";
+import { ButtonLink } from "@/components/ui/button";
 import { verifyCertificate } from "@/lib/services/certificates";
 import { verifyCertificateOnChain } from "@/lib/services/blockchain-verification";
 import { dashboardPathForRole, getCurrentDbUser } from "@/lib/auth";
@@ -45,10 +46,17 @@ export default async function VerifyCertificatePage({
     <main className="min-h-screen bg-slate-50 px-4 py-10 overflow-x-hidden">
       <VerificationBackRedirect homeHref={homeHref} />
       <div className="mx-auto w-full max-w-2xl">
-        <div className="mb-8 flex justify-center">
-          <Link href={homeHref} aria-label={user ? "Back to your dashboard" : "Back to the landing page"}>
+        <div className="mb-8 flex items-center justify-between gap-4">
+          <Link
+            href={homeHref}
+            aria-label={user ? "Back to your dashboard" : "Back to the landing page"}
+            className="min-w-0"
+          >
             <AppLogo />
           </Link>
+          <ButtonLink href={homeHref} tone="secondary" size="sm" className="shrink-0">
+            {user ? "Back to dashboard" : "Back to home"}
+          </ButtonLink>
         </div>
         {/* The DB lookup and the on-chain RPC are slow; stream them in so direct
             visits see the page shell and progress feedback immediately. */}
