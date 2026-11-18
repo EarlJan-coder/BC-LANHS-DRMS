@@ -352,7 +352,6 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
 
         <Button
           type="submit"
-          tone={isSignup ? "success" : "primary"}
           loading={loading}
           disabled={isSignup && !termsAccepted}
           className="mt-1 w-full"
