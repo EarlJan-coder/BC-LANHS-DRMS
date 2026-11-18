@@ -6,7 +6,7 @@ import { SCHOOL_NAME } from "@/lib/constants";
 const items = [
   { icon: Database, title: "PostgreSQL records", copy: "Student, request, certificate, notification, and audit tables are modeled with Drizzle ORM." },
   { icon: Mail, title: "Email notifications", copy: "Resend integration is prepared for request confirmation and status updates." },
-  { icon: Blocks, title: "Blockchain proof", copy: "Only reference IDs, actions, actor roles, timestamps, and hashes are submitted on-chain." },
+  { icon: Blocks, title: "Blockchain proof", copy: "Only document records — certificates and document requests — are submitted on-chain: reference IDs, actions, actor roles, timestamps, and hashes." },
   { icon: ShieldCheck, title: "Role-based access", copy: "Email and LRN accounts use password-protected sessions and server-side role checks." },
 ];
 

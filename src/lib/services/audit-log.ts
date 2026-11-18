@@ -25,6 +25,19 @@ export type AuditedActionInput = {
   previousRecordHash?: string;
 };
 
+/**
+ * Reference types that are submitted to the chain: the document records
+ * themselves. Default-deny — account actions (user create, password reset,
+ * password change, registration decisions) stay in the local audit log and are
+ * never written to `blockchain_audit_logs` or the contract. Add a type here on
+ * purpose when a new document record needs an on-chain proof.
+ */
+const ONCHAIN_REFERENCE_TYPES = new Set(["certificate", "document_request", "status_change"]);
+
+export function isOnChainReferenceType(referenceType: string) {
+  return ONCHAIN_REFERENCE_TYPES.has(referenceType);
+}
+
 export async function recordAuditedAction(input: AuditedActionInput) {
   const timestamp = new Date().toISOString();
 
@@ -52,6 +65,7 @@ export async function recordAuditedAction(input: AuditedActionInput) {
   const recordHash = createRecordHashFromCanonical(canonical);
 
   const referenceType = input.referenceType ?? input.entityType;
+  const trackOnChain = isOnChainReferenceType(referenceType);
   let blockchainLogId: string | undefined;
 
   if (db) {
@@ -69,16 +83,30 @@ export async function recordAuditedAction(input: AuditedActionInput) {
       })
       .returning();
 
-    const [blockchainLog] = await db.insert(blockchainAuditLogs).values({
-      auditLogId: auditLog.id,
-      referenceType,
-      referenceId: input.referenceId,
-      action: input.action,
-      actorRole: input.actorRole,
+    if (trackOnChain) {
+      const [blockchainLog] = await db.insert(blockchainAuditLogs).values({
+        auditLogId: auditLog.id,
+        referenceType,
+        referenceId: input.referenceId,
+        action: input.action,
+        actorRole: input.actorRole,
+        recordHash,
+        blockchainStatus: "pending",
+      }).returning();
+      blockchainLogId = blockchainLog.id;
+    }
+  }
+
+  if (!trackOnChain) {
+    // Local audit log only: no chain row and no contract submission.
+    return {
       recordHash,
-      blockchainStatus: "pending",
-    }).returning();
-    blockchainLogId = blockchainLog.id;
+      blockchainStatus: null,
+      blockchainTransactionHash: null,
+      blockchainError: null,
+      blockNumber: null,
+      network: null,
+    };
   }
 
   let chainResult;

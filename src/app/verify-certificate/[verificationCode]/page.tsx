@@ -1,11 +1,14 @@
 import { CheckCircle2, ShieldCheck, XCircle } from "lucide-react";
+import Link from "next/link";
 import { Suspense } from "react";
 import { AppLogo } from "@/components/layout/app-logo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { BlockchainVerificationBadge } from "@/components/BlockchainVerificationBadge";
+import { VerificationBackRedirect } from "@/components/verification-back-redirect";
 import { verifyCertificate } from "@/lib/services/certificates";
 import { verifyCertificateOnChain } from "@/lib/services/blockchain-verification";
+import { dashboardPathForRole, getCurrentDbUser } from "@/lib/auth";
 import { getDb } from "@/db";
 import { certificates } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -33,11 +36,19 @@ export default async function VerifyCertificatePage({
 }) {
   const { verificationCode } = await params;
 
+  // Where the Back button (and the logo) leads: the landing page for visitors,
+  // the signed-in user's own dashboard otherwise.
+  const user = await getCurrentDbUser();
+  const homeHref = user ? dashboardPathForRole(user.role) : "/";
+
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10 overflow-x-hidden">
+      <VerificationBackRedirect homeHref={homeHref} />
       <div className="mx-auto w-full max-w-2xl">
         <div className="mb-8 flex justify-center">
-          <AppLogo />
+          <Link href={homeHref} aria-label={user ? "Back to your dashboard" : "Back to the landing page"}>
+            <AppLogo />
+          </Link>
         </div>
         {/* The DB lookup and the on-chain RPC are slow; stream them in so direct
             visits see the page shell and progress feedback immediately. */}
