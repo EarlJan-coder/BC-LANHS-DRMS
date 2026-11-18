@@ -56,7 +56,6 @@ export function UserRoleActions({
       <Select value={nextStatus} onChange={(event) => setNextStatus(event.target.value)} aria-label="Status">
         <option value="active">Active</option>
         <option value="inactive">Inactive</option>
-        <option value="suspended">Suspended</option>
       </Select>
       <Button
         type="button"

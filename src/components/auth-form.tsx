@@ -411,7 +411,7 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
                 </section>
                 <section>
                   <h3 className="font-semibold text-slate-900">5. Review and access</h3>
-                  <p className="mt-1">Registration may remain pending while school personnel verify your details. Access can be limited or suspended when necessary to protect records, users, or the school’s services. Contact the registrar to correct account or record information.</p>
+                  <p className="mt-1">Registration may remain pending while school personnel verify your details. Access can be limited when necessary to protect records, users, or the school’s services. Contact the registrar to correct account or record information.</p>
                 </section>
                 <section>
                   <h3 className="font-semibold text-slate-900">6. Service updates</h3>

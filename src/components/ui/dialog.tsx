@@ -11,9 +11,13 @@ export interface ConfirmDialogProps {
   cancelLabel?: string;
   tone?: ButtonTone;
   loading?: boolean;
-  /** When set, renders a required reason textarea (reject flow). */
+  /** When set, renders a required reason control (reject/decline flows).
+   * Pass `options` for a dropdown of predefined choices — "Other" is appended
+   * automatically and reveals a required text field for custom reasons. */
   reason?: {
     label: string;
+    /** Predefined choices. Without it, a plain required textarea renders. */
+    options?: string[];
     placeholder?: string;
     defaultValue?: string;
   };
@@ -21,6 +25,9 @@ export interface ConfirmDialogProps {
   onCancel: () => void;
   children?: ReactNode;
 }
+
+/** Sentinel option appended after every predefined reason list. */
+const OTHER_REASON = "Other";
 
 /**
  * Mounted only while `open`, so its state initializes fresh on every open
@@ -38,20 +45,39 @@ function ConfirmDialogPanel({
   onCancel,
   children,
 }: Omit<ConfirmDialogProps, "open">) {
+  const reasonOptions = reason?.options;
+  // Primitive focus key: `reason` is an object literal from the caller, so it
+  // changes identity on every parent render and would re-steal focus.
+  const reasonMode = !reason ? "none" : reason.options ? "choice" : "text";
   const [reasonValue, setReasonValue] = useState(reason?.defaultValue ?? "");
+  const [selectedChoice, setSelectedChoice] = useState("");
   const dialogRef = useRef<HTMLDivElement>(null);
+  const choosingOther = selectedChoice === OTHER_REASON;
+  const trimmedReason = reasonValue.trim();
 
-  // Focus the reason field when present, otherwise the confirm button.
+  // Focus the reason control when present, otherwise the confirm button.
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const container = dialogRef.current;
-      const target = reason
-        ? container?.querySelector<HTMLTextAreaElement>("#confirm-dialog-reason")
-        : container?.querySelector<HTMLButtonElement>("[data-confirm]");
+      const target =
+        reasonMode === "choice"
+          ? container?.querySelector<HTMLElement>("#confirm-dialog-reason-choice")
+          : reasonMode === "text"
+            ? container?.querySelector<HTMLElement>("#confirm-dialog-reason")
+            : container?.querySelector<HTMLButtonElement>("[data-confirm]");
       target?.focus();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [reason]);
+  }, [reasonMode]);
+
+  // Picking "Other" reveals the custom-reason textarea; drop the caret in it.
+  useEffect(() => {
+    if (!choosingOther) return;
+    const timer = window.setTimeout(() => {
+      dialogRef.current?.querySelector<HTMLElement>("#confirm-dialog-reason")?.focus();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [choosingOther]);
 
   // Escape closes the dialog, but not while a confirm action is in flight
   // (same gating as the backdrop and cancel button). Tab is trapped inside
@@ -103,7 +129,11 @@ function ConfirmDialogPanel({
   }, [onCancel, loading]);
 
   const reasonRequired = Boolean(reason);
-  const canConfirm = !reasonRequired || reasonValue.trim().length > 0;
+  const canConfirm =
+    !reasonRequired ||
+    (reasonOptions
+      ? selectedChoice !== "" && (!choosingOther || trimmedReason.length > 0)
+      : trimmedReason.length > 0);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -128,18 +158,65 @@ function ConfirmDialogPanel({
 
         {reason ? (
           <div className="mt-4">
-            <label htmlFor="confirm-dialog-reason" className="block text-sm font-medium text-slate-700">
+            <label
+              htmlFor={reasonOptions ? "confirm-dialog-reason-choice" : "confirm-dialog-reason"}
+              className="block text-sm font-medium text-slate-700"
+            >
               {reason.label}
             </label>
-            <textarea
-              id="confirm-dialog-reason"
-              value={reasonValue}
-              onChange={(event) => setReasonValue(event.target.value)}
-              placeholder={reason.placeholder}
-              rows={3}
-              disabled={loading}
-              className="mt-1 w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
-            />
+            {reasonOptions ? (
+              <select
+                id="confirm-dialog-reason-choice"
+                value={selectedChoice}
+                onChange={(event) => {
+                  setSelectedChoice(event.target.value);
+                  if (event.target.value !== OTHER_REASON) {
+                    setReasonValue("");
+                  }
+                }}
+                disabled={loading}
+                className="mt-1 w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+              >
+                <option value="" disabled>
+                  Select a reason…
+                </option>
+                {reasonOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+                <option value={OTHER_REASON}>{OTHER_REASON}</option>
+              </select>
+            ) : (
+              <textarea
+                id="confirm-dialog-reason"
+                value={reasonValue}
+                onChange={(event) => setReasonValue(event.target.value)}
+                placeholder={reason.placeholder}
+                rows={3}
+                disabled={loading}
+                className="mt-1 w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+              />
+            )}
+            {reasonOptions && choosingOther ? (
+              <>
+                <label
+                  htmlFor="confirm-dialog-reason"
+                  className="mt-3 block text-sm font-medium text-slate-700"
+                >
+                  Specific reason (required)
+                </label>
+                <textarea
+                  id="confirm-dialog-reason"
+                  value={reasonValue}
+                  onChange={(event) => setReasonValue(event.target.value)}
+                  placeholder={reason.placeholder}
+                  rows={3}
+                  disabled={loading}
+                  className="mt-1 w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+                />
+              </>
+            ) : null}
           </div>
         ) : null}
 
@@ -153,7 +230,11 @@ function ConfirmDialogPanel({
             tone={tone}
             loading={loading}
             disabled={!canConfirm}
-            onClick={() => onConfirm(reasonValue.trim())}
+            onClick={() =>
+              onConfirm(
+                reasonOptions ? (choosingOther ? trimmedReason : selectedChoice) : trimmedReason,
+              )
+            }
           >
             {confirmLabel}
           </Button>

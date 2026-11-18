@@ -14,7 +14,6 @@ const columns = [
     render: (row: PendingRegistrationView) => row.lastSchoolYearAttended,
   },
   { key: "status", label: "Status", render: () => null },
-  { key: "note", label: "Note", render: () => null },
 ];
 
 export default async function RegistrarRegistrationsPage() {

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/input";
+import { REGISTRATION_DECLINE_REASONS } from "@/lib/constants";
 import type { UserRole } from "@/db/schema";
 
 export type NotificationDetail = {
@@ -132,8 +133,8 @@ export function NotificationDetailModal({
         loading={busy}
         reason={{
           label: "Reason for declining (required)",
+          options: REGISTRATION_DECLINE_REASONS,
           placeholder: "Explain why this registration is being declined…",
-          defaultValue: note.trim(),
         }}
         onConfirm={(reason) => decide("declined", reason)}
         onCancel={() => {

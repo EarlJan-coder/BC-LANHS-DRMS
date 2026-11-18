@@ -148,6 +148,13 @@
       "when": 1794831485911,
       "tag": "0020_majestic_sunfire",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1795003451033,
+      "tag": "0021_furry_the_liberteens",
+      "breakpoints": true
     }
   ]
 }

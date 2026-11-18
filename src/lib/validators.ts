@@ -154,7 +154,7 @@ export type CertificateOverrideValues = z.infer<typeof certificateOverrideSchema
 
 export const userRoleUpdateSchema = z.object({
   role: z.enum(["student", "registrar", "admin"]),
-  status: z.enum(["active", "inactive", "suspended"]).optional(),
+  status: z.enum(["active", "inactive"]).optional(),
 });
 
 export const userCreateSchema = z.object({

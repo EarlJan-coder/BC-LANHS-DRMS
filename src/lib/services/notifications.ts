@@ -53,7 +53,7 @@ export async function markAll(userId: string): Promise<number> {
 
 /**
  * Fan a new document request out to every ACTIVE registrar-role user — the
- * ruled product behavior: no admin copies, no inactive/suspended accounts.
+ * ruled product behavior: no admin copies, no inactive accounts.
  * Returns the rows created.
  */
 export async function fanOutNewRequestNotification(trackingNumber: string, documentType: string) {

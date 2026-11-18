@@ -29,8 +29,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { ChangePasswordForm } from "@/components/change-password-form";
 import { PendingForm } from "@/components/ui/pending-form";
 import { LinkPendingContent } from "@/components/ui/pending-link";
 import { Spinner } from "@/components/ui/spinner";
@@ -116,24 +118,22 @@ function HeaderSearch({ role }: { role: DashboardRole }) {
 function SidebarAccountActions({
   signingOut,
   onSignOut,
-  onNavigate,
+  onChangePassword,
 }: {
   signingOut: boolean;
   onSignOut: () => void;
-  onNavigate?: () => void;
+  onChangePassword: () => void;
 }) {
   return (
     <div className="flex flex-col gap-1 border-t border-border px-3 py-4">
-      <Link
-        href="/change-password"
-        prefetch={false}
-        onClick={onNavigate}
+      <button
+        type="button"
+        onClick={onChangePassword}
         className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-slate-600 transition hover:bg-rose-50 hover:text-brand"
       >
-        <LinkPendingContent icon={<KeyRound className="h-4 w-4" aria-hidden />} className="gap-3">
-          <span className="truncate">Change password</span>
-        </LinkPendingContent>
-      </Link>
+        <KeyRound className="h-4 w-4" aria-hidden />
+        <span className="truncate">Change password</span>
+      </button>
       <button
         type="button"
         onClick={onSignOut}
@@ -163,6 +163,25 @@ export function PortalShell({
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const changePasswordRef = useRef<HTMLElement>(null);
+
+  // While the change-password modal is open: Escape closes it and focus moves
+  // to its first field (matching ConfirmDialog's keyboard behavior).
+  useEffect(() => {
+    if (!changePasswordOpen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setChangePasswordOpen(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    const timer = window.setTimeout(() => {
+      changePasswordRef.current?.querySelector<HTMLInputElement>("input")?.focus();
+    }, 0);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.clearTimeout(timer);
+    };
+  }, [changePasswordOpen]);
 
   const toggleMobileMenu = () => setMobileMenuOpen((prev) => !prev);
   const closeMobileMenu = () => setMobileMenuOpen(false);
@@ -206,7 +225,11 @@ export function PortalShell({
             );
           })}
         </nav>
-        <SidebarAccountActions signingOut={signingOut} onSignOut={signOut} />
+        <SidebarAccountActions
+          signingOut={signingOut}
+          onSignOut={signOut}
+          onChangePassword={() => setChangePasswordOpen(true)}
+        />
       </aside>
 
       {/* ── Mobile menu overlay ── */}
@@ -264,9 +287,52 @@ export function PortalShell({
             closeMobileMenu();
             void signOut();
           }}
-          onNavigate={closeMobileMenu}
+          onChangePassword={() => {
+            closeMobileMenu();
+            setChangePasswordOpen(true);
+          }}
         />
       </aside>
+
+      {/* ── Change password modal (portals) ── */}
+      {changePasswordOpen ? (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/50 p-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setChangePasswordOpen(false);
+          }}
+        >
+          <section
+            ref={changePasswordRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="change-password-title"
+            className="w-full max-w-md rounded-lg border border-border bg-white shadow-xl"
+          >
+            <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+              <div>
+                <h2 id="change-password-title" className="text-lg font-semibold text-slate-950">
+                  Change password
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  You will be signed out after changing your password.
+                </p>
+              </div>
+              <Button
+                type="button"
+                tone="secondary"
+                size="sm"
+                onClick={() => setChangePasswordOpen(false)}
+              >
+                Close
+              </Button>
+            </header>
+            <div className="p-5">
+              <ChangePasswordForm mustChangePassword={false} />
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       {/* ── Main content area ── */}
       <div className="lg:pl-72">

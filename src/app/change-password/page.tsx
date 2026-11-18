@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { ChangePasswordForm } from "@/components/change-password-form";
 import { ChangePasswordSignOut } from "@/components/change-password-sign-out";
 import { AppLogo } from "@/components/layout/app-logo";
+import { Card } from "@/components/ui/card";
 import { getCurrentDbUser } from "@/lib/auth";
 
 export default async function ChangePasswordPage() {
@@ -23,7 +24,9 @@ export default async function ChangePasswordPage() {
             <p className="mt-2 text-sm text-slate-600">Your account has a temporary password.</p>
           ) : null}
         </div>
-        <ChangePasswordForm mustChangePassword={user.mustChangePassword} />
+        <Card className="p-6 sm:p-7">
+          <ChangePasswordForm mustChangePassword={user.mustChangePassword} />
+        </Card>
         <div className="mt-4 flex justify-center">
           <ChangePasswordSignOut />
         </div>

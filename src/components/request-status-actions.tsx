@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import type { RequestStatus } from "@/db/schema";
+import { REQUEST_REJECT_REASONS } from "@/lib/constants";
 import { REQUEST_ACTIONS, buildStatusUpdatePayload, disabledStatusActions, type StatusColor } from "@/lib/request-actions";
 import { cn } from "@/lib/utils";
 
@@ -121,8 +122,8 @@ export function RequestStatusActions({
           pendingAction?.status === "rejected"
             ? {
                 label: "Rejection reason (required)",
+                options: REQUEST_REJECT_REASONS,
                 placeholder: "Explain why this request is being rejected…",
-                defaultValue: "Registrar rejected this request after validation.",
               }
             : undefined
         }

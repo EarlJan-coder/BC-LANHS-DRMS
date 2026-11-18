@@ -36,7 +36,22 @@ export const DOCUMENT_TYPES = [
   "Certificate of Graduation",
   "Form 137",
   "Diploma-related request",
-  "Other school documents",
+];
+
+/** Predefined decline reasons; the confirm dialog appends an "Other" option. */
+export const REGISTRATION_DECLINE_REASONS = [
+  "Incomplete requirements",
+  "Invalid or unverifiable LRN",
+  "Duplicate registration",
+  "Not enrolled this school year",
+];
+
+/** Predefined rejection reasons for document requests; the dialog appends "Other". */
+export const REQUEST_REJECT_REASONS = [
+  "Missing requirements",
+  "Incorrect or incomplete information",
+  "Duplicate request",
+  "Not eligible for this document",
 ];
 
 // Grade levels selectable on document requests (drives the certificate template).

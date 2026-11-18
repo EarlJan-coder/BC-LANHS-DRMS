@@ -29,7 +29,7 @@ function fixtureEmail() {
 async function createFixtureUser(overrides: {
   role?: "student" | "registrar" | "admin";
   isActive?: boolean;
-  status?: "active" | "inactive" | "suspended";
+  status?: "active" | "inactive";
 } = {}) {
   const db = getDb();
   const [row] = await db
@@ -209,10 +209,9 @@ describe("fanOutNewRequestNotification (integration, local DB)", {
     const activeA = await createFixtureUser({ role: "registrar", isActive: true, status: "active" });
     const activeB = await createFixtureUser({ role: "registrar", isActive: true, status: "active" });
     const inactiveFlag = await createFixtureUser({ role: "registrar", isActive: false, status: "active" });
-    const suspended = await createFixtureUser({ role: "registrar", isActive: true, status: "suspended" });
     const admin = await createFixtureUser({ role: "admin", isActive: true, status: "active" });
     const student = await createFixtureUser({ role: "student", isActive: true, status: "active" });
-    const everyone = [activeA.id, activeB.id, inactiveFlag.id, suspended.id, admin.id, student.id];
+    const everyone = [activeA.id, activeB.id, inactiveFlag.id, admin.id, student.id];
     const fixtureIds = new Set(everyone);
     // Every row this fan-out creates — including copies landing on REAL active
     // registrars on a shared DB — is cleaned up in `finally`.
@@ -243,7 +242,7 @@ describe("fanOutNewRequestNotification (integration, local DB)", {
         [activeA.id, activeB.id].sort(),
       );
 
-      // Fixture-scoped negatives: inactive/suspended registrars, admins, and
+      // Fixture-scoped negatives: inactive registrars, admins, and
       // students receive nothing.
       const rows = await db
         .select()
