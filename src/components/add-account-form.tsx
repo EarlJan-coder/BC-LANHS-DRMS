@@ -130,7 +130,7 @@ export function AddAccountForm() {
           </dl>
           <p className="text-sm text-slate-600">They will be required to change this password when they first sign in.</p>
           <div>
-            <Button type="button" onClick={() => setCreated(null)}>Create another account</Button>
+            <Button type="button" tone="success" onClick={() => setCreated(null)}>Create another account</Button>
           </div>
         </CardContent>
       </Card>
@@ -140,7 +140,7 @@ export function AddAccountForm() {
   return (
     <div className="mb-6">
       {!isOpen ? (
-        <Button type="button" onClick={() => setIsOpen(true)}>
+        <Button type="button" tone="success" onClick={() => setIsOpen(true)}>
           Add account
         </Button>
       ) : (
@@ -214,7 +214,7 @@ export function AddAccountForm() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 pt-2">
-                <Button type="submit" loading={loading}>
+                <Button type="submit" tone="success" loading={loading}>
                   Create account
                 </Button>
                 <Button

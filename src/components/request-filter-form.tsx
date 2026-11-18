@@ -55,7 +55,7 @@ export function RequestFilterForm({
               />
             </div>
           ) : null}
-          <Button type="submit" loading={isPending}>
+          <Button type="submit" tone="info" loading={isPending}>
             {isPending ? "Applying…" : "Filter"}
           </Button>
         </Fragment>

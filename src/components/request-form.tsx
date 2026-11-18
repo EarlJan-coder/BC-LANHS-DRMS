@@ -139,7 +139,7 @@ export function RequestForm() {
               <Textarea id="remarks" name="remarks" placeholder="Optional details for the registrar" />
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Button type="submit" loading={loading}>
+              <Button type="submit" tone="success" loading={loading}>
                 {loading ? null : <FilePlus className="h-4 w-4" aria-hidden />}
                 {loading ? "Submitting…" : "Submit request"}
               </Button>

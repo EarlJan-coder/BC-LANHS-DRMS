@@ -65,7 +65,7 @@ export default async function RegistrarStudentDetailsPage({
               key: "download",
               label: "PDF",
               render: (row) => (
-                <DownloadButton href={`/api/certificates/${row.id}/pdf`} tone="secondary" size="icon" aria-label="Download PDF">
+                <DownloadButton href={`/api/certificates/${row.id}/pdf`} tone="info" size="icon" aria-label="Download PDF">
                   <Download className="h-4 w-4" />
                 </DownloadButton>
               ),

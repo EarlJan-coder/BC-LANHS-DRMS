@@ -61,7 +61,7 @@ export function UserRoleActions({
       <Button
         type="button"
         size="icon"
-        tone="secondary"
+        tone="success"
         onClick={save}
         loading={loading}
         aria-label="Save user"

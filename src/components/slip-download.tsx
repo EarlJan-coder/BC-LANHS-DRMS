@@ -22,7 +22,7 @@ export function SlipDownloadButton({
   status,
   href,
   ariaLabel,
-  tone = "secondary",
+  tone = "info",
   size = "md",
   className,
   loadingLabel,

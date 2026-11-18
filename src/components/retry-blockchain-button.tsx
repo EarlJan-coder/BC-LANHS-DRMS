@@ -31,7 +31,7 @@ export function RetryBlockchainButton() {
   }
 
   return (
-    <Button type="button" tone="secondary" onClick={retry} loading={loading}>
+    <Button type="button" tone="info" onClick={retry} loading={loading}>
       {loading ? null : <RotateCw className="h-4 w-4" aria-hidden />}
       {loading ? "Retrying…" : "Retry pending proofs"}
     </Button>

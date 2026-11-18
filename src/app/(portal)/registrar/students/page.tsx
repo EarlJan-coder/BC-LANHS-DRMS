@@ -17,7 +17,7 @@ export default async function StudentRecordsPage({ searchParams }: { searchParam
         title="Student records"
         description="Review student accounts and records by LRN."
         actions={
-          <ButtonLink href="/registrar/reports" tone="secondary">Export report</ButtonLink>
+          <ButtonLink href="/registrar/reports" tone="info">Export report</ButtonLink>
         }
       />
       <DataTable

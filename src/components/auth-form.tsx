@@ -350,7 +350,13 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
           </div>
         ) : null}
 
-        <Button type="submit" loading={loading} disabled={isSignup && !termsAccepted} className="mt-1 w-full">
+        <Button
+          type="submit"
+          tone={isSignup ? "success" : "primary"}
+          loading={loading}
+          disabled={isSignup && !termsAccepted}
+          className="mt-1 w-full"
+        >
           {isSignup
             ? loading
               ? "Creating account…"
@@ -416,7 +422,7 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
             </div>
             <footer className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50/70 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
               <p className="text-xs text-slate-500">Close this window and check the box to continue registration.</p>
-              <Button type="button" onClick={() => setTermsOpen(false)} className="w-full sm:w-auto">Close</Button>
+              <Button type="button" tone="secondary" onClick={() => setTermsOpen(false)} className="w-full sm:w-auto">Close</Button>
             </footer>
           </section>
         </div>

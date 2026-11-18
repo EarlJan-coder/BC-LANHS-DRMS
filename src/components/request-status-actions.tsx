@@ -90,8 +90,12 @@ export function RequestStatusActions({
             <Button
               key={action.status}
               type="button"
-              tone={isActive ? "primary" : "secondary"}
-              className={cn(isActive && activeColors[action.color])}
+              tone="secondary"
+              className={cn(
+                activeColors[action.color],
+                "border-transparent",
+                isActive && "ring-2 ring-slate-900/30 ring-offset-2",
+              )}
               onClick={() => setPendingAction(action)}
               loading={loading === action.status}
               disabled={loading !== null}
@@ -109,7 +113,7 @@ export function RequestStatusActions({
         title={pendingAction ? `${pendingAction.label} this request?` : ""}
         message={pendingAction?.confirm ?? ""}
         confirmLabel={pendingAction?.label}
-        tone={pendingAction?.status === "rejected" ? "danger" : "primary"}
+        tone={pendingAction?.status === "rejected" ? "danger" : "success"}
         loading={loading !== null}
         reason={
           pendingAction?.status === "rejected"

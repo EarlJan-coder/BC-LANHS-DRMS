@@ -229,7 +229,7 @@ export function ProfileUpdateForm({
                 <Button type="button" tone="secondary" onClick={() => setOpen(false)} disabled={saving}>
                   Cancel
                 </Button>
-                <Button type="submit" loading={saving}>
+                <Button type="submit" tone="success" loading={saving}>
                   {saving ? null : <Save className="h-4 w-4" aria-hidden />}
                   {saving ? "Saving…" : "Save changes"}
                 </Button>

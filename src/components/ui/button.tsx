@@ -4,13 +4,16 @@ import { LinkPendingContent } from "@/components/ui/pending-link";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
-export type ButtonTone = "primary" | "secondary" | "ghost" | "danger";
+export type ButtonTone = "primary" | "secondary" | "ghost" | "success" | "info" | "danger";
 export type ButtonSize = "sm" | "md" | "lg" | "icon";
 
+/** Semantic tones: success = commit/approve, info = files & system ops, danger = destructive. */
 const tones: Record<ButtonTone, string> = {
   primary: "bg-brand text-white shadow-sm hover:bg-brand-dark focus-visible:outline-brand",
   secondary: "border border-border bg-white text-slate-700 hover:bg-slate-50 focus-visible:outline-brand",
   ghost: "text-slate-700 hover:bg-rose-50 hover:text-brand focus-visible:outline-brand",
+  success: "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 focus-visible:outline-emerald-600",
+  info: "bg-blue-600 text-white shadow-sm hover:bg-blue-700 focus-visible:outline-blue-600",
   danger: "bg-red-600 text-white hover:bg-red-700 focus-visible:outline-red-600",
 };
 

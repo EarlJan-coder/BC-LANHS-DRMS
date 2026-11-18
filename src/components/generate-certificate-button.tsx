@@ -46,7 +46,7 @@ export function GenerateCertificateButton({
 
   return (
     <>
-      <Button type="button" onClick={() => setConfirmOpen(true)} loading={loading}>
+      <Button type="button" tone="success" onClick={() => setConfirmOpen(true)} loading={loading}>
         {loading ? null : <FileBadge className="h-4 w-4" aria-hidden />}
         {loading ? "Generating…" : "Generate certificate"}
       </Button>

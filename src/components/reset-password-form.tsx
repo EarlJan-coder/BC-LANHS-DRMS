@@ -82,7 +82,7 @@ export function ResetPasswordForm({ userId, email }: { userId: string; email: st
           </dl>
           <p className="text-sm text-slate-600">They will be required to change this password when they next sign in.</p>
           <div>
-            <Button type="button" size="sm" onClick={() => setReset(null)}>
+            <Button type="button" size="sm" tone="secondary" onClick={() => setReset(null)}>
               Done
             </Button>
           </div>
@@ -114,7 +114,7 @@ export function ResetPasswordForm({ userId, email }: { userId: string; email: st
                 />
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <Button type="submit" size="sm" loading={loading}>
+                <Button type="submit" size="sm" tone="success" loading={loading}>
                   Confirm
                 </Button>
                 <Button

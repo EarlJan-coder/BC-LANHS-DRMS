@@ -32,7 +32,7 @@ export default async function CertificateDetailsPage({
               <PencilLine className="h-4 w-4" aria-hidden />
               Preview &amp; edit PDF
             </ButtonLink>
-            <DownloadButton href={`/api/certificates/${certificate.id}/pdf`} tone="primary" loadingLabel="Preparing PDF…">
+            <DownloadButton href={`/api/certificates/${certificate.id}/pdf`} tone="info" loadingLabel="Preparing PDF…">
               <Download className="h-4 w-4" aria-hidden />
               Download PDF
             </DownloadButton>

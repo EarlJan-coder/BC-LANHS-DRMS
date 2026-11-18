@@ -215,7 +215,7 @@ export function StudentRecordModal({ student }: { student: StudentView }) {
                 </div>
                 <div className="flex gap-2">
                   <Button type="button" tone="secondary" onClick={() => setOpen(false)} disabled={saving || deleting}>Cancel</Button>
-                  <Button type="submit" loading={saving} disabled={restoresAccount && !draft.registrationNote.trim()}>Save</Button>
+                  <Button type="submit" tone="success" loading={saving} disabled={restoresAccount && !draft.registrationNote.trim()}>Save</Button>
                 </div>
               </footer>
             </form>

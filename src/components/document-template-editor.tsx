@@ -309,7 +309,7 @@ export function DocumentTemplateEditor({
                 />
               </div>
               <div className="flex justify-end border-t border-slate-100 pt-4">
-                <Button type="submit" loading={namesSaving} disabled={namesSaving}>
+                <Button type="submit" tone="success" loading={namesSaving} disabled={namesSaving}>
                   {namesSaving ? null : <Check className="h-4 w-4" aria-hidden />}
                   {namesSaving ? "Saving…" : "Save"}
                 </Button>
@@ -426,7 +426,7 @@ export function DocumentTemplateEditor({
             </div>
 
             <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
-              <Button type="button" onClick={saveWording} loading={saving} disabled={saving || resetting}>
+              <Button type="button" tone="success" onClick={saveWording} loading={saving} disabled={saving || resetting}>
                 {saving ? null : <Save className="h-4 w-4" aria-hidden />}
                 {saving ? "Saving…" : "Save"}
               </Button>

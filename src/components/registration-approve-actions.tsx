@@ -50,7 +50,7 @@ export function RegistrationApproveActions({ registration }: { registration: Pen
       <td className="px-4 py-3 text-slate-700">{registration.lastSchoolYearAttended}</td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
-          <Button type="button" onClick={() => decide("approved")} loading={busy === "approved"} disabled={busy !== null}>
+          <Button type="button" tone="success" onClick={() => decide("approved")} loading={busy === "approved"} disabled={busy !== null}>
             Approve
           </Button>
           <Button type="button" tone="danger" onClick={() => setConfirmingDecline(true)} disabled={busy !== null}>

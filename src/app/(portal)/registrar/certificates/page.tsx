@@ -45,7 +45,7 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
                 <ButtonLink href={`/registrar/certificates/${row.id}`} tone="secondary" size="icon" aria-label="View certificate">
                   <Eye className="h-4 w-4" />
                 </ButtonLink>
-                <DownloadButton href={`/api/certificates/${row.id}/pdf`} tone="secondary" size="icon" aria-label="Download PDF">
+                <DownloadButton href={`/api/certificates/${row.id}/pdf`} tone="info" size="icon" aria-label="Download PDF">
                   <Download className="h-4 w-4" />
                 </DownloadButton>
               </div>

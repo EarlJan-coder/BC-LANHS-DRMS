@@ -108,7 +108,7 @@ export function ChangePasswordForm({ mustChangePassword }: { mustChangePassword:
           </p>
         ) : null}
 
-        <Button type="submit" loading={loading} className="mt-1 w-full">
+        <Button type="submit" tone="success" loading={loading} className="mt-1 w-full">
           {loading ? "Changing…" : "Set new password"}
         </Button>
       </form>

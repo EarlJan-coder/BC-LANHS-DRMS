@@ -117,7 +117,7 @@ export function NotificationDetailModal({
             <Textarea id="notification-registration-note" value={note} onChange={(event) => setNote(event.target.value)} maxLength={2000} rows={3} className="mt-2" placeholder="Optional note for the student" />
             <div className="mt-3 flex justify-end gap-2">
               {status === "pending" ? <Button type="button" tone="danger" onClick={() => setConfirmingDecline(true)} disabled={busy}>Decline</Button> : null}
-              <Button type="button" onClick={() => decide("approved")} loading={busy} disabled={busy}>{status === "declined" ? "Restore and approve" : "Approve"}</Button>
+              <Button type="button" tone="success" onClick={() => decide("approved")} loading={busy} disabled={busy}>{status === "declined" ? "Restore and approve" : "Approve"}</Button>
             </div>
           </div>
         ) : null}

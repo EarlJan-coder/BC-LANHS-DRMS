@@ -70,7 +70,7 @@ export default async function ReportsPage({
         actions={
           <DownloadButton
             href={pdfHref("all", range, filters)}
-            tone="primary"
+            tone="info"
             loadingLabel="Preparing PDFs…"
           >
             <FileDown className="h-4 w-4" aria-hidden />
@@ -112,7 +112,7 @@ export default async function ReportsPage({
                     {report.periodNoun} &middot; {report.periodLabel}
                   </p>
                 </div>
-                <DownloadButton href={pdfHref(report.key, range, filters)} tone="primary" loadingLabel="Preparing PDF…">
+                <DownloadButton href={pdfHref(report.key, range, filters)} tone="info" loadingLabel="Preparing PDF…">
                   <FileDown className="h-4 w-4" aria-hidden />
                   Export PDF
                 </DownloadButton>

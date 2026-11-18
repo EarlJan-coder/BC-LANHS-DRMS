@@ -46,7 +46,7 @@ export default async function StudentDashboardPage() {
                 <SlipDownloadButton
                   status={row.status}
                   href={`/api/document-requests/${row.id}/slip`}
-                  tone="secondary"
+                  tone="info"
                   size="icon"
                   aria-label={`Download request slip for ${row.trackingNumber}`}
                 >

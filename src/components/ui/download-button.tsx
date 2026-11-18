@@ -17,7 +17,7 @@ import { downloadErrorMessage, filenameFromContentDisposition } from "@/lib/down
 export function DownloadButton({
   href,
   filename,
-  tone = "secondary",
+  tone = "info",
   size = "md",
   loadingLabel = "Downloading…",
   className,

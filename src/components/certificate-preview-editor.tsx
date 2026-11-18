@@ -222,7 +222,7 @@ export function CertificatePreviewEditor({
           </p>
 
           <div className="flex flex-wrap gap-2">
-            <Button type="button" onClick={save} loading={saving} disabled={saving || clearing}>
+            <Button type="button" tone="success" onClick={save} loading={saving} disabled={saving || clearing}>
               {saving ? null : <Save className="h-4 w-4" aria-hidden />}
               {saving ? "Saving…" : "Save & refresh preview"}
             </Button>
@@ -232,7 +232,7 @@ export function CertificatePreviewEditor({
             </Button>
             <DownloadButton
               href={`/api/certificates/${certificateId}/pdf`}
-              tone="secondary"
+              tone="info"
               loadingLabel="Preparing PDF…"
               className="shrink-0"
             >

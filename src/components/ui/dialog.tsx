@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, type ButtonTone } from "@/components/ui/button";
 
 export interface ConfirmDialogProps {
   open: boolean;
@@ -9,7 +9,7 @@ export interface ConfirmDialogProps {
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
-  tone?: "primary" | "danger";
+  tone?: ButtonTone;
   loading?: boolean;
   /** When set, renders a required reason textarea (reject flow). */
   reason?: {
@@ -31,7 +31,7 @@ function ConfirmDialogPanel({
   message,
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
-  tone = "primary",
+  tone = "success",
   loading = false,
   reason,
   onConfirm,

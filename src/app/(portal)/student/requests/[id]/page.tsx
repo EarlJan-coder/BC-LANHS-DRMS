@@ -34,7 +34,7 @@ export default async function StudentRequestDetailsPage({
             <SlipDownloadButton
               status={request.status}
               href={`/api/document-requests/${request.id}/slip`}
-              tone="primary"
+              tone="info"
               loadingLabel="Preparing slip…"
               aria-label="Download request slip"
             >
