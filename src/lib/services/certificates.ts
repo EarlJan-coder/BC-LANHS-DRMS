@@ -167,6 +167,16 @@ function privateDisplayName(name: string) {
   return `${first.charAt(0)}. ${last}`;
 }
 
+/** True once any certificate row exists for the request; gates the generate button. */
+export async function hasCertificateForRequest(requestId: string): Promise<boolean> {
+  const rows = await getDb()
+    .select({ id: certificates.id })
+    .from(certificates)
+    .where(eq(certificates.requestId, requestId))
+    .limit(1);
+  return rows.length > 0;
+}
+
 export async function generateCertificate(input: unknown) {
   const values = certificateGenerateSchema.parse(input);
   const db = getDb();

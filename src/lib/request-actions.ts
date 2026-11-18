@@ -48,3 +48,24 @@ export function buildStatusUpdatePayload(
     registrarRemarks: `Registrar marked this request as ${status.replaceAll("_", " ")}.`,
   };
 }
+
+/**
+ * Staircase lock for the registrar status buttons: each later workflow stage
+ * disables the buttons of the stages before it. Approved and rejected stay
+ * fully reversible, so nothing is disabled while the request sits there.
+ */
+const DISABLED_ACTIONS_BY_STATUS: Record<RequestStatus, readonly RequestStatus[]> = {
+  pending: [],
+  under_review: [],
+  approved: [],
+  rejected: [],
+  processing: ["approved", "rejected"],
+  ready_for_pickup: ["approved", "rejected", "processing"],
+  claimed: ["approved", "rejected", "processing", "ready_for_pickup"],
+  cancelled: [],
+};
+
+/** The status action buttons that must be disabled while the request sits in `currentStatus`. */
+export function disabledStatusActions(currentStatus?: RequestStatus): readonly RequestStatus[] {
+  return currentStatus ? DISABLED_ACTIONS_BY_STATUS[currentStatus] : [];
+}

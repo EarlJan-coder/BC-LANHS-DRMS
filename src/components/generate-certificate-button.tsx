@@ -10,9 +10,11 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 export function GenerateCertificateButton({
   requestId,
   documentType,
+  certificateGenerated = false,
 }: {
   requestId: string;
   documentType: string;
+  certificateGenerated?: boolean;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -45,11 +47,22 @@ export function GenerateCertificateButton({
   }
 
   return (
-    <>
-      <Button type="button" tone="success" onClick={() => setConfirmOpen(true)} loading={loading}>
+    <div className="flex flex-col items-start gap-1.5">
+      <Button
+        type="button"
+        tone="success"
+        onClick={() => setConfirmOpen(true)}
+        loading={loading}
+        disabled={certificateGenerated}
+      >
         {loading ? null : <FileBadge className="h-4 w-4" aria-hidden />}
         {loading ? "Generating…" : "Generate certificate"}
       </Button>
+      {certificateGenerated ? (
+        <p className="text-sm text-slate-500">
+          A certificate has already been generated for this request.
+        </p>
+      ) : null}
       <ConfirmDialog
         open={confirmOpen}
         title="Generate certificate?"
@@ -59,6 +72,6 @@ export function GenerateCertificateButton({
         onConfirm={generate}
         onCancel={() => setConfirmOpen(false)}
       />
-    </>
+    </div>
   );
 }

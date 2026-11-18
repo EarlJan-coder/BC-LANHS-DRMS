@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import type { RequestStatus } from "@/db/schema";
-import { REQUEST_ACTIONS, buildStatusUpdatePayload, type StatusColor } from "@/lib/request-actions";
+import { REQUEST_ACTIONS, buildStatusUpdatePayload, disabledStatusActions, type StatusColor } from "@/lib/request-actions";
 import { cn } from "@/lib/utils";
 
 const icons: Record<RequestStatus, LucideIcon> = {
@@ -79,6 +79,8 @@ export function RequestStatusActions({
     void submitStatus(pendingAction.status, pendingAction.status === "rejected" ? reason : undefined);
   }
 
+  const disabledStatuses = disabledStatusActions(currentStatus);
+
   return (
     <>
       <div className="flex flex-wrap gap-2">
@@ -98,7 +100,7 @@ export function RequestStatusActions({
               )}
               onClick={() => setPendingAction(action)}
               loading={loading === action.status}
-              disabled={loading !== null}
+              disabled={loading !== null || disabledStatuses.includes(action.status)}
               aria-pressed={isActive}
             >
               {loading === action.status ? null : <Icon className="h-4 w-4" aria-hidden />}

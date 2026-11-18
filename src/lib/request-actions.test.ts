@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { REQUEST_ACTIONS, buildStatusUpdatePayload } from "@/lib/request-actions";
+import { REQUEST_ACTIONS, buildStatusUpdatePayload, disabledStatusActions } from "@/lib/request-actions";
 
 describe("REQUEST_ACTIONS", () => {
   it("is exactly the five registrar status actions", () => {
@@ -55,5 +55,29 @@ describe("buildStatusUpdatePayload", () => {
       assert.equal(payload.registrarRemarks, `Registrar marked this request as ${status.replaceAll("_", " ")}.`);
       assert.equal(payload.remarks, `Status updated to ${status}.`);
     }
+  });
+});
+
+describe("disabledStatusActions", () => {
+  it("disables nothing outside the workflow staircase", () => {
+    for (const status of ["pending", "under_review", "approved", "rejected", "cancelled"] as const) {
+      assert.deepEqual(disabledStatusActions(status), []);
+    }
+  });
+
+  it("locks the approve/reject pair while processing", () => {
+    assert.deepEqual(disabledStatusActions("processing"), ["approved", "rejected"]);
+  });
+
+  it("adds Processing once ready for pickup", () => {
+    assert.deepEqual(disabledStatusActions("ready_for_pickup"), ["approved", "rejected", "processing"]);
+  });
+
+  it("locks every earlier stage once claimed", () => {
+    assert.deepEqual(disabledStatusActions("claimed"), ["approved", "rejected", "processing", "ready_for_pickup"]);
+  });
+
+  it("disables nothing when the status is unknown", () => {
+    assert.deepEqual(disabledStatusActions(undefined), []);
   });
 });

@@ -21,9 +21,11 @@ export interface TimelineItem {
 export function RegistrarRequestDetailsView({
   request,
   initialTimeline,
+  certificateGenerated = false,
 }: {
   request: DocumentRequestView;
   initialTimeline: TimelineItem[];
+  certificateGenerated?: boolean;
 }) {
   const [override, setOverride] = useState<{
     status?: RequestStatus;
@@ -82,7 +84,11 @@ export function RegistrarRequestDetailsView({
               currentStatus={currentStatus}
               onStatusChange={handleStatusChange}
             />
-            <GenerateCertificateButton requestId={request.id} documentType={request.documentType} />
+            <GenerateCertificateButton
+              requestId={request.id}
+              documentType={request.documentType}
+              certificateGenerated={certificateGenerated}
+            />
           </CardContent>
         </Card>
 
