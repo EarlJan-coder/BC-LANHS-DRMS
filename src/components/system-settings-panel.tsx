@@ -84,7 +84,9 @@ export function SystemSettingsPanel({
       const response = await fetch("/api/blockchain/retry", { method: "POST" });
       const result = await response.json();
       if (!response.ok) {
-        toast.error(result.error ?? "Unable to finish the pending proofs. Try again.");
+        // Never surface raw error text (it can embed provider URLs) to the
+        // admin — the friendly line is enough.
+        toast.error("Unable to finish the pending proofs. Try again.");
         return;
       }
       const { attempted, submitted } = result.retry ?? {};
@@ -191,21 +193,6 @@ export function SystemSettingsPanel({
                 onChange={(event) => setDraft({ ...draft, emailFromAddress: event.target.value })}
               />
             </div>
-          </div>
-
-          <div className="flex items-start justify-between gap-4 p-5">
-            <div>
-              <Label htmlFor="auto-fix-proofs">Should failed proofs be fixed automatically?</Label>
-              <p className="mt-1 text-sm text-slate-500">
-                The system quietly finishes proof records that failed, a few at a time. Safe to leave on.
-              </p>
-            </div>
-            <Switch
-              id="auto-fix-proofs"
-              ariaLabel="Fix failed proofs automatically"
-              checked={draft.autoFixProofs}
-              onCheckedChange={(next) => setDraft({ ...draft, autoFixProofs: next })}
-            />
           </div>
         </Card>
 

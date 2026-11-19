@@ -133,4 +133,33 @@ describe("getSystemHealth", () => {
     assert.equal(proofs?.needsDeveloper, false);
     assert.match(proofs?.sentence ?? "", /still being recorded/);
   });
+
+  it("hides network addresses and secrets from the technical text", async () => {
+    healthyEffects();
+    process.env.RESEND_API_KEY = "test-key";
+    systemHealthEffects.pingStorage = async () => {
+      throw new Error("failed request to https://rpc.example/v2/SECRET-API-KEY");
+    };
+
+    const checks = await getSystemHealth();
+    const storage = checks.find((check) => check.key === "storage");
+
+    assert.ok(storage?.technical, "expected technical detail on the storage card");
+    assert.ok(!storage.technical.includes("SECRET-API-KEY"), "the API key must never render");
+    assert.ok(!storage.technical.includes("rpc.example"), "the RPC address must never render");
+  });
+
+  it("still returns four checks when the proof check itself throws", async () => {
+    healthyEffects();
+    process.env.RESEND_API_KEY = "test-key";
+    systemHealthEffects.checkProofs = async () => {
+      throw new Error("database went away");
+    };
+
+    const checks = await getSystemHealth();
+    assert.equal(checks.length, 4);
+    const proofs = checks.find((check) => check.key === "proofs");
+    assert.equal(proofs?.state, "attention");
+    assert.equal(proofs?.needsDeveloper, true);
+  });
 });

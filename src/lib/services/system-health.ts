@@ -41,16 +41,25 @@ export const systemHealthEffects = {
         reachable: false,
         pending: 0,
         failed: 0,
-        error: error instanceof Error ? error.message : "The blockchain network could not be reached.",
+        error: technicalSummary(error),
       };
     }
-    const counts = await getBlockchainAuditStats();
+    let counts = { pending: 0, failed: 0 };
+    try {
+      counts = await getBlockchainAuditStats();
+    } catch {
+      // Counts are informational; the storage card reports database problems.
+    }
     return { configured: true, reachable: true, pending: counts.pending, failed: counts.failed };
   },
 };
 
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unknown error.";
+function technicalSummary(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return message
+    .replace(/https?:\/\/\S+/gi, "[address hidden]")
+    .replace(/\b[\w.-]*(?:api[_-]?key|token|secret)[\w.-]*\b/gi, "[hidden]")
+    .slice(0, 200);
 }
 
 export async function getSystemHealth(): Promise<SystemHealthCheck[]> {
@@ -60,7 +69,7 @@ export async function getSystemHealth(): Promise<SystemHealthCheck[]> {
     await systemHealthEffects.pingStorage();
   } catch (error) {
     storageOk = false;
-    storageTechnical = errorMessage(error);
+    storageTechnical = technicalSummary(error);
   }
 
   const storage: SystemHealthCheck = storageOk
@@ -120,7 +129,13 @@ export async function getSystemHealth(): Promise<SystemHealthCheck[]> {
         technical: "RESEND_API_KEY is not set.",
       };
 
-  const proofHealth = await systemHealthEffects.checkProofs();
+  let proofHealth: ProofHealth;
+  try {
+    proofHealth = await systemHealthEffects.checkProofs();
+  } catch (error) {
+    // The page must never crash in the situation it exists to explain.
+    proofHealth = { configured: true, reachable: false, pending: 0, failed: 0, error: technicalSummary(error) };
+  }
   let proofs: SystemHealthCheck;
   if (!proofHealth.configured) {
     proofs = {

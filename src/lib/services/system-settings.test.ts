@@ -15,7 +15,10 @@ const {
   parseSystemSettings,
   getSystemSettings,
   saveSystemSettings,
+  systemSettingsEffects,
 } = await import("@/lib/services/system-settings");
+
+const originalEffects = { ...systemSettingsEffects };
 
 const hasDb = Boolean(process.env.DATABASE_URL);
 
@@ -33,6 +36,7 @@ async function restoreRows() {
 }
 
 afterEach(async () => {
+  systemSettingsEffects.recordAudit = originalEffects.recordAudit;
   if (hasDb) {
     try {
       await restoreRows();
@@ -54,7 +58,6 @@ describe("DEFAULT_SYSTEM_SETTINGS", () => {
   it("covers every settings key with plain values", () => {
     assert.deepEqual(Object.keys(DEFAULT_SYSTEM_SETTINGS).sort(), [...SETTINGS_KEYS].sort());
     assert.equal(DEFAULT_SYSTEM_SETTINGS.signupOpen, true);
-    assert.equal(DEFAULT_SYSTEM_SETTINGS.autoFixProofs, true);
     assert.equal(DEFAULT_SYSTEM_SETTINGS.emailFromName.length > 0, true);
     assert.equal(DEFAULT_SYSTEM_SETTINGS.emailFromAddress.includes("@"), true);
   });
@@ -66,13 +69,11 @@ describe("parseSystemSettings", () => {
       signupOpen: false,
       emailFromName: "Registrar Office",
       emailFromAddress: "registrar@example.org",
-      autoFixProofs: false,
     });
     assert.deepEqual(parsed, {
       signupOpen: false,
       emailFromName: "Registrar Office",
       emailFromAddress: "registrar@example.org",
-      autoFixProofs: false,
     });
   });
 
@@ -95,6 +96,15 @@ describe("parseSystemSettings", () => {
       (error: Error & { issues?: Array<{ message: string }> }) =>
         error.name === "ZodError" &&
         Boolean(error.issues?.[0]?.message.includes("sender name")),
+    );
+  });
+
+  it("rejects a sender name containing angle brackets with a plain message", () => {
+    assert.throws(
+      () => parseSystemSettings({ ...DEFAULT_SYSTEM_SETTINGS, emailFromName: "Registrar <evil@example.org>" }),
+      (error: Error & { issues?: Array<{ message: string }> }) =>
+        error.name === "ZodError" &&
+        Boolean(error.issues?.[0]?.message.includes("cannot contain")),
     );
   });
 
@@ -141,24 +151,40 @@ describe("getSystemSettings / saveSystemSettings (integration, local DB)", {
       signupOpen: false,
       emailFromName: "Registrar Office",
       emailFromAddress: "registrar@example.org",
-      autoFixProofs: false,
     });
     assert.deepEqual(saved, {
       signupOpen: false,
       emailFromName: "Registrar Office",
       emailFromAddress: "registrar@example.org",
-      autoFixProofs: false,
     });
 
     // A corrupt row must not take the page down: it falls back to the default.
     await getDb()
       .insert(systemSettingsTable)
-      .values({ key: "autoFixProofs", value: "not-a-boolean" })
+      .values({ key: "signupOpen", value: "not-a-boolean" })
       .onConflictDoUpdate({ target: systemSettingsTable.key, set: { value: "not-a-boolean" } });
 
     const read = await getSystemSettings();
+    assert.equal(read.signupOpen, DEFAULT_SYSTEM_SETTINGS.signupOpen);
+    assert.equal(read.emailFromName, "Registrar Office");
+  });
+
+  it("still saves when the audit write fails", async () => {
+    await snapshotRows();
+    await getDb().delete(systemSettingsTable);
+    systemSettingsEffects.recordAudit = async () => {
+      throw new Error("audit unavailable");
+    };
+
+    const saved = await saveSystemSettings({
+      signupOpen: false,
+      emailFromName: "Registrar Office",
+      emailFromAddress: "registrar@example.org",
+    });
+    assert.equal(saved.signupOpen, false);
+
+    const read = await getSystemSettings();
     assert.equal(read.signupOpen, false);
-    assert.equal(read.autoFixProofs, DEFAULT_SYSTEM_SETTINGS.autoFixProofs);
   });
 
   it("records an audit entry naming the changed settings", async () => {

@@ -238,3 +238,28 @@ describe("evaluateMigrationSafety", () => {
     assert.ok(!result.reason?.includes('DELETE FROM "users"'), "reason is not about data deletes");
   });
 });
+
+describe("drizzle journal integrity (real files)", () => {
+  it("keeps drizzle/*.sql and drizzle/meta/_journal.json in sync", async () => {
+    const { readdirSync, readFileSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const { join } = await import("node:path");
+    const drizzleDir = join(fileURLToPath(new URL("..", import.meta.url)), "drizzle");
+
+    const sqlTags = readdirSync(drizzleDir)
+      .filter((name) => name.endsWith(".sql"))
+      .map((name) => name.replace(/\.sql$/, ""))
+      .sort();
+
+    const journal = JSON.parse(readFileSync(join(drizzleDir, "meta", "_journal.json"), "utf8")) as {
+      entries: Array<{ tag: string }>;
+    };
+    const journalTags = journal.entries.map((entry) => entry.tag).sort();
+
+    assert.deepEqual(
+      sqlTags,
+      journalTags,
+      "every drizzle/*.sql needs a journal entry (or db:migrate silently skips it) and vice versa",
+    );
+  });
+});

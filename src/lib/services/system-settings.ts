@@ -9,14 +9,14 @@ const settingsShape = {
     .string()
     .trim()
     .min(1, "Enter the sender name for outgoing emails.")
-    .max(100, "The sender name must be 100 characters or fewer."),
+    .max(100, "The sender name must be 100 characters or fewer.")
+    .regex(/^[^<>\r\n]+$/, "The sender name cannot contain < or >."),
   emailFromAddress: z
     .string()
     .trim()
     .toLowerCase()
     .email("Enter a valid email address for outgoing emails.")
     .max(191, "The sender email address must be 191 characters or fewer."),
-  autoFixProofs: z.boolean(),
 };
 
 export const systemSettingsSchema = z.object(settingsShape);
@@ -29,7 +29,15 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   signupOpen: true,
   emailFromName: "LANHS DRMS",
   emailFromAddress: "no-reply@lanhsdrms.online",
-  autoFixProofs: true,
+};
+
+/**
+ * Injectable effects for tests (same seam pattern as `apiGuardEffects`):
+ * the audit write can be driven to fail without a real outage. Production
+ * behavior is unchanged — the seam defaults to the real audit call.
+ */
+export const systemSettingsEffects = {
+  recordAudit: recordAuditedAction,
 };
 
 export function parseSystemSettings(input: unknown): SystemSettings {
@@ -84,29 +92,36 @@ export async function saveSystemSettings(input: unknown, actorUserId?: string): 
   const previous = await getSystemSettings();
   const changed = SETTINGS_KEYS.filter((key) => values[key] !== previous[key]);
 
-  const db = getDb();
-  const now = new Date();
-  for (const key of changed) {
-    await db
-      .insert(systemSettings)
-      .values({ key, value: values[key], updatedAt: now, updatedBy: actorUserId ?? null })
-      .onConflictDoUpdate({
-        target: systemSettings.key,
-        set: { value: values[key], updatedAt: now, updatedBy: actorUserId ?? null },
-      });
-  }
-
   if (changed.length > 0) {
-    await recordAuditedAction({
-      referenceId: "system_settings",
-      action: "update_settings",
-      actorRole: "admin",
-      entityType: "system_settings",
-      entityId: "system_settings",
-      actorUserId,
-      description: `Updated system settings: ${changed.join(", ")}`,
-      metadata: { changed },
+    const db = getDb();
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      for (const key of changed) {
+        await tx
+          .insert(systemSettings)
+          .values({ key, value: values[key], updatedAt: now, updatedBy: actorUserId ?? null })
+          .onConflictDoUpdate({
+            target: systemSettings.key,
+            set: { value: values[key], updatedAt: now, updatedBy: actorUserId ?? null },
+          });
+      }
     });
+
+    try {
+      await systemSettingsEffects.recordAudit({
+        referenceId: "system_settings",
+        action: "update_settings",
+        actorRole: "admin",
+        entityType: "system_settings",
+        entityId: "system_settings",
+        actorUserId,
+        description: `Updated system settings: ${changed.join(", ")}`,
+        metadata: { changed },
+      });
+    } catch (error) {
+      // The save already succeeded; a failed audit write must not fail it.
+      console.warn("[system-settings] audit write failed:", error instanceof Error ? error.message : "unknown error");
+    }
   }
 
   return values;

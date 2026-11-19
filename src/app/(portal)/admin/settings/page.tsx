@@ -1,7 +1,7 @@
 import { SystemSettingsPanel, type TechnicalDetail } from "@/components/system-settings-panel";
 import { SectionHeading } from "@/components/section-heading";
 import { getSystemHealth } from "@/lib/services/system-health";
-import { getSystemSettings } from "@/lib/services/system-settings";
+import { DEFAULT_SYSTEM_SETTINGS, getSystemSettings } from "@/lib/services/system-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -10,8 +10,12 @@ function presence(value: string | undefined) {
 }
 
 export default async function SystemSettingsPage() {
-  const settings = await getSystemSettings();
-  const statuses = await getSystemHealth();
+  // Degrade instead of throwing: this page must render the "Needs attention"
+  // cards even when the database is unreachable.
+  const [settings, statuses] = await Promise.all([
+    getSystemSettings().catch(() => DEFAULT_SYSTEM_SETTINGS),
+    getSystemHealth().catch(() => []),
+  ]);
 
   const technical: TechnicalDetail[] = [
     { label: "DATABASE_URL", value: presence(process.env.DATABASE_URL) },

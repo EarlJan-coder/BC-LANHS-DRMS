@@ -35,7 +35,6 @@ function validPayload(overrides: Record<string, unknown> = {}) {
     signupOpen: false,
     emailFromName: "Registrar Office",
     emailFromAddress: "registrar@example.org",
-    autoFixProofs: false,
     ...overrides,
   };
 }
