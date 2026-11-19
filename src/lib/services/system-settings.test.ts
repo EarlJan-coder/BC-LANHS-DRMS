@@ -99,7 +99,8 @@ describe("parseSystemSettings", () => {
   });
 
   it("rejects a missing key", () => {
-    const { signupOpen: _omitted, ...incomplete } = DEFAULT_SYSTEM_SETTINGS;
+    const incomplete: Record<string, unknown> = { ...DEFAULT_SYSTEM_SETTINGS };
+    delete incomplete.signupOpen;
     assert.throws(() => parseSystemSettings(incomplete), (error: Error) => error.name === "ZodError");
   });
 });

@@ -1,4 +1,3 @@
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { systemSettings } from "@/db/schema";
