@@ -22,6 +22,7 @@ const protectedPrefixes = [
   "/api/registrations",
   "/api/notifications",
   "/api/document-types",
+  "/api/settings",
 ];
 
 const passwordChangeAllowlist = ["/change-password", "/api/profile/password", "/api/auth/logout"];
@@ -29,6 +30,8 @@ const passwordChangeAllowlist = ["/change-password", "/api/profile/password", "/
 function isProtectedPath(pathname: string) {
   return protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
+
+export { isProtectedPath };
 
 export async function proxy(request: NextRequest) {
   if (!isProtectedPath(request.nextUrl.pathname)) {
@@ -97,5 +100,6 @@ export const config = {
     "/api/registrations/:path*",
     "/api/notifications/:path*",
     "/api/document-types/:path*",
+    "/api/settings/:path*",
   ],
 };
