@@ -712,15 +712,6 @@ export async function getReportSummaryCards() {
   ];
 }
 
-export async function listAdminSettingStatuses() {
-  return [
-    { title: "Database", value: process.env.DATABASE_URL ? "Configured" : "Missing" },
-    { title: "Authentication", value: process.env.SESSION_SECRET ? "Configured" : "Missing" },
-    { title: "Email", value: process.env.RESEND_API_KEY ? "Configured" : "Missing" },
-    { title: "Blockchain", value: process.env.CONTRACT_ADDRESS || process.env.DOCUMENT_AUDIT_CONTRACT_ADDRESS ? "Configured" : "Missing" },
-  ];
-}
-
 export async function getBlockchainAuditStats() {
   const db = getDb();
   const rows = await db

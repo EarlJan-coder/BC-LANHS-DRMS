@@ -1,46 +1,42 @@
-import { Database, Mail, Settings, ShieldCheck } from "lucide-react";
+import { SystemSettingsPanel, type TechnicalDetail } from "@/components/system-settings-panel";
 import { SectionHeading } from "@/components/section-heading";
-import { Card } from "@/components/ui/card";
-import { listAdminSettingStatuses } from "@/lib/services/live-data";
+import { getSystemHealth } from "@/lib/services/system-health";
+import { getSystemSettings } from "@/lib/services/system-settings";
 
-const icons = {
-  Database,
-  Authentication: ShieldCheck,
-  Email: Mail,
-  Blockchain: Settings,
-};
+export const dynamic = "force-dynamic";
 
-const copy = {
-  Database: "PostgreSQL connection through DATABASE_URL.",
-  Authentication: "Local email/LRN accounts with password hashes and signed sessions.",
-  Email: "Resend sender and notification templates.",
-  Blockchain: "RPC URL, contract address, and retry handling for pending proofs.",
-};
+function presence(value: string | undefined) {
+  return value ? "Set" : "Not set";
+}
 
 export default async function SystemSettingsPage() {
-  const settings = await listAdminSettingStatuses();
+  const settings = await getSystemSettings();
+  const statuses = await getSystemHealth();
+
+  const technical: TechnicalDetail[] = [
+    { label: "DATABASE_URL", value: presence(process.env.DATABASE_URL) },
+    { label: "SESSION_SECRET", value: presence(process.env.SESSION_SECRET) },
+    { label: "RESEND_API_KEY", value: presence(process.env.RESEND_API_KEY) },
+    { label: "RESEND_FROM_EMAIL", value: process.env.RESEND_FROM_EMAIL ?? "(default)" },
+    {
+      label: "CRON_SECRET",
+      value: process.env.CRON_SECRET
+        ? "Set — automatic proof fixing can run"
+        : "Not set — automatic proof fixing will not run",
+    },
+    {
+      label: "Contract address",
+      value: process.env.CONTRACT_ADDRESS ?? process.env.DOCUMENT_AUDIT_CONTRACT_ADDRESS ?? "Not set",
+    },
+  ];
 
   return (
     <div>
-      <SectionHeading title="System settings" description="Deployment-ready environment areas for Vercel and local development." />
-      <div className="grid gap-4 md:grid-cols-2">
-        {settings.map((item) => {
-          const Icon = icons[item.title as keyof typeof icons];
-
-          return (
-            <Card key={item.title} className="p-5">
-              <Icon className="h-6 w-6 text-brand" aria-hidden />
-              <div className="mt-4 flex items-center justify-between gap-3">
-                <h2 className="text-base font-semibold text-slate-950">{item.title}</h2>
-                <span className="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-medium text-brand ring-1 ring-rose-100">
-                  {item.value}
-                </span>
-              </div>
-              <p className="mt-2 text-sm leading-6 text-slate-500">{copy[item.title as keyof typeof copy]}</p>
-            </Card>
-          );
-        })}
-      </div>
+      <SectionHeading
+        title="Settings"
+        description="Check that everything the portal needs is working, and choose how it behaves."
+      />
+      <SystemSettingsPanel initialSettings={settings} initialStatuses={statuses} technical={technical} />
     </div>
   );
 }
