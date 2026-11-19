@@ -142,6 +142,13 @@ export const documentTemplateWording = pgTable("document_template_wording", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const systemSettings = pgTable("system_settings", {
+  key: varchar("key", { length: 64 }).primaryKey(),
+  value: jsonb("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid("updated_by"),
+});
+
 export const documentRequests = pgTable(
   "document_requests",
   {
