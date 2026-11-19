@@ -8,7 +8,7 @@ process.env.SESSION_SECRET ||= "test-secret-test-secret-test-secret-32b";
 
 const { and, eq, inArray } = await import("drizzle-orm");
 const { getDb, closeDb } = await import("@/db");
-const { notifications, students, users } = await import("@/db/schema");
+const { notifications, students, users, systemSettings } = await import("@/db/schema");
 const { POST } = await import("@/app/api/auth/signup/route");
 
 const hasDb = Boolean(process.env.DATABASE_URL);
@@ -109,6 +109,30 @@ describe("student signup (integration, local DB)", { skip: hasDb ? false : "DATA
       assert.equal(registered.lrn, payload.lrn);
     } finally {
       await cleanup([existing.id, ...(registeredId ? [registeredId] : [])]);
+    }
+  });
+
+  it("rejects signups with a friendly message while registration is closed", async () => {
+    const db = getDb();
+    const previous = await db.select().from(systemSettings);
+    let rejected = false;
+
+    try {
+      await db
+        .insert(systemSettings)
+        .values({ key: "signupOpen", value: false })
+        .onConflictDoUpdate({ target: systemSettings.key, set: { value: false } });
+
+      const response = await postSignup(signupPayload());
+      assert.equal(response.status, 403);
+      assert.deepEqual(await response.json(), {
+        error: "Registration is currently closed. Please contact the registrar.",
+      });
+      rejected = true;
+    } finally {
+      await db.delete(systemSettings);
+      if (previous.length) await db.insert(systemSettings).values(previous);
+      if (!rejected) throw new Error("expected signup to be rejected while closed");
     }
   });
 

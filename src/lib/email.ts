@@ -1,9 +1,24 @@
 import { Resend } from "resend";
 import { APP_NAME, SCHOOL_NAME } from "@/lib/constants";
 import { renderWorkflowEmailHtml } from "@/lib/email-template";
+import { getSystemSettings } from "@/lib/services/system-settings";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const fromEmail = process.env.RESEND_FROM_EMAIL ?? "LANHS DRMS <no-reply@lanhsdrms.online>";
+
+/**
+ * The sender for outgoing mail: the admin's saved preference first, then the
+ * deployment's RESEND_FROM_EMAIL, then the built-in default. Falls back
+ * silently so a settings read failure never blocks an email.
+ */
+export async function resolveEmailFrom(): Promise<string> {
+  try {
+    const settings = await getSystemSettings();
+    return `${settings.emailFromName} <${settings.emailFromAddress}>`;
+  } catch {
+    return fromEmail;
+  }
+}
 
 async function sendRequestNotificationEmail(input: {
   to: string;
@@ -17,7 +32,7 @@ async function sendRequestNotificationEmail(input: {
 
   try {
     await resend.emails.send({
-      from: fromEmail,
+      from: await resolveEmailFrom(),
       to: input.to,
       subject: input.subject,
       text: input.message,

@@ -104,6 +104,26 @@ describe("parseSystemSettings", () => {
   });
 });
 
+describe("environment sender fallback (integration, local DB)", {
+  skip: hasDb ? false : "DATABASE_URL is not configured",
+}, () => {
+  it("derives the default sender from RESEND_FROM_EMAIL when nothing is saved", async () => {
+    await snapshotRows();
+    await getDb().delete(systemSettingsTable);
+    const previous = process.env.RESEND_FROM_EMAIL;
+    process.env.RESEND_FROM_EMAIL = "Custom Desk <custom@example.org>";
+
+    try {
+      const settings = await getSystemSettings();
+      assert.equal(settings.emailFromName, "Custom Desk");
+      assert.equal(settings.emailFromAddress, "custom@example.org");
+    } finally {
+      if (previous === undefined) delete process.env.RESEND_FROM_EMAIL;
+      else process.env.RESEND_FROM_EMAIL = previous;
+    }
+  });
+});
+
 describe("getSystemSettings / saveSystemSettings (integration, local DB)", {
   skip: hasDb ? false : "DATABASE_URL is not configured",
 }, () => {

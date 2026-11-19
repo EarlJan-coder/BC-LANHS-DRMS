@@ -42,13 +42,34 @@ function isSettingsKey(key: string): key is SystemSettingsKey {
 }
 
 /**
+ * Parses a `RESEND_FROM_EMAIL`-style value ("Name <address>" or a bare
+ * address). Used so deployments that configured the sender through the
+ * environment keep working until an admin saves a sender.
+ */
+function parseFromEmail(raw: string): { name: string | null; address: string } | null {
+  const match = raw.match(/^\s*(.*?)\s*<\s*([^<>\s]+@[^<>\s]+)\s*>\s*$/);
+  if (match) return { name: match[1] || null, address: match[2] };
+  const address = raw.trim();
+  return address.includes("@") ? { name: null, address } : null;
+}
+
+/**
  * Reads the stored settings, falling back to the defaults per key. A corrupt
  * row is ignored instead of breaking the page that asked for settings.
  */
 export async function getSystemSettings(): Promise<SystemSettings> {
   const db = getDb();
   const rows = await db.select().from(systemSettings);
-  const merged: SystemSettings = { ...DEFAULT_SYSTEM_SETTINGS };
+  const envSender = process.env.RESEND_FROM_EMAIL ? parseFromEmail(process.env.RESEND_FROM_EMAIL) : null;
+  const merged: SystemSettings = {
+    ...DEFAULT_SYSTEM_SETTINGS,
+    ...(envSender
+      ? {
+          emailFromName: envSender.name ?? DEFAULT_SYSTEM_SETTINGS.emailFromName,
+          emailFromAddress: envSender.address,
+        }
+      : {}),
+  };
 
   for (const row of rows) {
     if (!isSettingsKey(row.key)) continue;

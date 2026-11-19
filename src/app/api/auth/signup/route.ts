@@ -8,6 +8,7 @@ import { checkAuthRateLimit } from "@/lib/auth-rate-limit";
 import { composeAddress } from "@/lib/ph-address";
 import { refineAddressParts } from "@/lib/validators";
 import { fanOutNewRegistrationNotification } from "@/lib/services/notifications";
+import { getSystemSettings } from "@/lib/services/system-settings";
 
 const signupSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email address.").max(191),
@@ -45,6 +46,14 @@ function postgresCode(error: unknown) {
 
 export async function POST(request: Request) {
   try {
+    const settings = await getSystemSettings();
+    if (!settings.signupOpen) {
+      return NextResponse.json(
+        { error: "Registration is currently closed. Please contact the registrar." },
+        { status: 403 },
+      );
+    }
+
     const values = signupSchema.parse(await request.json());
 
     if (new TextEncoder().encode(values.password).byteLength > 72) {
