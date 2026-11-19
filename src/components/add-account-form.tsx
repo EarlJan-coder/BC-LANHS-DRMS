@@ -6,14 +6,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label, Required, Select } from "@/components/ui/input";
-import { PasswordInput } from "@/components/ui/password-input";
 
 type FormState = {
   email: string;
   firstName: string;
   lastName: string;
-  role: "registrar" | "admin";
-  password: string;
+  role: "registrar" | "student";
+  lrn: string;
 };
 
 type CreatedUser = {
@@ -27,15 +26,15 @@ const initialFormState: FormState = {
   firstName: "",
   lastName: "",
   role: "registrar",
-  password: "",
+  lrn: "",
 };
 
 function roleLabel(role: string): string {
   switch (role) {
     case "registrar":
       return "Registrar";
-    case "admin":
-      return "Admin";
+    case "student":
+      return "Student";
     default:
       return role;
   }
@@ -61,7 +60,13 @@ export function AddAccountForm() {
       const response = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          email: form.email,
+          firstName: form.firstName,
+          lastName: form.lastName,
+          role: form.role,
+          lrn: form.role === "student" ? form.lrn : undefined,
+        }),
       });
       const data = await response.json();
 
@@ -72,7 +77,7 @@ export function AddAccountForm() {
 
       setCreated({
         user: data.user,
-        password: form.password,
+        password: data.temporaryPassword,
         fullName: `${form.firstName.trim()} ${form.lastName.trim()}`.trim(),
       });
       setForm(initialFormState);
@@ -119,7 +124,7 @@ export function AddAccountForm() {
               <dd className="font-medium text-slate-900">{roleLabel(created.user.role)}</dd>
             </div>
             <div className="flex items-center justify-between gap-4">
-              <dt className="text-slate-500">Placeholder password</dt>
+              <dt className="text-slate-500">Temporary password</dt>
               <dd className="flex items-center gap-2">
                 <code className="rounded bg-slate-100 px-2 py-1 text-sm text-slate-900">{created.password}</code>
                 <Button type="button" size="sm" tone="secondary" onClick={copyPassword}>
@@ -197,22 +202,28 @@ export function AddAccountForm() {
                     required
                   >
                     <option value="registrar">Registrar</option>
-                    <option value="admin">Admin</option>
+                    <option value="student">Student</option>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="password">Placeholder password <Required /></Label>
-                  <PasswordInput
-                    id="password"
-                    name="password"
-                    value={form.password}
-                    onChange={(event) => updateField("password", event.target.value)}
-                    required
-                    minLength={8}
-                    autoComplete="new-password"
-                  />
-                </div>
+                {form.role === "student" ? (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="lrn">LRN <Required /></Label>
+                    <Input
+                      id="lrn"
+                      name="lrn"
+                      value={form.lrn}
+                      onChange={(event) => updateField("lrn", event.target.value)}
+                      required
+                      maxLength={30}
+                      autoComplete="off"
+                    />
+                  </div>
+                ) : null}
               </div>
+              <p className="text-sm text-slate-600">
+                A temporary password will be generated automatically. Share it with the account owner — they will be
+                required to change it when they first sign in.
+              </p>
               <div className="flex flex-wrap items-center gap-2 pt-2">
                 <Button type="submit" tone="success" loading={loading}>
                   Create account

@@ -2,10 +2,17 @@ import { AddAccountForm } from "@/components/add-account-form";
 import { DataTable } from "@/components/data-table";
 import { ResetPasswordForm } from "@/components/reset-password-form";
 import { SectionHeading } from "@/components/section-heading";
-import { UserRoleActions } from "@/components/user-role-actions";
+import { UserApprovalActions } from "@/components/user-approval-actions";
+import { UserStatusActions } from "@/components/user-status-actions";
 import { listUserViews } from "@/lib/services/live-data";
 import { Pagination } from "@/components/ui/pagination";
 import { parsePage } from "@/lib/pagination";
+
+const REGISTRATION_LABELS: Record<string, string> = {
+  pending: "On hold",
+  approved: "Approved",
+  declined: "Declined",
+};
 
 export default async function UserManagementPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const page = parsePage((await searchParams).page);
@@ -15,7 +22,7 @@ export default async function UserManagementPage({ searchParams }: { searchParam
     <div>
       <SectionHeading
         title="User management"
-        description="Manage registered portal accounts and their role assignments."
+        description="Review self-registered accounts and manage portal access. The administrator account is fixed."
       />
       <AddAccountForm />
       <DataTable
@@ -25,16 +32,28 @@ export default async function UserManagementPage({ searchParams }: { searchParam
           { key: "name", label: "Name", render: (row) => row.name },
           { key: "email", label: "Email", render: (row) => row.email },
           { key: "role", label: "Role", render: (row) => row.role },
+          {
+            key: "registrationStatus",
+            label: "Registration",
+            render: (row) => REGISTRATION_LABELS[row.registrationStatus] ?? row.registrationStatus,
+          },
           { key: "status", label: "Status", render: (row) => row.status },
           {
             key: "actions",
-            label: "Role / status",
-            render: (row) => (
-              <div className="flex flex-col items-start gap-2">
-                <UserRoleActions userId={row.id} role={row.rawRole} status={row.rawStatus} />
-                <ResetPasswordForm userId={row.id} email={row.email} />
-              </div>
-            ),
+            label: "Actions",
+            render: (row) => {
+              if (row.rawRole === "admin") {
+                return <span className="text-sm text-slate-500">Administrator account</span>;
+              }
+
+              return (
+                <div className="flex flex-col items-start gap-2">
+                  <UserApprovalActions userId={row.id} registrationStatus={row.registrationStatus} />
+                  <UserStatusActions userId={row.id} status={row.rawStatus} />
+                  <ResetPasswordForm userId={row.id} email={row.email} />
+                </div>
+              );
+            },
           },
         ]}
       />

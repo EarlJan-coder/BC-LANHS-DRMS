@@ -74,6 +74,7 @@ export type UserView = {
   email: string;
   role: string;
   rawRole: UserRole;
+  registrationStatus: RegistrationStatus;
   status: string;
   rawStatus: string;
 };

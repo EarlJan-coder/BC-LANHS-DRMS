@@ -584,6 +584,7 @@ export async function listUserViews(options: PageOptions | { all?: true } = {}):
     email: row.email,
     role: ROLE_LABELS[row.role],
     rawRole: row.role,
+    registrationStatus: row.registrationStatus,
     status: row.status === "active" && row.isActive ? "Active" : row.status,
     rawStatus: row.status,
   }));

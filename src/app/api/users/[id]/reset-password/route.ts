@@ -7,7 +7,6 @@ import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { recordAuditedAction } from "@/lib/services/audit-log";
 import { resetUserPassword, assertAdmin } from "@/lib/services/account-admin";
-import { userPasswordResetSchema } from "@/lib/validators";
 import { AppError } from "@/lib/utils";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -18,8 +17,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
 
     assertAdmin(user);
-
-    const values = userPasswordResetSchema.parse(await request.json());
 
     const { id } = await params;
 
@@ -36,7 +33,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       throw new AppError("Account not found.", 404);
     }
 
-    await resetUserPassword(id, values.password);
+    const { temporaryPassword } = await resetUserPassword(id);
 
     await recordAuditedAction({
       action: "user.password_reset",
@@ -48,7 +45,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       metadata: { email: target.email },
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, temporaryPassword });
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message ?? "Invalid password details." }, { status: 400 });

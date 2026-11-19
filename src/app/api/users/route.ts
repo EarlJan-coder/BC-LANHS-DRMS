@@ -3,7 +3,7 @@ import { ZodError } from "zod";
 import { getCurrentDbUser } from "@/lib/auth";
 import { checkAuthRateLimit } from "@/lib/auth-rate-limit";
 import { recordAuditedAction } from "@/lib/services/audit-log";
-import { createStaffAccount, assertAdmin } from "@/lib/services/account-admin";
+import { createPortalAccount, assertAdmin } from "@/lib/services/account-admin";
 import { userCreateSchema } from "@/lib/validators";
 import { AppError } from "@/lib/utils";
 
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const created = await createStaffAccount(values);
+    const created = await createPortalAccount(values);
 
     await recordAuditedAction({
       action: "user.create",
@@ -38,7 +38,14 @@ export async function POST(request: Request) {
       metadata: { email: created.email, role: created.role },
     });
 
-    return NextResponse.json({ ok: true, user: created }, { status: 201 });
+    return NextResponse.json(
+      {
+        ok: true,
+        user: { id: created.id, email: created.email, role: created.role },
+        temporaryPassword: created.temporaryPassword,
+      },
+      { status: 201 },
+    );
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message ?? "Invalid user details." }, { status: 400 });

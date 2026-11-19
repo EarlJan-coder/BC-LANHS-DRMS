@@ -1,8 +1,9 @@
 import bcrypt from "bcryptjs";
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { users, type UserRole } from "@/db/schema";
+import { students, users, type UserRole } from "@/db/schema";
 import { comparePassword } from "@/lib/password";
+import { generateTemporaryPassword } from "@/lib/password-generator";
 import { AppError } from "@/lib/utils";
 
 function postgresCode(error: unknown): string | undefined {
@@ -25,52 +26,72 @@ function assertPasswordFitsBcrypt(password: string): void {
   }
 }
 
-export async function createStaffAccount(input: {
+export async function createPortalAccount(input: {
   email: string;
   firstName: string;
   lastName: string;
   role: UserRole;
-  password: string;
-}): Promise<{ id: string; email: string; role: UserRole }> {
-  if (input.role === "student") {
-    throw new AppError("Student accounts cannot be created here.", 400);
+  lrn?: string;
+}): Promise<{ id: string; email: string; role: UserRole; temporaryPassword: string }> {
+  if (input.role === "admin") {
+    throw new AppError("Administrator accounts cannot be created here.", 400);
   }
 
-  assertPasswordFitsBcrypt(input.password);
+  const lrn = input.role === "student" ? input.lrn?.trim() : undefined;
+  if (input.role === "student" && !lrn) {
+    throw new AppError("LRN is required for student accounts.", 400);
+  }
+
+  const temporaryPassword = generateTemporaryPassword();
+  const passwordHash = await bcrypt.hash(temporaryPassword, 12);
 
   const db = getDb();
-  const existing = await db.query.users.findFirst({
-    where: eq(users.email, input.email),
-  });
-
-  if (existing) {
-    throw new AppError("An account already uses that email.", 409);
-  }
-
-  const passwordHash = await bcrypt.hash(input.password, 12);
 
   try {
-    const [created] = await db
-      .insert(users)
-      .values({
-        email: input.email,
-        firstName: input.firstName,
-        lastName: input.lastName,
-        role: input.role,
-        registrationStatus: "approved",
-        passwordHash,
-        mustChangePassword: true,
-        tokenVersion: 0,
-        status: "active",
-        isActive: true,
-      })
-      .returning({
-        id: users.id,
-        email: users.email,
-        role: users.role,
+    const created = await db.transaction(async (tx) => {
+      const duplicate = await tx.query.users.findFirst({
+        where: eq(users.email, input.email),
       });
 
-    return created;
+      if (duplicate) {
+        throw new AppError("An account already uses that email.", 409);
+      }
+
+      const [user] = await tx
+        .insert(users)
+        .values({
+          email: input.email,
+          lrn: lrn ?? null,
+          passwordHash,
+          firstName: input.firstName,
+          lastName: input.lastName,
+          role: input.role,
+          registrationStatus: "approved",
+          mustChangePassword: true,
+          tokenVersion: 0,
+          status: "active",
+          isActive: true,
+        })
+        .returning({
+          id: users.id,
+          email: users.email,
+          role: users.role,
+        });
+
+      if (input.role === "student") {
+        await tx.insert(students).values({
+          userId: user.id,
+          lrn: lrn!,
+          firstName: input.firstName,
+          lastName: input.lastName,
+          email: input.email,
+        });
+      }
+
+      return user;
+    });
+
+    return { ...created, temporaryPassword };
   } catch (error) {
     if (postgresCode(error) === "23505") {
       throw new AppError("An account already uses that email.", 409);
@@ -85,9 +106,7 @@ export function assertAdmin(actor: { role: UserRole }): void {
   }
 }
 
-export async function resetUserPassword(userId: string, password: string): Promise<{ id: string }> {
-  assertPasswordFitsBcrypt(password);
-
+export async function resetUserPassword(userId: string): Promise<{ id: string; temporaryPassword: string }> {
   const db = getDb();
   const target = await db.query.users.findFirst({
     where: eq(users.id, userId),
@@ -97,7 +116,12 @@ export async function resetUserPassword(userId: string, password: string): Promi
     throw new AppError("Account not found.", 404);
   }
 
-  const passwordHash = await bcrypt.hash(password, 12);
+  if (target.role === "admin") {
+    throw new AppError("The administrator account cannot be reset here. Use the profile password change instead.", 403);
+  }
+
+  const temporaryPassword = generateTemporaryPassword();
+  const passwordHash = await bcrypt.hash(temporaryPassword, 12);
 
   await db
     .update(users)
@@ -109,7 +133,7 @@ export async function resetUserPassword(userId: string, password: string): Promi
     })
     .where(eq(users.id, userId));
 
-  return { id: userId };
+  return { id: userId, temporaryPassword };
 }
 
 export async function changeOwnPassword(

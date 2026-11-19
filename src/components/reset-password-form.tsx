@@ -5,13 +5,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label, Required } from "@/components/ui/input";
-import { PasswordInput } from "@/components/ui/password-input";
 
 export function ResetPasswordForm({ userId, email }: { userId: string; email: string }) {
   const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false);
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [reset, setReset] = useState<{ email: string; password: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -29,15 +25,12 @@ export function ResetPasswordForm({ userId, email }: { userId: string; email: st
     }
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleReset() {
     setLoading(true);
 
     try {
       const response = await fetch(`/api/users/${userId}/reset-password`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
       });
       const data = await response.json();
 
@@ -47,9 +40,7 @@ export function ResetPasswordForm({ userId, email }: { userId: string; email: st
       }
 
       toast.success("Password reset. They will be asked to change it at next sign in.");
-      setReset({ email, password });
-      setPassword("");
-      setIsOpen(false);
+      setReset({ email, password: data.temporaryPassword });
       router.refresh();
     } catch {
       toast.error("Unable to reset the password right now.");
@@ -71,7 +62,7 @@ export function ResetPasswordForm({ userId, email }: { userId: string; email: st
               <dd className="font-medium text-slate-900">{reset.email}</dd>
             </div>
             <div className="flex items-center justify-between gap-4">
-              <dt className="text-slate-500">Placeholder password</dt>
+              <dt className="text-slate-500">Temporary password</dt>
               <dd className="flex items-center gap-2">
                 <code className="rounded bg-slate-100 px-2 py-1 text-sm text-slate-900">{reset.password}</code>
                 <Button type="button" size="sm" tone="secondary" onClick={copyPassword}>
@@ -92,45 +83,8 @@ export function ResetPasswordForm({ userId, email }: { userId: string; email: st
   }
 
   return (
-    <div>
-      {!isOpen ? (
-        <Button type="button" size="sm" tone="secondary" onClick={() => setIsOpen(true)}>
-          Reset password
-        </Button>
-      ) : (
-        <Card className="w-full min-w-[260px]">
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-3 pt-4">
-              <div className="space-y-1.5">
-                <Label htmlFor={`reset-password-${userId}`}>New password for {email} <Required /></Label>
-                <PasswordInput
-                  id={`reset-password-${userId}`}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  required
-                  minLength={8}
-                  autoComplete="new-password"
-                  placeholder="Enter new password"
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button type="submit" size="sm" tone="success" loading={loading}>
-                  Confirm
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  tone="secondary"
-                  onClick={() => setIsOpen(false)}
-                  disabled={loading}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+    <Button type="button" size="sm" tone="secondary" onClick={handleReset} loading={loading}>
+      Reset password
+    </Button>
   );
 }

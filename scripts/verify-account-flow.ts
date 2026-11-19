@@ -26,7 +26,6 @@ for (const line of readFileSync(".env.local", "utf8").split(/\r?\n/)) {
 
 const BASE = process.env.BASE_URL ?? "http://localhost:3122";
 const EMAIL = `e2e-${Date.now()}@example.com`;
-const PLACEHOLDER = "placeholder123";
 const NEW_PASSWORD = "brandnew12345";
 
 let failures = 0;
@@ -38,17 +37,17 @@ function check(name: string, ok: boolean, detail = "") {
 async function main() {
   const { getDb, closeDb } = await import("@/db");
   const { users, auditLogs, blockchainAuditLogs } = await import("@/db/schema");
-  const { createStaffAccount } = await import("@/lib/services/account-admin");
+  const { createPortalAccount } = await import("@/lib/services/account-admin");
   const db = getDb();
 
   // --- setup: create a staff account exactly as the admin UI does -------------
-  const created = await createStaffAccount({
+  const created = await createPortalAccount({
     email: EMAIL,
     firstName: "E2E",
     lastName: "Test",
     role: "registrar",
-    password: PLACEHOLDER,
   });
+  const PLACEHOLDER = created.temporaryPassword;
   check("create staff account (registrar)", Boolean(created.id), `id=${created.id}`);
 
   try {
