@@ -37,6 +37,7 @@ function signupPayload(overrides: Record<string, string | boolean> = {}) {
     lastSchoolYearAttended: "2025-2026",
     password: "registration-test-password",
     acceptedTerms: true,
+    acceptedPrivacy: true,
     ...overrides,
   };
 }
@@ -185,6 +186,20 @@ describe("student signup (integration, local DB)", { skip: hasDb ? false : "DATA
     assert.equal(response.status, 400);
     const body = await response.json();
     assert.match(body.error, /last school year/i);
+  });
+
+  it("rejects signup when the Terms and Conditions are not accepted", async () => {
+    const response = await postSignup(signupPayload({ acceptedTerms: false }));
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.match(body.error, /terms and conditions/i);
+  });
+
+  it("rejects signup when the Privacy Notice is not accepted", async () => {
+    const response = await postSignup(signupPayload({ acceptedPrivacy: false }));
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.match(body.error, /privacy notice/i);
   });
 
   it("rejects a city that is not in the offered list", async () => {

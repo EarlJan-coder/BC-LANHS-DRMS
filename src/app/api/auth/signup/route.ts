@@ -28,6 +28,7 @@ const signupSchema = z.object({
     .max(40, "Last school year attended must be 40 characters or fewer."),
   password: z.string().min(8, "Password must be at least 8 characters.").max(72),
   acceptedTerms: z.literal(true, "You must accept the Terms and Conditions to register."),
+  acceptedPrivacy: z.literal(true, "You must accept the Privacy Notice to register."),
 }).superRefine(refineAddressParts);
 
 function postgresCode(error: unknown) {
