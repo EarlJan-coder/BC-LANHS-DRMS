@@ -30,6 +30,15 @@ export function formatDateTime(date: Date | null | undefined) {
  * The qualifier slot takes the strand when present, else the section.
  * A legacy "Grade " prefix is stripped so old free-text rows don't print
  * "Grade Grade 12" against templates that already print the word "Grade". */
+/**
+ * Format a document type fee for the request slip and admin tables. The
+ * standard PDF fonts have no peso sign, so the slip uses the "PHP" prefix.
+ */
+export function formatDocumentFee(fee: number): string {
+  if (!Number.isFinite(fee) || fee <= 0) return "No fee";
+  return `PHP ${fee.toFixed(2)}`;
+}
+
 export function composeGradeValue(gradeLevel: string | null | undefined, qualifier?: string | null): string {
   const grade = (gradeLevel ?? "").trim().replace(/^grade\s+/i, "");
   const extra = (qualifier ?? "").trim();

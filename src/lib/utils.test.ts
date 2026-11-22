@@ -1,6 +1,18 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { sanitizeRedirectPath } from "@/lib/utils";
+import { formatDocumentFee, sanitizeRedirectPath } from "@/lib/utils";
+
+describe("formatDocumentFee", () => {
+  it("shows No fee when the document type is free", () => {
+    assert.equal(formatDocumentFee(0), "No fee");
+  });
+
+  it("formats positive fees as PHP with two decimals", () => {
+    assert.equal(formatDocumentFee(150), "PHP 150.00");
+    assert.equal(formatDocumentFee(99.5), "PHP 99.50");
+    assert.equal(formatDocumentFee(0.25), "PHP 0.25");
+  });
+});
 
 describe("sanitizeRedirectPath", () => {
   it("accepts same-origin portal paths", () => {

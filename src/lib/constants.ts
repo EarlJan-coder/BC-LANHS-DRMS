@@ -30,6 +30,9 @@ export const SLIP_DOWNLOAD_STATUS: RequestStatus = "ready_for_pickup";
  * endpoint returns to an owner who tries early. */
 export const SLIP_DOWNLOAD_HINT = "Available once your document is Ready for Pickup";
 
+/** Payment note printed under the document fee on the request slip. */
+export const SLIP_FEE_NOTE = "Pay the fee at the registrar's office upon claiming the document. Fees are subject to school policy.";
+
 export const DOCUMENT_TYPES = [
   "Good Moral Certificate",
   "Certificate of Enrollment",

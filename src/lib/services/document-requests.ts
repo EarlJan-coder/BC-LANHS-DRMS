@@ -12,8 +12,8 @@ import {
   type UserRole,
 } from "@/db/schema";
 import { ensureCurrentDbUser, getCurrentProfile, getCurrentRole } from "@/lib/auth";
-import { REQUEST_STATUSES, SLIP_DOWNLOAD_HINT, SLIP_DOWNLOAD_STATUS } from "@/lib/constants";
-import { AppError } from "@/lib/utils";
+import { REQUEST_STATUSES, SLIP_DOWNLOAD_HINT, SLIP_DOWNLOAD_STATUS, SLIP_FEE_NOTE } from "@/lib/constants";
+import { AppError, formatDocumentFee } from "@/lib/utils";
 import { sendWorkflowEmail } from "@/lib/email";
 import { composeGradeValue, generateTrackingNumber } from "@/lib/utils";
 import { documentRequestSchema, updateRequestStatusSchema } from "@/lib/validators";
@@ -301,12 +301,16 @@ export async function renderRequestSlipPdf(request: DocumentRequestView) {
   const contentX = 62;
   const valueWidth = 470;
   const lineStep = 14;
+  const noteStep = 12;
   const blockGap = 20;
   const purposeLines = wrapText(regular, 10, valueWidth, request.purpose ?? "");
   const remarksLines = wrapText(regular, 10, valueWidth, request.remarks ?? "");
+  const feeText = formatDocumentFee(request.fee);
+  const feeNoteLines = request.fee > 0 ? wrapText(regular, 8, valueWidth, SLIP_FEE_NOTE) : [];
 
   let panelY = panelTop - 18;
   panelY -= lineStep + blockGap;
+  panelY -= lineStep + noteStep * feeNoteLines.length + blockGap;
   if (purposeLines.length > 0) {
     panelY -= lineStep * purposeLines.length + blockGap;
   }
@@ -344,6 +348,13 @@ export async function renderRequestSlipPdf(request: DocumentRequestView) {
   y -= lineStep;
   page.drawText(request.documentType, { x: contentX, y, size: 10, font: bold, color: DARK_TEXT });
   y -= blockGap;
+
+  page.drawText("Document Fee", { x: contentX, y, size: 8, font: regular, color: MUTED_TEXT });
+  page.drawText(feeText, { x: contentX, y: y - lineStep, size: 10, font: bold, color: DARK_TEXT });
+  feeNoteLines.forEach((line, index) => {
+    page.drawText(line, { x: contentX, y: y - lineStep - noteStep * (index + 1), size: 8, font: regular, color: MUTED_TEXT });
+  });
+  y -= lineStep + noteStep * feeNoteLines.length + blockGap;
 
   if (purposeLines.length > 0) {
     page.drawText("Purpose", { x: contentX, y, size: 8, font: regular, color: MUTED_TEXT });

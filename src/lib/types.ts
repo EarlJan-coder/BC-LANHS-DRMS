@@ -32,6 +32,7 @@ export type DocumentRequestView = {
   sectionNeeded: string;
   remarks: string;
   registrarRemarks: string;
+  fee: number;
   status: RequestStatus;
   requestedAt: string;
   updatedAt: string;

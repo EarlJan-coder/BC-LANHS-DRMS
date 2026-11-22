@@ -64,6 +64,7 @@ type DocumentRequestDbRow = {
   remarks: string | null;
   registrarRemarks: string | null;
   documentType: string | null;
+  documentTypeFee: string | null;
   lrn: string | null;
   studentFirstName: string | null;
   studentMiddleName: string | null;
@@ -87,6 +88,7 @@ const documentRequestSelection = {
   remarks: documentRequests.remarks,
   registrarRemarks: documentRequests.registrarRemarks,
   documentType: documentTypes.name,
+  documentTypeFee: documentTypes.fee,
   lrn: students.lrn,
   studentFirstName: students.firstName,
   studentMiddleName: students.middleName,
@@ -113,6 +115,7 @@ function mapDocumentRequestView(
     sectionNeeded: row.sectionNeeded ?? "",
     remarks: row.remarks ?? "None",
     registrarRemarks: row.registrarRemarks ?? "None",
+    fee: Number(row.documentTypeFee ?? 0),
     status: row.status,
     requestedAt: formatDate(row.createdAt),
     updatedAt: formatDate(row.updatedAt),

@@ -5,9 +5,9 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 require("@next/env").loadEnvConfig(process.cwd());
 
-const { inArray } = await import("drizzle-orm");
+const { eq, inArray } = await import("drizzle-orm");
 const { getDb, closeDb } = await import("@/db");
-const { auditLogs, documentRequests } = await import("@/db/schema");
+const { auditLogs, documentRequests, documentTypes } = await import("@/db/schema");
 const { getDocumentRequestView, listDocumentRequestViews, listLocalAuditTrailViews } = await import("@/lib/services/live-data");
 
 const hasDb = Boolean(process.env.DATABASE_URL);
@@ -54,6 +54,27 @@ describe("live detail queries (integration, local DB)", { skip: hasDb ? false : 
       assert.ok(result.rows[0].trackingNumber.startsWith(runTag));
     } finally {
       await getDb().delete(documentRequests).where(inArray(documentRequests.id, inserted.map((row) => row.id)));
+    }
+  });
+
+  it("request detail view carries the document type fee", async () => {
+    const db = getDb();
+    const tag = `FEE-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const [type] = await db
+      .insert(documentTypes)
+      .values({ name: tag, code: tag.slice(-30).toUpperCase(), fee: "75.50" })
+      .returning({ id: documentTypes.id });
+    const [request] = await db
+      .insert(documentRequests)
+      .values({ trackingNumber: tag, purpose: "Fee plumbing fixture", documentTypeId: type.id })
+      .returning({ id: documentRequests.id });
+
+    try {
+      const view = await getDocumentRequestView(request.id);
+      assert.equal(view?.fee, 75.5);
+    } finally {
+      await db.delete(documentRequests).where(eq(documentRequests.id, request.id));
+      await db.delete(documentTypes).where(eq(documentTypes.id, type.id));
     }
   });
 
