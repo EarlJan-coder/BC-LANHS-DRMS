@@ -51,14 +51,18 @@ export function buildStatusUpdatePayload(
 
 /**
  * Staircase lock for the registrar status buttons: each later workflow stage
- * disables the buttons of the stages before it. Approved and rejected stay
- * fully reversible, so nothing is disabled while the request sits there.
+ * disables the buttons of the stages before it. Approve and reject are
+ * one-way decisions — the approve/reject pair locks as soon as either is
+ * chosen (rejecting is terminal and locks the whole row), because approving
+ * now issues the certificate automatically and must not be replayed.
  */
+const ALL_ACTIONS: readonly RequestStatus[] = ["approved", "rejected", "processing", "ready_for_pickup", "claimed"];
+
 const DISABLED_ACTIONS_BY_STATUS: Record<RequestStatus, readonly RequestStatus[]> = {
   pending: [],
   under_review: [],
-  approved: [],
-  rejected: [],
+  approved: ["approved", "rejected"],
+  rejected: ALL_ACTIONS,
   processing: ["approved", "rejected"],
   ready_for_pickup: ["approved", "rejected", "processing"],
   claimed: ["approved", "rejected", "processing", "ready_for_pickup"],

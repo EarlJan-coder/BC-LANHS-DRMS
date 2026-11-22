@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
 import { getCurrentRole } from "@/lib/auth";
+import { AppError } from "@/lib/utils";
 import { updateDocumentRequestStatus } from "@/lib/services/document-requests";
 
 export async function PATCH(
@@ -34,6 +35,10 @@ export async function PATCH(
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message ?? "Invalid status update." }, { status: 400 });
+    }
+
+    if (error instanceof AppError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
     }
 
     return NextResponse.json(

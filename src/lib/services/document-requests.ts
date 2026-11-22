@@ -20,6 +20,7 @@ import { documentRequestSchema, updateRequestStatusSchema } from "@/lib/validato
 import { getDocumentRequestView } from "@/lib/services/live-data";
 import type { DocumentRequestView } from "@/lib/types";
 import { recordAuditedAction } from "./audit-log";
+import { generateCertificate } from "./certificates";
 import { fanOutNewRequestNotification } from "./notifications";
 import { getDocumentSignatoryTemplate } from "./document-signatory-template";
 import {
@@ -507,6 +508,32 @@ export async function updateDocumentRequestStatus(requestId: string, input: unkn
         claimedAt: values.status === "claimed" ? new Date() : existing?.claimedAt,
       })
       .where(eq(documentRequests.id, requestId));
+
+    // Approving issues the certificate automatically (the old manual
+    // "Generate certificate" button is gone). If generation fails — e.g. the
+    // request has no linked student record — the approval is rolled back so
+    // the request never sits in "approved" without its certificate.
+    if (values.status === "approved" && previousStatus !== "approved") {
+      try {
+        await generateCertificate({ requestId });
+      } catch (error) {
+        await db
+          .update(documentRequests)
+          .set({
+            status: previousStatus ?? "pending",
+            registrarRemarks: existing?.registrarRemarks ?? null,
+            rejectionReason: existing?.rejectionReason ?? null,
+            approvedBy: existing?.approvedBy ?? null,
+            approvedAt: existing?.approvedAt ?? null,
+            updatedAt: new Date(),
+          })
+          .where(eq(documentRequests.id, requestId));
+        throw new AppError(
+          `Approval was not saved: ${error instanceof Error ? error.message : "certificate generation failed."}`,
+          422,
+        );
+      }
+    }
 
     await db.insert(requestStatusHistory).values({
       requestId,

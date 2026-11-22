@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { GenerateCertificateButton } from "@/components/generate-certificate-button";
 import { RequestStatusActions } from "@/components/request-status-actions";
 import { StatusBadge } from "@/components/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,11 +20,9 @@ export interface TimelineItem {
 export function RegistrarRequestDetailsView({
   request,
   initialTimeline,
-  certificateGenerated = false,
 }: {
   request: DocumentRequestView;
   initialTimeline: TimelineItem[];
-  certificateGenerated?: boolean;
 }) {
   const [override, setOverride] = useState<{
     status?: RequestStatus;
@@ -83,11 +80,6 @@ export function RegistrarRequestDetailsView({
               requestId={request.id}
               currentStatus={currentStatus}
               onStatusChange={handleStatusChange}
-            />
-            <GenerateCertificateButton
-              requestId={request.id}
-              documentType={request.documentType}
-              certificateGenerated={certificateGenerated}
             />
           </CardContent>
         </Card>

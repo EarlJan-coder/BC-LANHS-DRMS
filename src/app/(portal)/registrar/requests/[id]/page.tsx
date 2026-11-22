@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { RegistrarRequestDetailsView } from "@/components/registrar-request-details-view";
 import { SectionHeading } from "@/components/section-heading";
 import { ButtonLink } from "@/components/ui/button";
-import { hasCertificateForRequest } from "@/lib/services/certificates";
 import { getDocumentRequestView, listRequestStatusHistoryViews } from "@/lib/services/live-data";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +19,6 @@ export default async function RegistrarRequestDetailsPage({
   }
 
   const timeline = await listRequestStatusHistoryViews(request.id);
-  const certificateGenerated = await hasCertificateForRequest(request.id);
 
   return (
     <div>
@@ -33,7 +31,6 @@ export default async function RegistrarRequestDetailsPage({
       <RegistrarRequestDetailsView
         request={request}
         initialTimeline={timeline}
-        certificateGenerated={certificateGenerated}
       />
     </div>
   );

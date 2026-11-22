@@ -59,10 +59,24 @@ describe("buildStatusUpdatePayload", () => {
 });
 
 describe("disabledStatusActions", () => {
-  it("disables nothing outside the workflow staircase", () => {
-    for (const status of ["pending", "under_review", "approved", "rejected", "cancelled"] as const) {
+  it("disables nothing while the request is pending, under review, or cancelled", () => {
+    for (const status of ["pending", "under_review", "cancelled"] as const) {
       assert.deepEqual(disabledStatusActions(status), []);
     }
+  });
+
+  it("locks the approve/reject pair once the request is approved", () => {
+    assert.deepEqual(disabledStatusActions("approved"), ["approved", "rejected"]);
+  });
+
+  it("disables every action once the request is rejected", () => {
+    assert.deepEqual(disabledStatusActions("rejected"), [
+      "approved",
+      "rejected",
+      "processing",
+      "ready_for_pickup",
+      "claimed",
+    ]);
   });
 
   it("locks the approve/reject pair while processing", () => {

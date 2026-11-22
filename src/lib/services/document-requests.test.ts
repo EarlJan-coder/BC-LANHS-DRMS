@@ -5,11 +5,18 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 require("@next/env").loadEnvConfig(process.cwd());
 process.env.SESSION_SECRET ||= "test-secret-test-secret-test-secret-32b";
+// Never talk to a real chain or send real email from tests: the blockchain
+// client reads the zero address as "not configured" and answers without any
+// network call, and email.ts disables itself without an API key (it reads
+// RESEND_API_KEY at module load, so this must run before the imports below).
+process.env.CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000";
+process.env.DOCUMENT_AUDIT_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000";
+process.env.RESEND_API_KEY = "";
 
-const { eq } = await import("drizzle-orm");
+const { eq, inArray } = await import("drizzle-orm");
 const { getDb, closeDb } = await import("@/db");
-const { documentRequests, notifications, requestStatusHistory, students, users } = await import("@/db/schema");
-const { canAccessRequestSlip, createDocumentRequest, generateRequestSlipPdf, getRequestEligibility } = await import(
+const { auditLogs, blockchainAuditLogs, certificates, documentRequests, notifications, requestStatusHistory, students, users } = await import("@/db/schema");
+const { canAccessRequestSlip, createDocumentRequest, generateRequestSlipPdf, getRequestEligibility, updateDocumentRequestStatus } = await import(
   "@/lib/services/document-requests"
 );
 const { AppError } = await import("@/lib/utils");
@@ -246,6 +253,91 @@ describe("createDocumentRequest school year snapshot (integration, local DB)", {
       assert.equal(rows.length, 0);
     } finally {
       await cleanupStudentUser(user.id);
+    }
+  });
+});
+
+/** Removes a request with everything the approval flow writes around it. */
+async function cleanupRequestArtifacts(requestId: string, referenceIds: string[], userId?: string) {
+  const db = getDb();
+  const certs = await db
+    .select({ id: certificates.id, certificateNumber: certificates.certificateNumber })
+    .from(certificates)
+    .where(eq(certificates.requestId, requestId));
+  const entityIds = [requestId, ...certs.map((cert) => cert.id)];
+  const chainReferenceIds = [...referenceIds, ...certs.map((cert) => cert.certificateNumber)];
+
+  await db.delete(blockchainAuditLogs).where(inArray(blockchainAuditLogs.referenceId, chainReferenceIds));
+  await db.delete(auditLogs).where(inArray(auditLogs.entityId, entityIds));
+  await db.delete(certificates).where(eq(certificates.requestId, requestId));
+  await db.delete(requestStatusHistory).where(eq(requestStatusHistory.requestId, requestId));
+  await db.delete(documentRequests).where(eq(documentRequests.id, requestId));
+  if (userId) await cleanupStudentUser(userId);
+}
+
+describe("updateDocumentRequestStatus approval (integration, local DB)", {
+  skip: hasDb ? false : "DATABASE_URL not configured",
+}, () => {
+  it("generates the certificate automatically when the request is approved", async () => {
+    const db = getDb();
+    const user = await createStudentUser("2025-2026");
+    const created = await createDocumentRequest(requestPayload, testEffects(user));
+
+    try {
+      const result = await updateDocumentRequestStatus(
+        created.id,
+        { status: "approved", remarks: "Status updated to approved.", registrarRemarks: "Registrar marked this request as approved." },
+        "registrar",
+      );
+      assert.equal(result.status, "approved");
+
+      const certs = await db.select().from(certificates).where(eq(certificates.requestId, created.id));
+      assert.equal(certs.length, 1, "approving must generate exactly one certificate");
+      assert.ok(certs[0].verificationCode, "generated certificate needs a verification code");
+
+      const student = await db.query.students.findFirst({ where: eq(students.userId, user.id) });
+      assert.equal(certs[0].studentId, student?.id);
+
+      const row = await db.query.documentRequests.findFirst({ where: eq(documentRequests.id, created.id) });
+      assert.equal(row?.status, "approved");
+    } finally {
+      await cleanupRequestArtifacts(created.id, [created.trackingNumber], user.id);
+    }
+  });
+
+  it("rolls the approval back when no student record is linked", async () => {
+    const db = getDb();
+    const trackingNumber = `TEST-APPROVE-${Date.now()}`;
+    const [created] = await db
+      .insert(documentRequests)
+      .values({ trackingNumber, purpose: "Approval rollback test", status: "pending" })
+      .returning();
+
+    try {
+      await assert.rejects(
+        () =>
+          updateDocumentRequestStatus(
+            created.id,
+            { status: "approved", remarks: "Status updated to approved.", registrarRemarks: "Registrar marked this request as approved." },
+            "registrar",
+          ),
+        (error: unknown) => error instanceof AppError && /linked student record/i.test(error.message),
+      );
+
+      const row = await db.query.documentRequests.findFirst({ where: eq(documentRequests.id, created.id) });
+      assert.equal(row?.status, "pending", "the approval must not stick when certificate generation fails");
+      assert.equal(row?.approvedAt ?? null, null);
+
+      const certs = await db.select().from(certificates).where(eq(certificates.requestId, created.id));
+      assert.equal(certs.length, 0);
+
+      const history = await db
+        .select()
+        .from(requestStatusHistory)
+        .where(eq(requestStatusHistory.requestId, created.id));
+      assert.equal(history.filter((entry) => entry.toStatus === "approved").length, 0);
+    } finally {
+      await cleanupRequestArtifacts(created.id, [trackingNumber]);
     }
   });
 });
