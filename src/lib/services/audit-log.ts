@@ -32,10 +32,11 @@ export type AuditedActionInput = {
  * never written to `blockchain_audit_logs` or the contract. Add a type here on
  * purpose when a new document record needs an on-chain proof.
  */
-const ONCHAIN_REFERENCE_TYPES = new Set(["certificate", "document_request", "status_change"]);
+export const ONCHAIN_REFERENCE_TYPES = ["certificate", "document_request", "status_change"] as const;
+const onChainReferenceTypeSet = new Set<string>(ONCHAIN_REFERENCE_TYPES);
 
 export function isOnChainReferenceType(referenceType: string) {
-  return ONCHAIN_REFERENCE_TYPES.has(referenceType);
+  return onChainReferenceTypeSet.has(referenceType);
 }
 
 export async function recordAuditedAction(input: AuditedActionInput) {

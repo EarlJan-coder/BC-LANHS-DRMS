@@ -7,8 +7,8 @@ require("@next/env").loadEnvConfig(process.cwd());
 
 const { inArray } = await import("drizzle-orm");
 const { getDb, closeDb } = await import("@/db");
-const { documentRequests } = await import("@/db/schema");
-const { getDocumentRequestView, listDocumentRequestViews } = await import("@/lib/services/live-data");
+const { auditLogs, documentRequests } = await import("@/db/schema");
+const { getDocumentRequestView, listDocumentRequestViews, listLocalAuditTrailViews } = await import("@/lib/services/live-data");
 
 const hasDb = Boolean(process.env.DATABASE_URL);
 
@@ -54,6 +54,33 @@ describe("live detail queries (integration, local DB)", { skip: hasDb ? false : 
       assert.ok(result.rows[0].trackingNumber.startsWith(runTag));
     } finally {
       await getDb().delete(documentRequests).where(inArray(documentRequests.id, inserted.map((row) => row.id)));
+    }
+  });
+
+  it("local audit fallback lists only blockchain-relevant actions", async () => {
+    const { randomUUID } = await import("node:crypto");
+    const db = getDb();
+    const recordHash = (id: string) => `0x${id.replace(/-/g, "").padEnd(64, "0")}`;
+    const seeded = [
+      { id: randomUUID(), actorRole: "admin", action: "user.create", entityType: "user" },
+      { id: randomUUID(), actorRole: "admin", action: "update_settings", entityType: "system_settings" },
+      { id: randomUUID(), actorRole: "registrar", action: "registration.approved", entityType: "registration" },
+      { id: randomUUID(), actorRole: "registrar", action: "certificate.generated", entityType: "certificate" },
+      { id: randomUUID(), actorRole: "student", action: "request.submitted", entityType: "document_request" },
+    ].map((row) => ({ ...row, entityId: `LOGFALLBACK-${row.id}`, recordHash: recordHash(row.id) }));
+
+    try {
+      await db.insert(auditLogs).values(seeded);
+      const views = await listLocalAuditTrailViews({ all: true });
+      const listedIds = new Set(views.map((view) => view.referenceId));
+
+      assert.ok(listedIds.has(seeded[3].entityId), "certificate action must be listed");
+      assert.ok(listedIds.has(seeded[4].entityId), "document_request action must be listed");
+      assert.ok(!listedIds.has(seeded[0].entityId), "user.create must not be listed");
+      assert.ok(!listedIds.has(seeded[1].entityId), "update_settings must not be listed");
+      assert.ok(!listedIds.has(seeded[2].entityId), "registration decision must not be listed");
+    } finally {
+      await db.delete(auditLogs).where(inArray(auditLogs.id, seeded.map((row) => row.id)));
     }
   });
 });

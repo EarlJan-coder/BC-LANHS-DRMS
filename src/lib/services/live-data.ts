@@ -14,6 +14,7 @@ import {
   type RequestStatus,
 } from "@/db/schema";
 import { ensureCurrentDbUser, getCurrentProfile } from "@/lib/auth";
+import { ONCHAIN_REFERENCE_TYPES } from "@/lib/services/audit-log";
 import { ROLE_LABELS } from "@/lib/constants";
 import type {
   AuditTrailView,
@@ -656,7 +657,29 @@ export async function listAuditTrailViews(options: number | PageOptions | { all?
     return all ? views : views.slice(0, limit);
   }
 
-  const [localCount] = await db.select({ value: count() }).from(auditLogs);
+  return listLocalAuditTrailViews(options as number | PageOptions | { all?: true });
+}
+
+/**
+ * Fallback audit listing used when `blockchain_audit_logs` has no rows yet
+ * (e.g. a database whose chain records were never provisioned). It shows the
+ * subset of local `audit_logs` rows that back on-chain document records —
+ * certificates, document requests, and status changes — so the trail never
+ * mixes in account-level actions (user create, password reset/change,
+ * registration decisions, settings updates) that never touch the chain.
+ */
+export function listLocalAuditTrailViews(options: PageOptions): Promise<Paged<AuditTrailView>>;
+export function listLocalAuditTrailViews(options?: number | { all?: true }): Promise<AuditTrailView[]>;
+export async function listLocalAuditTrailViews(options: number | PageOptions | { all?: true } = 50): Promise<AuditTrailView[] | Paged<AuditTrailView>> {
+  const db = getDb();
+  const pageOptions = typeof options === "object" && "page" in options ? options : undefined;
+  const all = typeof options === "object" && "all" in options && options.all;
+  const limit = typeof options === "number" ? options : 50;
+  const onChainLocalEntityTypes = [...ONCHAIN_REFERENCE_TYPES];
+  const [localCount] = await db
+    .select({ value: count() })
+    .from(auditLogs)
+    .where(inArray(auditLogs.entityType, onChainLocalEntityTypes));
   const total = Number(localCount?.value ?? 0);
   const localQuery = db
     .select({
@@ -668,6 +691,7 @@ export async function listAuditTrailViews(options: number | PageOptions | { all?
       createdAt: auditLogs.createdAt,
     })
     .from(auditLogs)
+    .where(inArray(auditLogs.entityType, onChainLocalEntityTypes))
     .orderBy(desc(auditLogs.createdAt));
   let localRows: Awaited<typeof localQuery>;
   if (pageOptions) {
