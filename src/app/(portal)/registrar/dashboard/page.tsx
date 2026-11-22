@@ -15,7 +15,7 @@ export default async function RegistrarDashboardPage() {
         title="Registrar dashboard"
         description="Monitor request queues, document preparation, and registrar audit activity."
         actions={
-          <ButtonLink href="/registrar/certificates">
+          <ButtonLink href="/registrar/certificates" tone="info">
             <FileBadge className="h-4 w-4" aria-hidden />
             Certificates
           </ButtonLink>

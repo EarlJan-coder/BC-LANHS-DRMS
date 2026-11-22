@@ -197,7 +197,7 @@ export function SystemSettingsPanel({
         </Card>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <Button type="button" onClick={save} loading={saving} disabled={!dirty}>
+          <Button type="button" tone="success" onClick={save} loading={saving} disabled={!dirty}>
             {saving ? "Saving…" : "Save changes"}
           </Button>
           {dirty ? (

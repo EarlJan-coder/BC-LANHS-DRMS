@@ -19,7 +19,7 @@ export default async function AdminDashboardPage() {
               <Database className="h-4 w-4" aria-hidden />
               Settings
             </ButtonLink>
-            <ButtonLink href="/admin/blockchain">
+            <ButtonLink href="/admin/blockchain" tone="info">
               <Download className="h-4 w-4" aria-hidden />
               Audit trail
             </ButtonLink>

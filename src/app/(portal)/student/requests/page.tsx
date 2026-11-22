@@ -30,7 +30,7 @@ export default async function MyRequestsPage({
       <SectionHeading
         title="My requests"
         description="Review submitted document requests, processing status, and generated slips."
-        actions={<ButtonLink href="/student/requests/new">New request</ButtonLink>}
+        actions={<ButtonLink href="/student/requests/new" tone="info">New request</ButtonLink>}
       />
       <Card className="mb-5 p-4">
         <RequestFilterForm

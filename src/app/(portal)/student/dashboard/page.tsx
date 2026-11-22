@@ -17,7 +17,7 @@ export default async function StudentDashboardPage() {
         title="Student dashboard"
         description="Track document requests, notifications, and generated request slips."
         actions={
-          <ButtonLink href="/student/requests/new">
+          <ButtonLink href="/student/requests/new" tone="info">
             <FileText className="h-4 w-4" aria-hidden />
             Submit request
           </ButtonLink>
