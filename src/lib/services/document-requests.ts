@@ -34,7 +34,6 @@ import {
   drawWatermark,
   embedQrCode,
   embedSchoolLogo,
-  LIGHT_BORDER,
   MUTED_TEXT,
   PAGE_HEIGHT,
   PAGE_WIDTH,
@@ -159,6 +158,7 @@ export async function createDocumentRequest(input: unknown, effects: CreateDocum
         studentId: student?.id,
         requestedByUserId: user?.id,
         documentTypeId: documentType?.id,
+        feeAtRequest: documentType?.fee ?? null,
         purpose: values.purpose,
         schoolYearNeeded,
         gradeLevelNeeded: values.gradeLevelNeeded,
@@ -322,17 +322,6 @@ export async function renderRequestSlipPdf(request: DocumentRequestView) {
   const remarksLines = truncateSlipLines(wrapText(regular, 10, valueWidth, request.remarks ?? ""), MAX_SLIP_BLOCK_LINES);
   const feeText = formatDocumentFee(request.fee);
   const feeNoteLines = request.fee > 0 ? wrapText(regular, 8, valueWidth, SLIP_FEE_NOTE) : [];
-
-  let panelY = panelTop - 18;
-  panelY -= lineStep + blockGap;
-  panelY -= lineStep + noteStep * feeNoteLines.length + blockGap;
-  if (purposeLines.length > 0) {
-    panelY -= lineStep * purposeLines.length + blockGap;
-  }
-  if (remarksLines.length > 0) {
-    panelY -= lineStep * remarksLines.length;
-  }
-  const panelBottom = panelY - 16;
 
   const badgeLabel =
     REQUEST_STATUSES.find((status) => status.value === request.status)?.label ??

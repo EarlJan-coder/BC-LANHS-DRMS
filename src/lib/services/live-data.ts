@@ -65,6 +65,7 @@ type DocumentRequestDbRow = {
   registrarRemarks: string | null;
   documentType: string | null;
   documentTypeFee: string | null;
+  feeAtRequest: string | null;
   lrn: string | null;
   studentFirstName: string | null;
   studentMiddleName: string | null;
@@ -89,6 +90,7 @@ const documentRequestSelection = {
   registrarRemarks: documentRequests.registrarRemarks,
   documentType: documentTypes.name,
   documentTypeFee: documentTypes.fee,
+  feeAtRequest: documentRequests.feeAtRequest,
   lrn: students.lrn,
   studentFirstName: students.firstName,
   studentMiddleName: students.middleName,
@@ -115,7 +117,10 @@ function mapDocumentRequestView(
     sectionNeeded: row.sectionNeeded ?? "",
     remarks: row.remarks ?? "None",
     registrarRemarks: row.registrarRemarks ?? "None",
-    fee: Number(row.documentTypeFee ?? 0),
+    // The fee snapshotted at request time wins so printed slips never change
+    // when the document type's price is edited later; legacy rows without a
+    // snapshot fall back to the document type's current fee.
+    fee: Number(row.feeAtRequest ?? row.documentTypeFee ?? 0),
     status: row.status,
     requestedAt: formatDate(row.createdAt),
     updatedAt: formatDate(row.updatedAt),
@@ -672,6 +677,10 @@ export async function listAuditTrailViews(options: number | PageOptions | { all?
  * certificates, document requests, and status changes — so the trail never
  * mixes in account-level actions (user create, password reset/change,
  * registration decisions, settings updates) that never touch the chain.
+ *
+ * The filter keys on `entityType`, matching `recordAuditedAction`'s on-chain
+ * decision (`referenceType ?? entityType`): call sites pass the same value for
+ * both, and `AuditedActionInput` documents that invariant.
  */
 export function listLocalAuditTrailViews(options: PageOptions): Promise<Paged<AuditTrailView>>;
 export function listLocalAuditTrailViews(options?: number | { all?: true }): Promise<AuditTrailView[]>;

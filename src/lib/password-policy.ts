@@ -21,8 +21,8 @@ export type PasswordRequirement = {
 export const PASSWORD_REQUIREMENTS: readonly PasswordRequirement[] = [
   {
     key: "length",
-    label: `At least ${PASSWORD_MIN_LENGTH} characters`,
-    message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`,
+    label: `${PASSWORD_MIN_LENGTH} to ${PASSWORD_MAX_LENGTH} characters`,
+    message: `Password must be ${PASSWORD_MIN_LENGTH} to ${PASSWORD_MAX_LENGTH} characters.`,
     isMet: (password) => password.length >= PASSWORD_MIN_LENGTH && password.length <= PASSWORD_MAX_LENGTH,
   },
   {

@@ -6,7 +6,7 @@ const require = createRequire(import.meta.url);
 require("@next/env").loadEnvConfig(process.cwd());
 process.env.SESSION_SECRET ||= "test-secret-test-secret-test-secret-32b";
 
-const { eq } = await import("drizzle-orm");
+const { and, desc, eq } = await import("drizzle-orm");
 const { getDb, closeDb } = await import("@/db");
 const { systemSettings: systemSettingsTable, auditLogs, users } = await import("@/db/schema");
 const { apiGuardEffects } = await import("@/lib/api-guards");
@@ -137,7 +137,15 @@ describe("settings route (integration, local DB)", {
     assert.deepEqual(stored, validPayload());
     assert.ok(rows.every((row) => row.updatedBy === fixtureUserId));
 
-    const [entry] = await getDb().select().from(auditLogs);
+    // Scope to this test's write: audit_logs on the shared database holds rows
+    // from real usage (password resets and friends), so an unscoped select
+    // returns an arbitrary row.
+    const [entry] = await getDb()
+      .select()
+      .from(auditLogs)
+      .where(and(eq(auditLogs.entityType, "system_settings"), eq(auditLogs.actorUserId, fixtureUserId)))
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(1);
     assert.ok(entry, "expected an audit entry for the settings save");
     assert.equal(entry.action, "update_settings");
     assert.equal(entry.actorUserId, fixtureUserId);

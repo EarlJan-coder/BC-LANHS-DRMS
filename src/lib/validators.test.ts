@@ -11,7 +11,7 @@ describe("passwordChangeSchema", () => {
   });
 
   it("still rejects a new password shorter than eight characters", () => {
-    assert.throws(() => passwordChangeSchema.parse({ currentPassword: "Oldpassw0rd!", newPassword: "Ab1!xyz" }), /at least 8/i);
+    assert.throws(() => passwordChangeSchema.parse({ currentPassword: "Oldpassw0rd!", newPassword: "Ab1!xyz" }), /8 to 72 characters/i);
   });
 
   it("accepts a strong new password", () => {

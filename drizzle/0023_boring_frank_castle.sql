@@ -1,0 +1,1 @@
+ALTER TABLE "document_requests" ADD COLUMN "fee_at_request" numeric(10, 2);

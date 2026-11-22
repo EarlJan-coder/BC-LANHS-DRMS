@@ -158,6 +158,10 @@ export const documentRequests = pgTable(
     requestedByUserId: uuid("requested_by_user_id").references(() => users.id),
     assignedToUserId: uuid("assigned_to_user_id").references(() => users.id),
     documentTypeId: uuid("document_type_id").references(() => documentTypes.id),
+    // Fee at request time (snapshot of the document type's fee): printed on
+    // the request slip so later price changes never rewrite old receipts.
+    // Null on legacy rows, which fall back to the document type's live fee.
+    feeAtRequest: numeric("fee_at_request", { precision: 10, scale: 2 }),
     purpose: text("purpose").notNull(),
     schoolYearNeeded: varchar("school_year_needed", { length: 40 }),
     gradeLevelNeeded: varchar("grade_level_needed", { length: 40 }),

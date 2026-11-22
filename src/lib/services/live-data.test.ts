@@ -78,6 +78,28 @@ describe("live detail queries (integration, local DB)", { skip: hasDb ? false : 
     }
   });
 
+  it("request detail view prints the fee snapshotted at request time", async () => {
+    const db = getDb();
+    const tag = `SNAP-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const [type] = await db
+      .insert(documentTypes)
+      .values({ name: tag, code: tag.slice(-30).toUpperCase(), fee: "75.50" })
+      .returning({ id: documentTypes.id });
+    const [request] = await db
+      .insert(documentRequests)
+      .values({ trackingNumber: tag, purpose: "Fee snapshot fixture", documentTypeId: type.id, feeAtRequest: "50.00" })
+      .returning({ id: documentRequests.id });
+
+    try {
+      await db.update(documentTypes).set({ fee: "999.00" }).where(eq(documentTypes.id, type.id));
+      const view = await getDocumentRequestView(request.id);
+      assert.equal(view?.fee, 50, "the slip must print the fee as it was when the request was made");
+    } finally {
+      await db.delete(documentRequests).where(eq(documentRequests.id, request.id));
+      await db.delete(documentTypes).where(eq(documentTypes.id, type.id));
+    }
+  });
+
   it("local audit fallback lists only blockchain-relevant actions", async () => {
     const { randomUUID } = await import("node:crypto");
     const db = getDb();

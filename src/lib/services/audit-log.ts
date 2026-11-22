@@ -11,6 +11,12 @@ import { submitAuditToChain, submitLifecycleEventToChain } from "@/lib/blockchai
 import { ZERO_HASH } from "@/lib/utils";
 
 export type AuditedActionInput = {
+  /**
+   * Drives the on-chain decision together with `entityType`: for on-chain
+   * types the two MUST be equal — the audit-trail fallback listing filters
+   * local rows on `entityType` and would silently hide a row whose
+   * `referenceType` differs from it.
+   */
   referenceType?: string;
   referenceId: string;
   action: string;

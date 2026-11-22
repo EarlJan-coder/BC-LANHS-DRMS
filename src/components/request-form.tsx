@@ -24,7 +24,17 @@ export function RequestForm() {
 
   function handleFormSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    pendingFormRef.current = new FormData(event.currentTarget);
+    const formData = new FormData(event.currentTarget);
+    const reason = String(formData.get("requestReason") ?? "");
+    const purpose =
+      reason === OTHER_REASON ? String(formData.get("purposeDetails") ?? "").trim() : reason;
+    // Ten spaces pass the field's required/minLength checks but trim to nothing
+    // server-side; catch that here with a clear message instead.
+    if (purpose.length < 10) {
+      toast.error("Please describe your reason for requesting (at least 10 characters).");
+      return;
+    }
+    pendingFormRef.current = formData;
     setConfirmOpen(true);
   }
 
