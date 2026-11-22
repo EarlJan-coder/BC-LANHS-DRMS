@@ -166,7 +166,7 @@ export function RequestForm() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="remarks">Additional remarks</Label>
-              <Textarea id="remarks" name="remarks" placeholder="Optional details for the registrar" />
+              <Textarea id="remarks" name="remarks" maxLength={300} placeholder="Optional details for the registrar" />
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <Button type="submit" tone="success" loading={loading}>

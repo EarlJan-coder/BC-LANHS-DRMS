@@ -20,7 +20,7 @@ import { documentRequestSchema, updateRequestStatusSchema } from "@/lib/validato
 import { getDocumentRequestView } from "@/lib/services/live-data";
 import type { DocumentRequestView } from "@/lib/types";
 import { recordAuditedAction } from "./audit-log";
-import { generateCertificate } from "./certificates";
+import { generateCertificate, hasCertificateForRequest } from "./certificates";
 import { fanOutNewRequestNotification } from "./notifications";
 import { getDocumentSignatoryTemplate } from "./document-signatory-template";
 import {
@@ -248,6 +248,19 @@ const STATUS_BADGE_COLORS: Record<string, RGB> = {
   cancelled: rgb(0.247, 0.247, 0.275),
 };
 
+/**
+ * Clamp a wrapped slip text block to `maxLines` so long purpose/remarks text
+ * can never push the panel content into the signature lines, the QR code, or
+ * the footer. The last kept line gets an ellipsis when the block was cut.
+ */
+export function truncateSlipLines(lines: string[], maxLines: number): string[] {
+  if (maxLines <= 0) return [];
+  if (lines.length <= maxLines) return lines;
+  const clamped = lines.slice(0, maxLines);
+  clamped[maxLines - 1] = `${clamped[maxLines - 1]}…`;
+  return clamped;
+}
+
 export async function renderRequestSlipPdf(request: DocumentRequestView) {
   const pdfDoc = await PDFDocument.create();
   const [regular, bold] = await Promise.all([
@@ -304,8 +317,9 @@ export async function renderRequestSlipPdf(request: DocumentRequestView) {
   const lineStep = 14;
   const noteStep = 12;
   const blockGap = 20;
-  const purposeLines = wrapText(regular, 10, valueWidth, request.purpose ?? "");
-  const remarksLines = wrapText(regular, 10, valueWidth, request.remarks ?? "");
+  const MAX_SLIP_BLOCK_LINES = 5;
+  const purposeLines = truncateSlipLines(wrapText(regular, 10, valueWidth, request.purpose ?? ""), MAX_SLIP_BLOCK_LINES);
+  const remarksLines = truncateSlipLines(wrapText(regular, 10, valueWidth, request.remarks ?? ""), MAX_SLIP_BLOCK_LINES);
   const feeText = formatDocumentFee(request.fee);
   const feeNoteLines = request.fee > 0 ? wrapText(regular, 8, valueWidth, SLIP_FEE_NOTE) : [];
 
@@ -510,10 +524,13 @@ export async function updateDocumentRequestStatus(requestId: string, input: unkn
       .where(eq(documentRequests.id, requestId));
 
     // Approving issues the certificate automatically (the old manual
-    // "Generate certificate" button is gone). If generation fails — e.g. the
-    // request has no linked student record — the approval is rolled back so
-    // the request never sits in "approved" without its certificate.
-    if (values.status === "approved" && previousStatus !== "approved") {
+    // "Generate certificate" button is gone). The check is idempotent on the
+    // certificate itself, not on the previous status: re-approvals and
+    // pre-deploy approved requests never mint duplicates and legacy rows get
+    // their missing certificate. If generation fails — e.g. the request has no
+    // linked student record — the approval is rolled back so the request never
+    // sits in "approved" without its certificate.
+    if (values.status === "approved" && !(await hasCertificateForRequest(requestId))) {
       try {
         await generateCertificate({ requestId });
       } catch (error) {

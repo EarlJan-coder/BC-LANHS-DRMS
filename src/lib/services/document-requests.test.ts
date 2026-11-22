@@ -16,9 +16,10 @@ process.env.RESEND_API_KEY = "";
 const { eq, inArray } = await import("drizzle-orm");
 const { getDb, closeDb } = await import("@/db");
 const { auditLogs, blockchainAuditLogs, certificates, documentRequests, notifications, requestStatusHistory, students, users } = await import("@/db/schema");
-const { canAccessRequestSlip, createDocumentRequest, generateRequestSlipPdf, getRequestEligibility, updateDocumentRequestStatus } = await import(
+const { canAccessRequestSlip, createDocumentRequest, generateRequestSlipPdf, getRequestEligibility, truncateSlipLines, updateDocumentRequestStatus } = await import(
   "@/lib/services/document-requests"
 );
+const { generateCertificate } = await import("@/lib/services/certificates");
 const { AppError } = await import("@/lib/utils");
 
 const hasDb = Boolean(process.env.DATABASE_URL);
@@ -26,6 +27,25 @@ let fixtureIndex = 0;
 
 after(async () => {
   await closeDb();
+});
+
+describe("truncateSlipLines", () => {
+  it("keeps short blocks untouched", () => {
+    assert.deepEqual(truncateSlipLines(["one", "two"], 5), ["one", "two"]);
+  });
+
+  it("clamps long blocks to the line budget and marks the cut", () => {
+    const lines = Array.from({ length: 8 }, (_, index) => `line ${index}`);
+    const clamped = truncateSlipLines(lines, 5);
+    assert.equal(clamped.length, 5);
+    assert.equal(clamped[0], "line 0");
+    assert.ok(clamped[4].endsWith("…"), "the truncated block must show it was cut");
+    assert.ok(!clamped[3].endsWith("…"));
+  });
+
+  it("leaves empty blocks empty", () => {
+    assert.deepEqual(truncateSlipLines([], 5), []);
+  });
 });
 
 describe("canAccessRequestSlip", () => {
@@ -338,6 +358,56 @@ describe("updateDocumentRequestStatus approval (integration, local DB)", {
       assert.equal(history.filter((entry) => entry.toStatus === "approved").length, 0);
     } finally {
       await cleanupRequestArtifacts(created.id, [trackingNumber]);
+    }
+  });
+
+  it("does not issue a second certificate when a request with one is approved again", async () => {
+    const db = getDb();
+    const user = await createStudentUser("2025-2026");
+    const created = await createDocumentRequest(requestPayload, testEffects(user));
+
+    try {
+      await generateCertificate({ requestId: created.id });
+      await db
+        .update(documentRequests)
+        .set({ status: "processing" })
+        .where(eq(documentRequests.id, created.id));
+
+      await updateDocumentRequestStatus(
+        created.id,
+        { status: "approved", remarks: "Status updated to approved.", registrarRemarks: "Re-approved." },
+        "registrar",
+      );
+
+      const certs = await db.select().from(certificates).where(eq(certificates.requestId, created.id));
+      assert.equal(certs.length, 1, "re-approving must never mint a duplicate certificate");
+    } finally {
+      await cleanupRequestArtifacts(created.id, [created.trackingNumber], user.id);
+    }
+  });
+
+  it("issues the missing certificate for a request approved before auto-generation existed", async () => {
+    const db = getDb();
+    const user = await createStudentUser("2025-2026");
+    const created = await createDocumentRequest(requestPayload, testEffects(user));
+
+    try {
+      // Simulate a legacy row: already approved, certificate never generated.
+      await db
+        .update(documentRequests)
+        .set({ status: "approved" })
+        .where(eq(documentRequests.id, created.id));
+
+      await updateDocumentRequestStatus(
+        created.id,
+        { status: "approved", remarks: "Status updated to approved.", registrarRemarks: "Backfilled." },
+        "registrar",
+      );
+
+      const certs = await db.select().from(certificates).where(eq(certificates.requestId, created.id));
+      assert.equal(certs.length, 1, "an approved request without a certificate must get one");
+    } finally {
+      await cleanupRequestArtifacts(created.id, [created.trackingNumber], user.id);
     }
   });
 });

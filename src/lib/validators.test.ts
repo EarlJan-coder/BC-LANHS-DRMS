@@ -39,6 +39,23 @@ describe("documentRequestSchema", () => {
     assert.throws(() => documentRequestSchema.parse({ documentType: "Form 137", purpose: "x".repeat(11) }));
   });
 
+  it("caps purpose and remarks so the printed slip stays bounded", () => {
+    assert.throws(
+      () => documentRequestSchema.parse({ documentType: "Form 137", purpose: "x".repeat(2001), gradeLevelNeeded: "10" }),
+      /2000 characters or fewer/i,
+    );
+    assert.throws(
+      () =>
+        documentRequestSchema.parse({
+          documentType: "Form 137",
+          purpose: "x".repeat(11),
+          gradeLevelNeeded: "10",
+          remarks: "y".repeat(2001),
+        }),
+      /2000 characters or fewer/i,
+    );
+  });
+
   it("rejects grades outside the 7-12 dropdown", () => {
     assert.throws(() =>
       documentRequestSchema.parse({ documentType: "Form 137", purpose: "x".repeat(11), gradeLevelNeeded: "Grade 12" }),
