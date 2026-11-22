@@ -7,13 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Input, Label, Required, Select, Textarea } from "@/components/ui/input";
-import { DOCUMENT_TYPES, GRADE_LEVELS, SHS_STRANDS } from "@/lib/constants";
+import { DOCUMENT_REQUEST_REASONS, DOCUMENT_TYPES, GRADE_LEVELS, SHS_STRANDS } from "@/lib/constants";
+
+/** Sentinel choice appended after the predefined request reasons. */
+const OTHER_REASON = "Other";
 
 export function RequestForm() {
   const [loading, setLoading] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [gradeLevel, setGradeLevel] = useState("");
+  const [requestReason, setRequestReason] = useState("");
   const pendingFormRef = useRef<FormData | null>(null);
 
   const needsStrand = gradeLevel === "11" || gradeLevel === "12";
@@ -33,13 +37,19 @@ export function RequestForm() {
     setLoading(true);
     setTrackingNumber(null);
 
+    // The reason dropdown is the request purpose; "Other" swaps in the
+    // free-text field's value instead.
+    const reason = String(formData.get("requestReason") ?? "");
+    const purpose =
+      reason === OTHER_REASON ? String(formData.get("purposeDetails") ?? "").trim() : reason;
+
     try {
       const response = await fetch("/api/document-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           documentType: formData.get("documentType"),
-          purpose: formData.get("purpose"),
+          purpose,
           gradeLevelNeeded: formData.get("gradeLevelNeeded"),
           strandNeeded: needsStrand ? formData.get("strandNeeded") : "",
           sectionNeeded: formData.get("sectionNeeded"),
@@ -86,13 +96,33 @@ export function RequestForm() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="purpose">Request purpose <Required /></Label>
-              <Textarea
-                id="purpose"
-                name="purpose"
+              <Label htmlFor="requestReason">Reason for requesting <Required /></Label>
+              <Select
+                id="requestReason"
+                name="requestReason"
                 required
-                placeholder="Example: College scholarship application, transfer requirement, enrollment verification"
-              />
+                value={requestReason}
+                onChange={(event) => setRequestReason(event.target.value)}
+              >
+                <option value="" disabled>
+                  Select reason for requesting
+                </option>
+                {[...DOCUMENT_REQUEST_REASONS, OTHER_REASON].map((reason) => (
+                  <option key={reason} value={reason}>
+                    {reason}
+                  </option>
+                ))}
+              </Select>
+              {requestReason === OTHER_REASON ? (
+                <Textarea
+                  id="purposeDetails"
+                  name="purposeDetails"
+                  required
+                  minLength={10}
+                  maxLength={500}
+                  placeholder="Describe your reason for requesting this document…"
+                />
+              ) : null}
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="grid gap-2">

@@ -54,6 +54,18 @@ export const REQUEST_REJECT_REASONS = [
   "Not eligible for this document",
 ];
 
+/** Common reasons for requesting a school document in the Philippines; the
+ * request form appends "Other" and reveals a free-text field for it. */
+export const DOCUMENT_REQUEST_REASONS = [
+  "School requirement / enrollment requirement",
+  "Transfer to another school",
+  "Scholarship application",
+  "Employment requirement",
+  "Civil service / Licensure exam (PRC, CSC)",
+  "Government ID / agency requirement",
+  "Personal copy / backup",
+];
+
 // Grade levels selectable on document requests (drives the certificate template).
 export const GRADE_LEVELS = ["7", "8", "9", "10", "11", "12"];
 
