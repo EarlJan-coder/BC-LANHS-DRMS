@@ -1,10 +1,13 @@
+import Image from "next/image";
 import { Download, ExternalLink, PencilLine, QrCode } from "lucide-react";
 import { notFound } from "next/navigation";
+import QRCode from "qrcode";
 import { SectionHeading } from "@/components/section-heading";
 import { ButtonLink } from "@/components/ui/button";
 import { DownloadButton } from "@/components/ui/download-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCertificateView } from "@/lib/services/certificates";
+import { humanizeStatus } from "@/lib/utils";
 
 export default async function CertificateDetailsPage({
   params,
@@ -17,6 +20,8 @@ export default async function CertificateDetailsPage({
   if (!certificate) {
     notFound();
   }
+
+  const verificationQrDataUrl = await QRCode.toDataURL(certificate.verificationUrl, { margin: 1, width: 288 });
 
   return (
     <div>
@@ -49,7 +54,7 @@ export default async function CertificateDetailsPage({
             <Detail label="Student" value={certificate.studentName} />
             <Detail label="School year" value={certificate.schoolYear} />
             <Detail label="Generated" value={certificate.generatedAt} />
-            <Detail label="Blockchain status" value={certificate.blockchainStatus} />
+            <Detail label="Blockchain status" value={humanizeStatus(certificate.blockchainStatus)} />
             <Detail label="Transaction hash" value={certificate.blockchainTxHash} wide />
           </CardContent>
         </Card>
@@ -61,13 +66,32 @@ export default async function CertificateDetailsPage({
               Verification
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-3">
-            <Detail label="Verification code" value={certificate.verificationCode} />
-            <Detail label="Verification URL" value={certificate.verificationUrl} />
-            <ButtonLink href={certificate.verificationUrl} tone="secondary">
+          <CardContent className="grid gap-4">
+            <p className="text-sm text-slate-600">
+              Anyone can confirm this certificate is genuine on the public verification page.
+            </p>
+            <div className="flex flex-col items-center gap-2 rounded-lg border border-border bg-rose-50/50 p-4">
+              <Image
+                src={verificationQrDataUrl}
+                alt={`QR code linking to the verification page for ${certificate.certificateNumber}`}
+                width={144}
+                height={144}
+                unoptimized
+                className="rounded-md bg-white p-2 ring-1 ring-border"
+              />
+              <p className="text-center text-xs text-slate-500">Scan to open the verification page</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">Verification code</p>
+              <p className="mt-1.5 rounded-md border border-border bg-white px-3 py-2 text-center font-mono text-base font-semibold tracking-[0.16em] text-slate-950">
+                {certificate.verificationCode}
+              </p>
+            </div>
+            <ButtonLink href={certificate.verificationUrl} tone="info" className="w-full">
               <ExternalLink className="h-4 w-4" aria-hidden />
               Open verification
             </ButtonLink>
+            <p className="break-all text-xs text-slate-500">{certificate.verificationUrl}</p>
           </CardContent>
         </Card>
       </div>
