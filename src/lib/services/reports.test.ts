@@ -79,7 +79,7 @@ describe("report row filters (integration, local DB)", {
         description: "Fixture for report filter tests",
         requirements: [],
         processingDays: 1,
-        fee: 0,
+        fee: "0.00",
         isActive: true,
       })
       .returning();

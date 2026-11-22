@@ -61,13 +61,14 @@ describe("live detail queries (integration, local DB)", { skip: hasDb ? false : 
     const { randomUUID } = await import("node:crypto");
     const db = getDb();
     const recordHash = (id: string) => `0x${id.replace(/-/g, "").padEnd(64, "0")}`;
-    const seeded = [
+    const seedRows: Array<{ id: string; actorRole: "student" | "registrar" | "admin"; action: string; entityType: string }> = [
       { id: randomUUID(), actorRole: "admin", action: "user.create", entityType: "user" },
       { id: randomUUID(), actorRole: "admin", action: "update_settings", entityType: "system_settings" },
       { id: randomUUID(), actorRole: "registrar", action: "registration.approved", entityType: "registration" },
       { id: randomUUID(), actorRole: "registrar", action: "certificate.generated", entityType: "certificate" },
       { id: randomUUID(), actorRole: "student", action: "request.submitted", entityType: "document_request" },
-    ].map((row) => ({ ...row, entityId: `LOGFALLBACK-${row.id}`, recordHash: recordHash(row.id) }));
+    ];
+    const seeded = seedRows.map((row) => ({ ...row, entityId: `LOGFALLBACK-${row.id}`, recordHash: recordHash(row.id) }));
 
     try {
       await db.insert(auditLogs).values(seeded);

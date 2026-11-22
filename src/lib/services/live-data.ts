@@ -657,7 +657,9 @@ export async function listAuditTrailViews(options: number | PageOptions | { all?
     return all ? views : views.slice(0, limit);
   }
 
-  return listLocalAuditTrailViews(options as number | PageOptions | { all?: true });
+  if (pageOptions) return listLocalAuditTrailViews(pageOptions);
+  if (all) return listLocalAuditTrailViews({ all: true });
+  return listLocalAuditTrailViews(limit);
 }
 
 /**
