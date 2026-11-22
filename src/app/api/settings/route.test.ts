@@ -143,7 +143,7 @@ describe("settings route (integration, local DB)", {
     const [entry] = await getDb()
       .select()
       .from(auditLogs)
-      .where(and(eq(auditLogs.entityType, "system_settings"), eq(auditLogs.actorUserId, fixtureUserId)))
+      .where(and(eq(auditLogs.entityType, "system_settings"), eq(auditLogs.actorUserId, fixtureUserId!)))
       .orderBy(desc(auditLogs.createdAt))
       .limit(1);
     assert.ok(entry, "expected an audit entry for the settings save");

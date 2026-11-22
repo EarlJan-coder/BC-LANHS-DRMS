@@ -28,12 +28,10 @@ export default async function ChangePasswordPage() {
         </div>
         <div className="mb-5 text-center">
           <h1 className="text-2xl font-semibold text-slate-950">Set a new password</h1>
-          {user.mustChangePassword ? (
-            <p className="mt-2 text-sm text-slate-600">Your account has a temporary password.</p>
-          ) : null}
+          <p className="mt-2 text-sm text-slate-600">Your account has a temporary password.</p>
         </div>
         <Card className="p-6 sm:p-7">
-          <ChangePasswordForm mustChangePassword={user.mustChangePassword} />
+          <ChangePasswordForm mustChangePassword />
         </Card>
         <div className="mt-4 flex justify-center">
           <ChangePasswordSignOut />

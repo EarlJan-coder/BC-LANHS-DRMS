@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label, Required, Select } from "@/components/ui/input";
+import { roleLabel } from "@/lib/utils";
 
 type FormState = {
   email: string;
@@ -29,16 +30,6 @@ const initialFormState: FormState = {
   lrn: "",
 };
 
-function roleLabel(role: string): string {
-  switch (role) {
-    case "registrar":
-      return "Registrar";
-    case "student":
-      return "Student";
-    default:
-      return role;
-  }
-}
 
 export function AddAccountForm() {
   const router = useRouter();

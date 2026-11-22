@@ -113,7 +113,8 @@ export function DocumentTypesManager({ initialTypes }: { initialTypes: DocumentT
           value={editing.fee}
           onChange={(event) => {
             const fee = Number(event.target.value);
-            // Guard intermediate input ("" or "-") so the draft never goes NaN.
+            // Keep intermediate input out of the draft: "" coerces to 0 and
+            // "-" to NaN, so only finite non-negative numbers land in state.
             setEditing({ ...editing, fee: Number.isFinite(fee) && fee >= 0 ? fee : editing.fee });
           }}
           className="w-28"

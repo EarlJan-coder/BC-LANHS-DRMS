@@ -56,6 +56,19 @@ describe("documentRequestSchema", () => {
     );
   });
 
+  it("trims purpose and rejects whitespace-only answers", () => {
+    assert.throws(
+      () => documentRequestSchema.parse({ documentType: "Form 137", purpose: " ".repeat(11), gradeLevelNeeded: "10" }),
+      /at least 10 characters/i,
+    );
+    const parsed = documentRequestSchema.parse({
+      documentType: "Form 137",
+      purpose: "  Scholarship application requirement  ",
+      gradeLevelNeeded: "10",
+    });
+    assert.equal(parsed.purpose, "Scholarship application requirement");
+  });
+
   it("rejects grades outside the 7-12 dropdown", () => {
     assert.throws(() =>
       documentRequestSchema.parse({ documentType: "Form 137", purpose: "x".repeat(11), gradeLevelNeeded: "Grade 12" }),

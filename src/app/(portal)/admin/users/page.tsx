@@ -36,7 +36,7 @@ export default async function UserManagementPage({ searchParams }: { searchParam
           {
             key: "registrationStatus",
             label: "Registration",
-            render: (row) => REGISTRATION_LABELS[row.registrationStatus] ?? row.registrationStatus,
+            render: (row) => REGISTRATION_LABELS[row.registrationStatus] ?? humanizeStatus(row.registrationStatus),
           },
           { key: "status", label: "Status", render: (row) => humanizeStatus(row.status) },
           {

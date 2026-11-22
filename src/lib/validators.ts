@@ -36,11 +36,11 @@ export function isSeniorHighGrade(gradeLevel: string): boolean {
 export const documentRequestSchema = z
   .object({
     documentType: z.string().min(2, "Select a document type."),
-    purpose: z.string().min(10, "Please describe the request purpose in at least 10 characters.").max(2000, "Purpose must be 2000 characters or fewer."),
+    purpose: z.string().trim().min(10, "Please describe the request purpose in at least 10 characters.").max(2000, "Purpose must be 2000 characters or fewer."),
     gradeLevelNeeded: z.string().trim().max(40),
     strandNeeded: z.string().trim().max(40, "Strand must be 40 characters or fewer.").optional().default(""),
     sectionNeeded: z.string().trim().max(40, "Section must be 40 characters or fewer.").optional().default(""),
-    remarks: z.string().max(2000, "Remarks must be 2000 characters or fewer.").optional(),
+    remarks: z.string().trim().max(2000, "Remarks must be 2000 characters or fewer.").optional(),
   })
   .superRefine((values, ctx) => {
     if (!GRADE_LEVELS.includes(values.gradeLevelNeeded)) {

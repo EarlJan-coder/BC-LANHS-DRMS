@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { formatDocumentFee, humanizeStatus, capitalizeFirst, roleLabel, sanitizeRedirectPath } from "@/lib/utils";
+import { formatDocumentFee, humanizeStatus, roleLabel, sanitizeRedirectPath } from "@/lib/utils";
 
 describe("formatDocumentFee", () => {
   it("shows No fee when the document type is free", () => {
@@ -17,21 +17,17 @@ describe("formatDocumentFee", () => {
 describe("humanizeStatus", () => {
   it("capitalizes enum values and expands underscores", () => {
     assert.equal(humanizeStatus("pending"), "Pending");
-    assert.equal(humanizeStatus("ready_for_pickup"), "Ready For Pickup");
     assert.equal(humanizeStatus("verified"), "Verified");
     assert.equal(humanizeStatus("inactive"), "Inactive");
   });
 
+  it("matches the request status badges exactly", () => {
+    assert.equal(humanizeStatus("ready_for_pickup"), "Ready for Pickup");
+    assert.equal(humanizeStatus("under_review"), "Under Review");
+  });
+
   it("leaves empty strings untouched", () => {
     assert.equal(humanizeStatus(""), "");
-  });
-});
-
-describe("capitalizeFirst", () => {
-  it("capitalizes only the first letter of a display value", () => {
-    assert.equal(capitalizeFirst("referenceId, action, actorRole"), "ReferenceId, action, actorRole");
-    assert.equal(capitalizeFirst("pending"), "Pending");
-    assert.equal(capitalizeFirst(""), "");
   });
 });
 

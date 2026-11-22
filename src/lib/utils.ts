@@ -18,21 +18,19 @@ export function statusTone(status: RequestStatus) {
 }
 
 /**
- * Display form for enum-ish values shown raw in the UI: underscores become
- * spaces and every word starts with a capital letter ("pending" → "Pending",
- * "ready_for_pickup" → "Ready For Pickup").
+ * Display form for enum-ish values shown raw in the UI. Request statuses use
+ * the exact labels the status badges show; anything else gets underscores
+ * turned into spaces with every word capitalized ("pending" → "Pending",
+ * "ready_for_pickup" → "Ready for Pickup" via the label table).
  */
 export function humanizeStatus(value: string): string {
+  const known = REQUEST_STATUSES.find((item) => item.value === value)?.label;
+  if (known) return known;
   return value
     .replaceAll("_", " ")
     .split(" ")
     .map((word) => (word ? `${word[0].toUpperCase()}${word.slice(1)}` : word))
     .join(" ");
-}
-
-/** Capitalizes only the first letter of a display value. */
-export function capitalizeFirst(value: string): string {
-  return value ? `${value[0].toUpperCase()}${value.slice(1)}` : value;
 }
 
 /** Canonical label for a user role, humanized for unknown values. */
