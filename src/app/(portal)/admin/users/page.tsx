@@ -7,6 +7,7 @@ import { UserStatusActions } from "@/components/user-status-actions";
 import { listUserViews } from "@/lib/services/live-data";
 import { Pagination } from "@/components/ui/pagination";
 import { parsePage } from "@/lib/pagination";
+import { humanizeStatus, roleLabel } from "@/lib/utils";
 
 const REGISTRATION_LABELS: Record<string, string> = {
   pending: "On hold",
@@ -31,13 +32,13 @@ export default async function UserManagementPage({ searchParams }: { searchParam
         columns={[
           { key: "name", label: "Name", render: (row) => row.name },
           { key: "email", label: "Email", render: (row) => row.email },
-          { key: "role", label: "Role", render: (row) => row.role },
+          { key: "role", label: "Role", render: (row) => roleLabel(row.role) },
           {
             key: "registrationStatus",
             label: "Registration",
             render: (row) => REGISTRATION_LABELS[row.registrationStatus] ?? row.registrationStatus,
           },
-          { key: "status", label: "Status", render: (row) => row.status },
+          { key: "status", label: "Status", render: (row) => humanizeStatus(row.status) },
           {
             key: "actions",
             label: "Actions",

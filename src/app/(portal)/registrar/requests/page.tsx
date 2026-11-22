@@ -7,6 +7,7 @@ import { PendingLink } from "@/components/ui/pending-link";
 import { listDocumentRequestViews } from "@/lib/services/live-data";
 import { Pagination } from "@/components/ui/pagination";
 import { parsePage } from "@/lib/pagination";
+import { humanizeStatus } from "@/lib/utils";
 import { REQUEST_STATUSES } from "@/lib/constants";
 import type { RequestStatus } from "@/db/schema";
 
@@ -58,7 +59,7 @@ export default async function RegistrarRequestsPage({
           { key: "document", label: "Document", render: (row) => row.documentType },
           { key: "purpose", label: "Purpose", render: (row) => row.purpose },
           { key: "status", label: "Status", render: (row) => <StatusBadge status={row.status} /> },
-          { key: "blockchain", label: "Chain", render: (row) => row.blockchainStatus },
+          { key: "blockchain", label: "Chain", render: (row) => humanizeStatus(row.blockchainStatus) },
         ]}
       />
       <Pagination page={paged.page} totalPages={Math.ceil(paged.total / paged.pageSize)} basePath="/registrar/requests" total={paged.total} pageSize={paged.pageSize} query={{ q: filters.q, status, documentType: filters.documentType }} />

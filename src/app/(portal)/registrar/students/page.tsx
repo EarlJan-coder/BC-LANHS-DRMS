@@ -6,6 +6,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { listStudentViews } from "@/lib/services/live-data";
 import { Pagination } from "@/components/ui/pagination";
 import { parsePage } from "@/lib/pagination";
+import { humanizeStatus } from "@/lib/utils";
 
 export default async function StudentRecordsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const page = parsePage((await searchParams).page);
@@ -41,9 +42,9 @@ export default async function StudentRecordsPage({ searchParams }: { searchParam
           {
             key: "account",
             label: "Account",
-            render: (row) => row.registrationStatus === "pending" ? "On hold" : row.registrationStatus[0].toUpperCase() + row.registrationStatus.slice(1),
+            render: (row) => row.registrationStatus === "pending" ? "On hold" : humanizeStatus(row.registrationStatus),
           },
-          { key: "status", label: "Status", render: (row) => row.status },
+          { key: "status", label: "Status", render: (row) => humanizeStatus(row.status) },
           {
             key: "view",
             label: "View",

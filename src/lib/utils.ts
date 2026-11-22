@@ -1,7 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { REQUEST_STATUSES } from "./constants";
-import type { RequestStatus } from "@/db/schema";
+import { ROLE_LABELS, REQUEST_STATUSES } from "./constants";
+import type { RequestStatus, UserRole } from "@/db/schema";
 
 export const ZERO_HASH = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
@@ -15,6 +15,29 @@ export function statusLabel(status: RequestStatus) {
 
 export function statusTone(status: RequestStatus) {
   return REQUEST_STATUSES.find((item) => item.value === status)?.tone ?? "bg-slate-100 text-slate-700 ring-slate-200";
+}
+
+/**
+ * Display form for enum-ish values shown raw in the UI: underscores become
+ * spaces and every word starts with a capital letter ("pending" → "Pending",
+ * "ready_for_pickup" → "Ready For Pickup").
+ */
+export function humanizeStatus(value: string): string {
+  return value
+    .replaceAll("_", " ")
+    .split(" ")
+    .map((word) => (word ? `${word[0].toUpperCase()}${word.slice(1)}` : word))
+    .join(" ");
+}
+
+/** Capitalizes only the first letter of a display value. */
+export function capitalizeFirst(value: string): string {
+  return value ? `${value[0].toUpperCase()}${value.slice(1)}` : value;
+}
+
+/** Canonical label for a user role, humanized for unknown values. */
+export function roleLabel(role: string): string {
+  return ROLE_LABELS[role as UserRole] ?? humanizeStatus(role);
 }
 
 export function formatDate(date: Date | null | undefined, fallback = "Not set") {

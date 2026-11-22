@@ -6,7 +6,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { RequestStatus } from "@/db/schema";
 import type { DocumentRequestView } from "@/lib/types";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { formatDate, formatDateTime, humanizeStatus } from "@/lib/utils";
 
 export interface TimelineItem {
   id: string;
@@ -89,8 +89,8 @@ export function RegistrarRequestDetailsView({
             <CardTitle>Audit proof</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 text-sm text-slate-600">
-            <Detail label="Blockchain status" value={request.blockchainStatus} />
-            <Detail label="On-chain data" value="referenceId, action, actorRole, recordHash, timestamp" />
+            <Detail label="Blockchain status" value={humanizeStatus(request.blockchainStatus)} />
+            <Detail label="On-chain data" value="ReferenceId, action, actorRole, recordHash, timestamp" />
             <p className="rounded-md bg-rose-50 p-3 text-brand">
               Student details, grades, LRN, email, and documents are never stored on-chain.
             </p>

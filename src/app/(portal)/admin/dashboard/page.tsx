@@ -4,6 +4,7 @@ import { DataTable } from "@/components/data-table";
 import { SectionHeading } from "@/components/section-heading";
 import { ButtonLink } from "@/components/ui/button";
 import { getAdminDashboardData } from "@/lib/services/live-data";
+import { humanizeStatus, roleLabel } from "@/lib/utils";
 
 export default async function AdminDashboardPage() {
   const { stats, auditTrail } = await getAdminDashboardData();
@@ -38,8 +39,8 @@ export default async function AdminDashboardPage() {
           columns={[
             { key: "action", label: "Action", render: (row) => row.action },
             { key: "reference", label: "Reference", render: (row) => row.referenceId },
-            { key: "role", label: "Role", render: (row) => row.actorRole },
-            { key: "status", label: "Chain status", render: (row) => row.status },
+            { key: "role", label: "Role", render: (row) => roleLabel(row.actorRole) },
+            { key: "status", label: "Chain status", render: (row) => humanizeStatus(row.status) },
             { key: "created", label: "Created", render: (row) => row.createdAt },
           ]}
         />

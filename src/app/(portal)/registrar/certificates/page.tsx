@@ -7,6 +7,7 @@ import { PendingLink } from "@/components/ui/pending-link";
 import { listCertificateViews } from "@/lib/services/certificates";
 import { Pagination } from "@/components/ui/pagination";
 import { parsePage } from "@/lib/pagination";
+import { humanizeStatus } from "@/lib/utils";
 
 export default async function CertificatesPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const page = parsePage((await searchParams).page);
@@ -35,7 +36,7 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
           },
           { key: "student", label: "Student", render: (row) => row.studentName },
           { key: "schoolYear", label: "School year", render: (row) => row.schoolYear },
-          { key: "chain", label: "Chain", render: (row) => row.blockchainStatus },
+          { key: "chain", label: "Chain", render: (row) => humanizeStatus(row.blockchainStatus) },
           { key: "generated", label: "Generated", render: (row) => row.generatedAt },
           {
             key: "actions",

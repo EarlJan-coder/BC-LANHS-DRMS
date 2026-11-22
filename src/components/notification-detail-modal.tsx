@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/input";
 import { REGISTRATION_DECLINE_REASONS } from "@/lib/constants";
+import { humanizeStatus } from "@/lib/utils";
 import type { UserRole } from "@/db/schema";
 
 export type NotificationDetail = {
@@ -76,7 +77,7 @@ export function NotificationDetailModal({
               <Detail label="Tracking number" value={record.trackingNumber} />
               <Detail label="Student" value={record.studentName} />
               <Detail label="Document type" value={record.documentType} />
-              <Detail label="Status" value={record.status} />
+              <Detail label="Status" value={humanizeStatus(String(record.status ?? ""))} />
               <Detail label="Purpose" value={record.purpose} />
               <Detail label="School year" value={record.schoolYearNeeded} />
               <Detail label="Grade level" value={record.gradeLevelNeeded} />
@@ -102,7 +103,7 @@ export function NotificationDetailModal({
               <Detail label="Last school year attended" value={record.lastSchoolYearAttended} />
               <Detail
                 label="Account"
-                value={record.registrationStatus === "pending" ? "On hold" : record.registrationStatus}
+                value={record.registrationStatus === "pending" ? "On hold" : humanizeStatus(String(record.registrationStatus ?? ""))}
               />
               <Detail label="Registered" value={record.createdAt} />
             </>

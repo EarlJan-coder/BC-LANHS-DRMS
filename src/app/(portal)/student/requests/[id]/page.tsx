@@ -7,6 +7,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SLIP_DOWNLOAD_HINT, SLIP_DOWNLOAD_STATUS } from "@/lib/constants";
 import { getDocumentRequestView, listRequestStatusHistoryViews } from "@/lib/services/live-data";
+import { humanizeStatus } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +63,7 @@ export default async function StudentRequestDetailsPage({
               {request.strandNeeded ? <Detail label="Strand" value={request.strandNeeded} /> : null}
               <Detail label="Requested date" value={request.requestedAt} />
               <Detail label="Last update" value={request.updatedAt} />
-              <Detail label="Blockchain status" value={request.blockchainStatus} />
+              <Detail label="Blockchain status" value={humanizeStatus(request.blockchainStatus)} />
             </div>
             <Detail label="Purpose" value={request.purpose} />
             <Detail label="Remarks" value={request.remarks} />

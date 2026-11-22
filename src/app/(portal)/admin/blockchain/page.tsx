@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { getBlockchainAuditStats, listAuditTrailViews } from "@/lib/services/live-data";
 import { Pagination } from "@/components/ui/pagination";
 import { parsePage } from "@/lib/pagination";
+import { humanizeStatus, roleLabel } from "@/lib/utils";
 
 function StatCard({ label, value, icon: Icon, tone }: { label: string; value: number; icon: React.ElementType; tone: string }) {
   return (
@@ -52,9 +53,9 @@ export default async function BlockchainAuditTrailPage({ searchParams }: { searc
         columns={[
           { key: "reference", label: "Reference", render: (row) => row.referenceId },
           { key: "action", label: "Action", render: (row) => row.action },
-          { key: "role", label: "Role", render: (row) => row.actorRole },
+          { key: "role", label: "Role", render: (row) => roleLabel(row.actorRole) },
           { key: "hash", label: "Record hash", render: (row) => <span className="font-mono text-xs">{row.hash}</span> },
-          { key: "status", label: "Status", render: (row) => row.status },
+          { key: "status", label: "Status", render: (row) => humanizeStatus(row.status) },
           { key: "tx", label: "Transaction", render: (row) => <span className="font-mono text-xs">{row.transactionHash}</span> },
         ]}
       />

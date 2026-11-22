@@ -3,6 +3,7 @@ import { SectionHeading } from "@/components/section-heading";
 import { listAuditTrailViews } from "@/lib/services/live-data";
 import { Pagination } from "@/components/ui/pagination";
 import { parsePage } from "@/lib/pagination";
+import { humanizeStatus, roleLabel } from "@/lib/utils";
 
 export default async function RegistrarAuditLogsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const page = parsePage((await searchParams).page);
@@ -20,9 +21,9 @@ export default async function RegistrarAuditLogsPage({ searchParams }: { searchP
         columns={[
           { key: "reference", label: "Reference", render: (row) => row.referenceId },
           { key: "action", label: "Action", render: (row) => row.action },
-          { key: "role", label: "Role", render: (row) => row.actorRole },
+          { key: "role", label: "Role", render: (row) => roleLabel(row.actorRole) },
           { key: "hash", label: "Record hash", render: (row) => <span className="font-mono text-xs">{row.hash}</span> },
-          { key: "status", label: "Status", render: (row) => row.status },
+          { key: "status", label: "Status", render: (row) => humanizeStatus(row.status) },
           { key: "tx", label: "Transaction", render: (row) => <span className="font-mono text-xs">{row.transactionHash}</span> },
         ]}
       />
