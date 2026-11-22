@@ -454,6 +454,7 @@ export async function updateDocumentRequestStatus(requestId: string, input: unkn
   let referenceId = requestId;
   let previousStatus: RequestStatus | undefined;
   let actorUserId: string | undefined;
+  let generatedCertificateId: string | undefined;
   let emailTarget:
     | {
         to?: string | null;
@@ -521,7 +522,8 @@ export async function updateDocumentRequestStatus(requestId: string, input: unkn
     // sits in "approved" without its certificate.
     if (values.status === "approved" && !(await hasCertificateForRequest(requestId))) {
       try {
-        await generateCertificate({ requestId });
+        const certificate = await generateCertificate({ requestId });
+        generatedCertificateId = certificate.id;
       } catch (error) {
         await db
           .update(documentRequests)
@@ -610,6 +612,7 @@ export async function updateDocumentRequestStatus(requestId: string, input: unkn
     id: requestId,
     trackingNumber: referenceId,
     status: values.status,
+    certificateId: generatedCertificateId,
     ...audit,
   };
 }

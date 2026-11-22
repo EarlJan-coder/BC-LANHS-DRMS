@@ -62,8 +62,18 @@ export function RequestStatusActions({
         return;
       }
 
-      toast.success("Request status updated.");
       setPendingAction(null);
+      if (status === "approved" && data.certificateId) {
+        // The approval auto-generated a certificate: land on it. The URL is
+        // unique per certificate, so a client navigation cannot serve stale
+        // content for it.
+        toast.success("Approved — certificate generated.");
+        router.push(`/registrar/certificates/${data.certificateId}`);
+        router.refresh();
+        return;
+      }
+
+      toast.success("Request status updated.");
       onStatusChange?.(status, payload.registrarRemarks);
       router.refresh();
     } catch {

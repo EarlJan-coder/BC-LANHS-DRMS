@@ -314,6 +314,7 @@ describe("updateDocumentRequestStatus approval (integration, local DB)", {
       const certs = await db.select().from(certificates).where(eq(certificates.requestId, created.id));
       assert.equal(certs.length, 1, "approving must generate exactly one certificate");
       assert.ok(certs[0].verificationCode, "generated certificate needs a verification code");
+      assert.equal(result.certificateId, certs[0].id, "the caller needs the generated certificate's id");
 
       const student = await db.query.students.findFirst({ where: eq(students.userId, user.id) });
       assert.equal(certs[0].studentId, student?.id);

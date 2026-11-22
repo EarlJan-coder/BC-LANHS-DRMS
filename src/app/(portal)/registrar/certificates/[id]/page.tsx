@@ -45,7 +45,7 @@ export default async function CertificateDetailsPage({
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_minmax(0,360px)]">
         <Card>
           <CardHeader>
             <CardTitle>{certificate.certificateType}</CardTitle>
@@ -59,7 +59,7 @@ export default async function CertificateDetailsPage({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <QrCode className="h-5 w-5 text-brand" aria-hidden />
@@ -70,20 +70,20 @@ export default async function CertificateDetailsPage({
             <p className="text-sm text-slate-600">
               Anyone can confirm this certificate is genuine on the public verification page.
             </p>
-            <div className="flex flex-col items-center gap-2 rounded-lg border border-border bg-rose-50/50 p-4">
+            <div className="flex min-w-0 flex-col items-center gap-2 rounded-lg border border-border bg-rose-50/50 p-4">
               <Image
                 src={verificationQrDataUrl}
                 alt={`QR code linking to the verification page for ${certificate.certificateNumber}`}
                 width={144}
                 height={144}
                 unoptimized
-                className="rounded-md bg-white p-2 ring-1 ring-border"
+                className="h-36 w-36 max-w-full rounded-md bg-white p-2 ring-1 ring-border"
               />
               <p className="text-center text-xs text-slate-500">Scan to open the verification page</p>
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">Verification code</p>
-              <p className="mt-1.5 rounded-md border border-border bg-white px-3 py-2 text-center font-mono text-base font-semibold tracking-[0.16em] text-slate-950">
+              <p className="mt-1.5 overflow-hidden break-all rounded-md border border-border bg-white px-3 py-2 text-center font-mono text-sm font-semibold tracking-[0.06em] text-slate-950">
                 {certificate.verificationCode}
               </p>
             </div>
