@@ -28,7 +28,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -160,7 +160,6 @@ export function PortalShell({
   const pathname = usePathname();
   const role = roleFromPath(pathname);
   const nav = navigationByRole[role];
-  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
@@ -191,8 +190,8 @@ export function PortalShell({
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } finally {
-      router.replace("/sign-in");
-      router.refresh();
+      // Hard navigation: purges every client cache with the signed-out state.
+      window.location.replace("/sign-in");
     }
   }
 

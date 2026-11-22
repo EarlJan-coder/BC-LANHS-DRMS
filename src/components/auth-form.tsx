@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCallback, useState, type FormEvent } from "react";
 import { Clock3, MailCheck } from "lucide-react";
@@ -18,7 +17,6 @@ type AuthFormMode = "login" | "signup";
 
 export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) {
   const isSignup = mode === "signup";
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -97,8 +95,12 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
         setLoading(false);
       } else {
         // Keep the button pending through navigation; only errors clear it.
-        router.replace(next ?? "/dashboard");
-        router.refresh();
+        // Hard navigation on purpose: a client-side replace can replay a stale
+        // Router Cache entry — e.g. the middleware's /change-password redirect
+        // cached while the account still held a temporary password — sending a
+        // fresh login back to the change-password screen until a full refresh.
+        // A document load is evaluated by the server and purges those caches.
+        window.location.replace(next ?? "/dashboard");
       }
     } catch {
       setError("Unable to reach the server. Check your connection and try again.");

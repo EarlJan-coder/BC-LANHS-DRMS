@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,6 @@ import { PasswordPolicyChecklist } from "@/components/password-policy-checklist"
 import { meetsPasswordPolicy } from "@/lib/password-policy";
 
 export function ChangePasswordForm({ mustChangePassword }: { mustChangePassword: boolean }) {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [newPasswordValue, setNewPasswordValue] = useState("");
@@ -52,12 +50,13 @@ export function ChangePasswordForm({ mustChangePassword }: { mustChangePassword:
       }
 
       // The API bumps tokenVersion and re-issues a session; sign out so the
-      // user logs in fresh with the new password (their chosen flow).
+      // user logs in fresh with the new password (their chosen flow). Hard
+      // navigation so no stale Router Cache entry can replay the forced
+      // change-password screen after the next login.
       toast.success("Password changed — sign in with your new password.");
       await fetch("/api/auth/logout", { method: "POST" }).catch(() => undefined);
       // Keep the button pending through navigation; only errors clear it.
-      router.replace("/sign-in");
-      router.refresh();
+      window.location.replace("/sign-in");
     } catch {
       setError("Unable to reach the server. Check your connection and try again.");
       setLoading(false);

@@ -1,11 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 export function ChangePasswordSignOut() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   async function signOut() {
@@ -14,8 +12,8 @@ export function ChangePasswordSignOut() {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } finally {
-      router.replace("/sign-in");
-      router.refresh();
+      // Hard navigation: purges every client cache with the signed-out state.
+      window.location.replace("/sign-in");
     }
   }
 

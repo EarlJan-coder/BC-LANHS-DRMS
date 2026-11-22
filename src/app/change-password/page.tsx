@@ -12,6 +12,14 @@ export default async function ChangePasswordPage() {
     redirect("/sign-in");
   }
 
+  // This screen exists only for accounts holding a temporary password (the
+  // middleware sends those here; nothing in the app links to it). Never render
+  // the "Set a new password" form for anyone else — a stale navigation here
+  // after a completed change used to look like the change was not saved.
+  if (!user.mustChangePassword) {
+    redirect("/dashboard");
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">
       <div className="w-full max-w-md">
