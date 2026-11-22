@@ -6,7 +6,7 @@ import { getDb } from "@/db";
 import { students, users } from "@/db/schema";
 import { checkAuthRateLimit } from "@/lib/auth-rate-limit";
 import { composeAddress } from "@/lib/ph-address";
-import { refineAddressParts } from "@/lib/validators";
+import { refineAddressParts, strongPasswordSchema } from "@/lib/validators";
 import { fanOutNewRegistrationNotification } from "@/lib/services/notifications";
 import { getSystemSettings } from "@/lib/services/system-settings";
 
@@ -26,7 +26,7 @@ const signupSchema = z.object({
     .trim()
     .min(1, "Last school year attended is required.")
     .max(40, "Last school year attended must be 40 characters or fewer."),
-  password: z.string().min(8, "Password must be at least 8 characters.").max(72),
+  password: strongPasswordSchema,
   acceptedTerms: z.literal(true, "You must accept the Terms and Conditions to register."),
   acceptedPrivacy: z.literal(true, "You must accept the Privacy Notice to register."),
 }).superRefine(refineAddressParts);

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { requestStatusEnum } from "@/db/schema";
 import { GRADE_LEVELS, SHS_STRANDS } from "@/lib/constants";
+import { PASSWORD_REQUIREMENTS } from "@/lib/password-policy";
 import { CITIES } from "@/lib/ph-address";
 
 /**
@@ -181,9 +182,25 @@ export const registrationDecisionSchema = z
     }
   });
 
+/**
+ * Strong password shared by sign-up and password changes: 8-72 characters
+ * with at least one uppercase letter, lowercase letter, number, and symbol.
+ * The messages come from `PASSWORD_REQUIREMENTS` so the forms' checklists and
+ * the server validation always agree.
+ */
+export const strongPasswordSchema = z
+  .string()
+  .superRefine((value, ctx) => {
+    for (const requirement of PASSWORD_REQUIREMENTS) {
+      if (!requirement.isMet(value)) {
+        ctx.addIssue({ code: "custom", message: requirement.message });
+      }
+    }
+  });
+
 export const passwordChangeSchema = z.object({
   currentPassword: z.string().min(1, "Enter your current password.").max(72),
-  newPassword: z.string().min(8, "Password must be at least 8 characters.").max(72),
+  newPassword: strongPasswordSchema,
 });
 
 const checkboxBoolean = z

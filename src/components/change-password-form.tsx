@@ -6,11 +6,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label, Required } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
+import { PasswordPolicyChecklist } from "@/components/password-policy-checklist";
+import { meetsPasswordPolicy } from "@/lib/password-policy";
 
 export function ChangePasswordForm({ mustChangePassword }: { mustChangePassword: boolean }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [newPasswordValue, setNewPasswordValue] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -21,6 +24,12 @@ export function ChangePasswordForm({ mustChangePassword }: { mustChangePassword:
     const currentPassword = formData.get("currentPassword");
     const newPassword = formData.get("newPassword");
     const confirmPassword = formData.get("confirmPassword");
+
+    if (!meetsPasswordPolicy(String(newPassword ?? ""))) {
+      setError("Choose a password that meets every requirement below.");
+      setLoading(false);
+      return;
+    }
 
     if (newPassword !== confirmPassword) {
       setError("Those passwords do not match.");
@@ -84,8 +93,9 @@ export function ChangePasswordForm({ mustChangePassword }: { mustChangePassword:
           minLength={8}
           maxLength={72}
           required
+          onChange={(event) => setNewPasswordValue(event.target.value)}
         />
-        <p className="text-xs text-slate-500">Use at least 8 characters.</p>
+        <PasswordPolicyChecklist password={newPasswordValue} />
       </div>
 
       <div className="grid gap-2">
@@ -106,7 +116,7 @@ export function ChangePasswordForm({ mustChangePassword }: { mustChangePassword:
         </p>
       ) : null}
 
-      <Button type="submit" tone="success" loading={loading} className="mt-1 w-full">
+      <Button type="submit" tone="success" loading={loading} disabled={!meetsPasswordPolicy(newPasswordValue)} className="mt-1 w-full">
         {loading ? "Changing…" : "Set new password"}
       </Button>
     </form>

@@ -59,7 +59,11 @@ describe("createPortalAccount (integration, local DB)", {
     });
 
     try {
-      assert.match(created.temporaryPassword, /^[A-Z0-9]{12}$/);
+      assert.equal(created.temporaryPassword.length, 12);
+      assert.match(created.temporaryPassword, /[A-Z]/, "temporary password missing uppercase letter");
+      assert.match(created.temporaryPassword, /[a-z]/, "temporary password missing lowercase letter");
+      assert.match(created.temporaryPassword, /[0-9]/, "temporary password missing number");
+      assert.match(created.temporaryPassword, /[^A-Za-z0-9]/, "temporary password missing symbol");
       const row = await getDb().query.users.findFirst({ where: eq(users.id, created.id) });
       assert.equal(row?.mustChangePassword, true);
       assert.equal(row?.lrn, null);
@@ -145,7 +149,11 @@ describe("resetUserPassword (integration, local DB)", {
     try {
       await getDb().update(users).set({ mustChangePassword: false }).where(eq(users.id, created.id));
       const { temporaryPassword } = await resetUserPassword(created.id);
-      assert.match(temporaryPassword, /^[A-Z0-9]{12}$/);
+      assert.equal(temporaryPassword.length, 12);
+      assert.match(temporaryPassword, /[A-Z]/, "temporary password missing uppercase letter");
+      assert.match(temporaryPassword, /[a-z]/, "temporary password missing lowercase letter");
+      assert.match(temporaryPassword, /[0-9]/, "temporary password missing number");
+      assert.match(temporaryPassword, /[^A-Za-z0-9]/, "temporary password missing symbol");
       const row = await getDb().query.users.findFirst({ where: eq(users.id, created.id) });
       assert.equal(row?.mustChangePassword, true);
       assert.ok(await comparePassword(temporaryPassword, row?.passwordHash ?? ""));

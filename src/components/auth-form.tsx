@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input, Label, Required, Select } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
+import { PasswordPolicyChecklist } from "@/components/password-policy-checklist";
 import { LegalDocumentModal } from "@/components/legal-document-modal";
 import { PRIVACY_NOTICE, TERMS_DOCUMENT, type LegalDocumentKey } from "@/lib/legal-documents";
+import { meetsPasswordPolicy } from "@/lib/password-policy";
 import { CITY_NAMES, barangaysFor } from "@/lib/ph-address";
 
 type AuthFormMode = "login" | "signup";
@@ -27,6 +29,7 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
   const closeDocument = useCallback(() => setOpenDocument(null), []);
   const [addressCity, setAddressCity] = useState("");
   const [addressBarangay, setAddressBarangay] = useState("");
+  const [passwordValue, setPasswordValue] = useState("");
 
   // onSubmit (not <form action>): form actions auto-reset uncontrolled fields
   // when they complete, wiping the form on failed attempts (same fix as
@@ -34,9 +37,11 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (loading) return;
-    // The button is disabled until both boxes are checked, but Enter-key
-    // implicit submission can bypass that, so enforce it here too.
+    // The button is disabled until both boxes are checked and the password
+    // policy is met, but Enter-key implicit submission can bypass that, so
+    // enforce it here too.
     if (isSignup && !(termsAccepted && privacyAccepted)) return;
+    if (isSignup && !meetsPasswordPolicy(passwordValue)) return;
     setLoading(true);
     setError("");
     setSuccess("");
@@ -293,8 +298,9 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
             minLength={isSignup ? 8 : undefined}
             maxLength={72}
             required
+            onChange={(event) => setPasswordValue(event.target.value)}
           />
-          {isSignup ? <p className="text-xs text-slate-500">Use at least 8 characters.</p> : null}
+          {isSignup ? <PasswordPolicyChecklist password={passwordValue} /> : null}
         </div>
 
         {isSignup ? (
@@ -375,7 +381,7 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
           type="submit"
           tone={isSignup ? "success" : "primary"}
           loading={loading}
-          disabled={isSignup && !(termsAccepted && privacyAccepted)}
+          disabled={isSignup && (!(termsAccepted && privacyAccepted) || !meetsPasswordPolicy(passwordValue))}
           className="mt-1 w-full"
         >
           {isSignup

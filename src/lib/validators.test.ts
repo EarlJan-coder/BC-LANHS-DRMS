@@ -1,6 +1,24 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { certificateOverrideSchema, documentRequestSchema, profileUpdateSchema, registrationDecisionSchema, studentRecordSchema } from "@/lib/validators";
+import { certificateOverrideSchema, documentRequestSchema, passwordChangeSchema, profileUpdateSchema, registrationDecisionSchema, studentRecordSchema } from "@/lib/validators";
+
+describe("passwordChangeSchema", () => {
+  it("rejects a new password missing any required character class", () => {
+    assert.throws(() => passwordChangeSchema.parse({ currentPassword: "Oldpassw0rd!", newPassword: "Newpassw0rd1" }), /symbol/i);
+    assert.throws(() => passwordChangeSchema.parse({ currentPassword: "Oldpassw0rd!", newPassword: "Newpassword!" }), /number/i);
+    assert.throws(() => passwordChangeSchema.parse({ currentPassword: "Oldpassw0rd!", newPassword: "newpassword1!" }), /uppercase/i);
+    assert.throws(() => passwordChangeSchema.parse({ currentPassword: "Oldpassw0rd!", newPassword: "NEWPASSWORD1!" }), /lowercase/i);
+  });
+
+  it("still rejects a new password shorter than eight characters", () => {
+    assert.throws(() => passwordChangeSchema.parse({ currentPassword: "Oldpassw0rd!", newPassword: "Ab1!xyz" }), /at least 8/i);
+  });
+
+  it("accepts a strong new password", () => {
+    const parsed = passwordChangeSchema.parse({ currentPassword: "Oldpassw0rd!", newPassword: "Str0ng!Password" });
+    assert.equal(parsed.newPassword, "Str0ng!Password");
+  });
+});
 
 describe("documentRequestSchema", () => {
   it("no longer takes school year needed — it is snapshotted from the profile", () => {

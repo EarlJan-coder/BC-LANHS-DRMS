@@ -35,7 +35,7 @@ function signupPayload(overrides: Record<string, string | boolean> = {}) {
     addressBarangay: "Aguado",
     addressStreetLine: "12 Mabini Street",
     lastSchoolYearAttended: "2025-2026",
-    password: "registration-test-password",
+    password: "Registration-Test-Passw0rd!",
     acceptedTerms: true,
     acceptedPrivacy: true,
     ...overrides,
@@ -83,6 +83,22 @@ describe("student signup (integration, local DB)", { skip: hasDb ? false : "DATA
       assert.equal(student.firstName, payload.firstName);
     } finally {
       await cleanup(createdUserId ? [createdUserId] : []);
+    }
+  });
+
+  it("rejects a weak password that misses the character-class rules", async () => {
+    const payload = signupPayload({ password: "weakpass1234" });
+    const response = await postSignup(payload);
+
+    try {
+      assert.equal(response.status, 400);
+      const body = await response.json();
+      assert.match(body.error, /uppercase letter/i);
+    } finally {
+      // The request must create nothing; clean up anyway so a regression
+      // cannot leak a fixture account into the database.
+      const created = await getDb().query.users.findFirst({ where: eq(users.email, payload.email) });
+      await cleanup(created ? [created.id] : []);
     }
   });
 
