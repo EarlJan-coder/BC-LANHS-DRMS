@@ -352,7 +352,7 @@ export function PortalShell({
 
             {/* Right cluster: role pill + bell */}
             <div className="ml-auto flex items-center gap-2">
-              <span className="hidden rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-brand ring-1 ring-rose-100 sm:inline-flex">
+              <span className="hidden text-xs font-medium text-black sm:inline-flex">
                 {ROLE_LABELS[role]}
               </span>
               <NotificationBell
