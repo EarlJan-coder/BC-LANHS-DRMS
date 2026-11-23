@@ -14,7 +14,7 @@ import { SCHOOL_NAME } from "@/lib/constants";
 import { sendWorkflowEmail } from "@/lib/email";
 import type { CertificateVerificationView, CertificateView } from "@/lib/types";
 import { makePaged, PAGE_SIZE, type Paged } from "@/lib/pagination";
-import { composeGradeValue, formatDate, generatePrefixedId, studentFullName, ZERO_HASH } from "@/lib/utils";
+import { AppError, composeGradeValue, formatDate, generatePrefixedId, studentFullName, ZERO_HASH } from "@/lib/utils";
 import {
   certificateGenerateSchema,
   certificateOverrideSchema,
@@ -110,6 +110,14 @@ function formalTitle(type: string) {
   return type.toUpperCase().replaceAll("-", " ");
 }
 
+/** Form 137 is a DepEd hardcopy record — the school never issues a
+ * certificate for it (no template exists; the document itself only lives on
+ * DepEd forms). Matches by document-type name, the same name-based routing
+ * the rest of this file uses. */
+export function isForm137DocumentType(name: string | null | undefined): boolean {
+  return (name ?? "").toLowerCase().includes("form 137");
+}
+
 function genericCertificateText({
   certificateType,
   name,
@@ -143,10 +151,6 @@ function genericCertificateText({
 
   if (lower.includes("graduation")) {
     return `This certifies that ${learner} has completed the applicable school requirements recorded by Luis Aguado National High School. This certification is issued upon request for ${purpose}.`;
-  }
-
-  if (lower.includes("form 137")) {
-    return `This certifies that ${learner} has a Form 137 related request recorded in LANHS DRMS. The official document shall be released in accordance with registrar validation and school policies. Purpose: ${purpose}.`;
   }
 
   if (lower.includes("diploma")) {
@@ -190,6 +194,19 @@ export async function generateCertificate(input: unknown) {
   if (!request) {
     throw new Error("Document request was not found.");
   }
+
+  const docType = request.documentTypeId
+    ? await db.query.documentTypes.findFirst({
+        where: eq(documentTypes.id, request.documentTypeId),
+      })
+    : undefined;
+  // Refuse before any record, audit, or email work happens. The approval
+  // flow skips this call for Form 137 entirely; this guard is what stops
+  // a direct POST /api/certificates.
+  if (isForm137DocumentType(docType?.name) || isForm137DocumentType(values.certificateType)) {
+    throw new AppError("Form 137 is a DepEd hardcopy record; no certificate is generated for it.", 422);
+  }
+
   const studentId = request.studentId;
 
   if (!studentId) {
@@ -204,11 +221,6 @@ export async function generateCertificate(input: unknown) {
     throw new Error("Student record was not found.");
   }
 
-  const docType = request?.documentTypeId
-    ? await db.query.documentTypes.findFirst({
-        where: eq(documentTypes.id, request.documentTypeId),
-      })
-    : undefined;
   const certificateType = values.certificateType ?? docType?.name ?? "School Certificate";
   const schoolYear = request?.schoolYearNeeded ?? "";
 
