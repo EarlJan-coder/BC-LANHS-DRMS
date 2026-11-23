@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { getCurrentRole } from "@/lib/auth";
+import { AppError } from "@/lib/utils";
 import { generateCertificate, listCertificateViews } from "@/lib/services/certificates";
 
 export async function GET() {
@@ -25,6 +26,10 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message ?? "Invalid certificate request." }, { status: 400 });
+    }
+
+    if (error instanceof AppError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
     }
 
     return NextResponse.json(

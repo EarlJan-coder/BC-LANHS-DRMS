@@ -15,7 +15,7 @@ process.env.RESEND_API_KEY = "";
 
 const { eq, inArray } = await import("drizzle-orm");
 const { getDb, closeDb } = await import("@/db");
-const { auditLogs, blockchainAuditLogs, certificates, documentRequests, notifications, requestStatusHistory, students, users } = await import("@/db/schema");
+const { auditLogs, blockchainAuditLogs, certificates, documentRequests, documentTypes, notifications, requestStatusHistory, students, users } = await import("@/db/schema");
 const { canAccessRequestSlip, createDocumentRequest, generateRequestSlipPdf, getRequestEligibility, truncateSlipLines, updateDocumentRequestStatus } = await import(
   "@/lib/services/document-requests"
 );
@@ -208,7 +208,7 @@ function testEffects(user: UserRow) {
 }
 
 const requestPayload = {
-  documentType: "Form 137",
+  documentType: "Good Moral Certificate",
   purpose: "College scholarship application requirement",
   gradeLevelNeeded: "12",
   strandNeeded: "ABM",
@@ -409,6 +409,89 @@ describe("updateDocumentRequestStatus approval (integration, local DB)", {
       assert.equal(certs.length, 1, "an approved request without a certificate must get one");
     } finally {
       await cleanupRequestArtifacts(created.id, [created.trackingNumber], user.id);
+    }
+  });
+});
+
+/** Ensures a "Form 137" document type row exists; `created` marks a row this
+ * test inserted (and must remove) so seeded databases stay untouched. */
+async function ensureForm137DocumentType(): Promise<{ id: string; created: boolean }> {
+  const db = getDb();
+  const [existing] = await db
+    .select()
+    .from(documentTypes)
+    .where(eq(documentTypes.name, "Form 137"))
+    .limit(1);
+  if (existing) return { id: existing.id, created: false };
+
+  const [created] = await db
+    .insert(documentTypes)
+    .values({ name: "Form 137", code: `F137-TEST-${Date.now()}`, processingDays: 5 })
+    .returning({ id: documentTypes.id });
+  return { id: created.id, created: true };
+}
+
+describe("Form 137 certificate exclusion (integration, local DB)", {
+  skip: hasDb ? false : "DATABASE_URL not configured",
+}, () => {
+  it("approves a Form 137 request without generating a certificate", async () => {
+    const db = getDb();
+    const type = await ensureForm137DocumentType();
+    const trackingNumber = `TEST-F137-APPROVE-${Date.now()}`;
+    const [created] = await db
+      .insert(documentRequests)
+      .values({
+        trackingNumber,
+        purpose: "Form 137 approval must not mint a certificate",
+        status: "pending",
+        documentTypeId: type.id,
+      })
+      .returning();
+
+    try {
+      const result = await updateDocumentRequestStatus(
+        created.id,
+        { status: "approved", remarks: "Status updated to approved.", registrarRemarks: "Form 137 approval." },
+        "registrar",
+      );
+
+      assert.equal(result.status, "approved", "the approval itself must save");
+      assert.equal(result.certificateId, undefined, "no certificate id may come back for Form 137");
+
+      const certs = await db.select().from(certificates).where(eq(certificates.requestId, created.id));
+      assert.equal(certs.length, 0, "approving Form 137 must never generate a certificate");
+    } finally {
+      await cleanupRequestArtifacts(created.id, [trackingNumber]);
+      if (type.created) await db.delete(documentTypes).where(eq(documentTypes.id, type.id));
+    }
+  });
+
+  it("refuses to generate a certificate for a Form 137 request", async () => {
+    const db = getDb();
+    const type = await ensureForm137DocumentType();
+    const trackingNumber = `TEST-F137-GENERATE-${Date.now()}`;
+    const [created] = await db
+      .insert(documentRequests)
+      .values({
+        trackingNumber,
+        purpose: "Direct generation must refuse Form 137",
+        status: "pending",
+        documentTypeId: type.id,
+      })
+      .returning();
+
+    try {
+      await assert.rejects(
+        () => generateCertificate({ requestId: created.id }),
+        (error: unknown) =>
+          error instanceof AppError && error.status === 422 && /DepEd hardcopy/.test(error.message),
+      );
+
+      const certs = await db.select().from(certificates).where(eq(certificates.requestId, created.id));
+      assert.equal(certs.length, 0, "no certificate row may exist after the refusal");
+    } finally {
+      await cleanupRequestArtifacts(created.id, [trackingNumber]);
+      if (type.created) await db.delete(documentTypes).where(eq(documentTypes.id, type.id));
     }
   });
 });

@@ -20,7 +20,7 @@ import { documentRequestSchema, updateRequestStatusSchema } from "@/lib/validato
 import { getDocumentRequestView } from "@/lib/services/live-data";
 import type { DocumentRequestView } from "@/lib/types";
 import { recordAuditedAction } from "./audit-log";
-import { generateCertificate, hasCertificateForRequest } from "./certificates";
+import { generateCertificate, hasCertificateForRequest, isForm137DocumentType } from "./certificates";
 import { fanOutNewRequestNotification } from "./notifications";
 import { getDocumentSignatoryTemplate } from "./document-signatory-template";
 import {
@@ -517,10 +517,16 @@ export async function updateDocumentRequestStatus(requestId: string, input: unkn
     // "Generate certificate" button is gone). The check is idempotent on the
     // certificate itself, not on the previous status: re-approvals and
     // pre-deploy approved requests never mint duplicates and legacy rows get
-    // their missing certificate. If generation fails — e.g. the request has no
-    // linked student record — the approval is rolled back so the request never
+    // their missing certificate. Form 137 is a DepEd hardcopy with no
+    // template, so it never generates one and the approval is never rolled
+    // back for it. If generation fails — e.g. the request has no linked
+    // student record — the approval is rolled back so the request never
     // sits in "approved" without its certificate.
-    if (values.status === "approved" && !(await hasCertificateForRequest(requestId))) {
+    if (
+      values.status === "approved" &&
+      !isForm137DocumentType(documentType?.name) &&
+      !(await hasCertificateForRequest(requestId))
+    ) {
       try {
         const certificate = await generateCertificate({ requestId });
         generatedCertificateId = certificate.id;
