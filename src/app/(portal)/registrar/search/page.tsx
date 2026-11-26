@@ -10,10 +10,13 @@ export default async function RegistrarSearchPage({
   const params = await searchParams;
   const q = typeof params.q === "string" ? params.q : "";
   const groups = await searchPortal("registrar", q, {
+    pages: parsePage(params["page-pages"]),
     requests: parsePage(params["page-requests"]),
     students: parsePage(params["page-students"]),
+    registrations: parsePage(params["page-registrations"]),
     certificates: parsePage(params["page-certificates"]),
     audit: parsePage(params["page-audit"]),
+    notifications: parsePage(params["page-notifications"]),
   });
 
   return <SearchResults query={q} groups={groups} searchPath="/registrar/search" />;

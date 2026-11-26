@@ -44,8 +44,7 @@ export default async function RegistrarStudentDetailsPage({
       </Card>
 
       <div className="mt-6 grid gap-6">
-        <DataTable
-          rows={data.requests}
+        <DataTable title="Document requests" rows={data.requests}
           emptyMessage="No document requests found for this student."
           columns={[
             { key: "tracking", label: "Tracking no.", render: (row) => row.trackingNumber },
@@ -55,8 +54,7 @@ export default async function RegistrarStudentDetailsPage({
           ]}
         />
 
-        <DataTable
-          rows={data.certificates}
+        <DataTable title="Certificates" rows={data.certificates}
           emptyMessage="No generated certificates found for this student."
           columns={[
             { key: "number", label: "Certificate no.", render: (row) => row.certificateNumber },

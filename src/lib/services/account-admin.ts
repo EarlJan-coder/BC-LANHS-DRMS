@@ -1,10 +1,11 @@
 import bcrypt from "bcryptjs";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { students, users, type UserRole } from "@/db/schema";
+import { auditLogs, certificates, documentRequests, notifications, requestStatusHistory, students, users, type UserRole } from "@/db/schema";
 import { comparePassword } from "@/lib/password";
 import { generateTemporaryPassword } from "@/lib/password-generator";
 import { AppError } from "@/lib/utils";
+import { recordAuditedAction } from "@/lib/services/audit-log";
 
 function postgresCode(error: unknown): string | undefined {
   if (!error || typeof error !== "object") {
@@ -104,6 +105,55 @@ export function assertAdmin(actor: { role: UserRole }): void {
   if (actor.role !== "admin") {
     throw new AppError("Only administrators can manage accounts.", 403);
   }
+}
+
+export async function deletePortalAccount(userId: string, actor: { id: string; role: UserRole }): Promise<void> {
+  const db = getDb();
+  const target = await db.query.users.findFirst({ where: eq(users.id, userId) });
+  if (!target) throw new AppError("Account not found.", 404);
+  if (target.role === "admin") throw new AppError("The administrator account cannot be deleted here.", 403);
+  if (userId === actor.id) throw new AppError("You cannot delete your own account.", 409);
+
+  await db.transaction(async (tx) => {
+    const studentRows = await tx.select({ id: students.id }).from(students).where(eq(students.userId, userId));
+    const studentIds = studentRows.map((row) => row.id);
+    const requestCondition = studentIds.length
+      ? or(inArray(documentRequests.studentId, studentIds), eq(documentRequests.requestedByUserId, userId))
+      : eq(documentRequests.requestedByUserId, userId);
+    const requestRows = await tx.select({ id: documentRequests.id }).from(documentRequests).where(requestCondition);
+    const requestIds = requestRows.map((row) => row.id);
+
+    if (requestIds.length) {
+      await tx.delete(requestStatusHistory).where(inArray(requestStatusHistory.requestId, requestIds));
+      await tx.delete(certificates).where(or(inArray(certificates.requestId, requestIds), ...(studentIds.length ? [inArray(certificates.studentId, studentIds)] : [])));
+      await tx.delete(documentRequests).where(inArray(documentRequests.id, requestIds));
+    } else if (studentIds.length) {
+      await tx.delete(certificates).where(inArray(certificates.studentId, studentIds));
+    }
+    if (studentIds.length) await tx.delete(students).where(eq(students.userId, userId));
+    await tx.delete(notifications).where(eq(notifications.userId, userId));
+
+    await tx.update(documentRequests).set({ assignedToUserId: null }).where(eq(documentRequests.assignedToUserId, userId));
+    await tx.update(documentRequests).set({ approvedBy: null }).where(eq(documentRequests.approvedBy, userId));
+    await tx.update(documentRequests).set({ rejectedBy: null }).where(eq(documentRequests.rejectedBy, userId));
+    await tx.update(certificates).set({ generatedBy: null }).where(eq(certificates.generatedBy, userId));
+    await tx.update(requestStatusHistory).set({ actorUserId: null }).where(eq(requestStatusHistory.actorUserId, userId));
+    await tx.update(auditLogs).set({ actorUserId: null }).where(eq(auditLogs.actorUserId, userId));
+    await tx.delete(users).where(eq(users.id, userId));
+  });
+
+  await recordAuditedAction({
+    referenceType: "user",
+    referenceId: userId,
+    action: "user.delete",
+    actorRole: actor.role,
+    entityType: "user",
+    entityId: userId,
+    actorUserId: actor.id,
+    description: "Account deleted",
+    metadata: { email: target.email, role: target.role },
+    hashMetadata: { email: target.email, role: target.role },
+  });
 }
 
 export async function resetUserPassword(userId: string): Promise<{ id: string; temporaryPassword: string }> {

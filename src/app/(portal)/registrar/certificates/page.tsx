@@ -19,8 +19,7 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
         title="Certificates"
         description="Generated school document PDFs, QR verification links, and blockchain proof status."
       />
-      <DataTable
-        rows={certificates.rows}
+      <DataTable title="Certificates" rows={certificates.rows}
         emptyMessage="No certificates have been generated yet."
         columns={[
           {

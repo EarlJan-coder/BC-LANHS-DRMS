@@ -40,8 +40,7 @@ export default async function RegistrarRequestsPage({
           initialDocumentType={filters.documentType ?? ""}
         />
       </Card>
-      <DataTable
-        rows={paged.rows}
+      <DataTable title="Document requests" rows={paged.rows}
         emptyMessage="No document requests have been submitted yet."
         columns={[
           {

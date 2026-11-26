@@ -15,7 +15,8 @@ export type PendingRegistrationView = {
   name: string;
   email: string;
   lrn: string;
-  lastSchoolYearAttended: string;
+  studentStatus: "Student" | "Alumni" | "Not set";
+  schoolYear: string;
   createdAt: string;
 };
 
@@ -66,7 +67,6 @@ export type StudentView = {
   address: string;
   lastSchoolYearAttended: string;
   status: string;
-  hasLinkedRecords: boolean;
 };
 
 export type UserView = {
@@ -83,7 +83,6 @@ export type UserView = {
 export type DocumentTypeView = {
   id: string;
   name: string;
-  code: string;
   description: string;
   requirements: string[];
   processingDays: number;

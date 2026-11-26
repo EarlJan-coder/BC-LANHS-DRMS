@@ -140,7 +140,7 @@ export function NotificationsList({
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-slate-900">
                   {!notification.isRead ? (
-                    <span className="mr-2 inline-block h-2 w-2 rounded-full bg-red-600 align-middle" aria-label="Unread" />
+                    <span className="mr-2 inline-block h-2 w-2 rounded-full bg-red-900 align-middle" aria-label="Unread" />
                   ) : null}
                   {notification.title}
                 </p>

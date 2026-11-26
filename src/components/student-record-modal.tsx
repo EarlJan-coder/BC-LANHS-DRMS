@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
@@ -117,7 +118,7 @@ export function StudentRecordModal({ student }: { student: StudentView }) {
         toast.error(result.error ?? "Unable to delete the student record.");
         return;
       }
-      toast.success("Student record deleted. The account remains active.");
+      toast.success("Account deleted.");
       setConfirmDeleteOpen(false);
       setOpen(false);
       router.refresh();
@@ -208,10 +209,18 @@ export function StudentRecordModal({ student }: { student: StudentView }) {
 
               <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-slate-50 px-5 py-4">
                 <div>
-                  <Button type="button" tone="danger" onClick={() => setConfirmDeleteOpen(true)} disabled={saving || deleting || student.hasLinkedRecords}>
-                    Delete
+                  <Button
+                    type="button"
+                    size="icon"
+                    tone="ghost"
+                    className="text-red-900 hover:bg-red-50 hover:text-red-950"
+                    aria-label="Delete account"
+                    title="Delete account"
+                    onClick={() => setConfirmDeleteOpen(true)}
+                    disabled={saving || deleting}
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
                   </Button>
-                  {student.hasLinkedRecords ? <p className="mt-1 text-xs text-slate-500">Requests or certificates are linked, so this record cannot be deleted.</p> : null}
                 </div>
                 <div className="flex gap-2">
                   <Button type="button" tone="secondary" onClick={() => setOpen(false)} disabled={saving || deleting}>Cancel</Button>
@@ -225,9 +234,9 @@ export function StudentRecordModal({ student }: { student: StudentView }) {
 
       <ConfirmDialog
         open={confirmDeleteOpen}
-        title="Delete this student record?"
-        message="This removes only the student record. The linked login account survives and keeps its LRN."
-        confirmLabel="Delete record"
+        title="Delete this account?"
+        message="This permanently deletes the account together with its document requests and certificates. This cannot be undone."
+        confirmLabel="Delete account"
         tone="danger"
         loading={deleting}
         onConfirm={remove}

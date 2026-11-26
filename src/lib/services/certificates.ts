@@ -23,6 +23,7 @@ import {
 import { recordAuditedAction } from "./audit-log";
 import { getDocumentSignatoryTemplate } from "./document-signatory-template";
 import { getDocumentTemplateWording } from "./document-template-wording";
+import { getDocumentTypeTemplate } from "./document-type-templates";
 import {
   manilaDateParts,
   pickCertificateTemplate,
@@ -491,6 +492,7 @@ async function loadCertificateDisplayRow(certificateId: string) {
       requestGradeLevelNeeded: documentRequests.gradeLevelNeeded,
       requestStrandNeeded: documentRequests.strandNeeded,
       requestSectionNeeded: documentRequests.sectionNeeded,
+      requestDocumentTypeId: documentRequests.documentTypeId,
       firstName: students.firstName,
       middleName: students.middleName,
       lastName: students.lastName,
@@ -507,6 +509,7 @@ async function loadCertificateDisplayRow(certificateId: string) {
     .from(certificates)
     .leftJoin(students, eq(certificates.studentId, students.id))
     .leftJoin(documentRequests, eq(certificates.requestId, documentRequests.id))
+    .leftJoin(documentTypes, eq(documentRequests.documentTypeId, documentTypes.id))
     .where(eq(certificates.id, certificateId))
     .limit(1);
 
@@ -546,6 +549,14 @@ export async function getCertificateEditView(certificateId: string): Promise<Cer
 
   const fields = resolveCertificateDisplayFields(toDisplayRow(row));
   const template = await getDocumentSignatoryTemplate();
+  const record = {
+    studentName: [row.firstName, row.middleName, row.lastName, row.suffix].filter(Boolean).join(" "),
+    gradeLevel: row.requestGradeLevelNeeded ?? "",
+    strand: row.requestStrandNeeded ?? "",
+    section: row.requestSectionNeeded ?? "",
+    purpose: row.requestPurpose ?? "",
+    dateGenerated: row.generatedAt,
+  };
 
   return {
     id: row.id,
@@ -558,16 +569,46 @@ export async function getCertificateEditView(certificateId: string): Promise<Cer
     dateGenerated: fields.dateGenerated.toISOString(),
     registrarName: fields.registrarName || template.registrarName,
     principalName: fields.principalName || template.principalName,
-    hasOverride: {
-      studentName: effectiveOverride(row.overrideStudentName) !== null,
-      gradeLevel: effectiveOverride(row.overrideGradeLevel) !== null,
-      strand: effectiveOverride(row.overrideStrand) !== null,
-      section: effectiveOverride(row.overrideSection) !== null,
-      purpose: effectiveOverride(row.overridePurpose) !== null,
-      dateGenerated: row.overrideDateGenerated !== null,
-      registrarName: effectiveOverride(row.overrideRegistrarName) !== null,
-      principalName: effectiveOverride(row.overridePrincipalName) !== null,
-    },
+    hasOverride: resolveCertificateEditFlags({ ...fields, studentName: fields.name }, record, template),
+  };
+}
+
+/**
+ * "Edited" means the printed value differs from what the record (or the admin
+ * signatory template) would print with no override. A stored override that
+ * matches the record prints the identical PDF, so it must not show a pill —
+ * this also keeps full-form saves of the past from flagging every field.
+ */
+export function resolveCertificateEditFlags(
+  effective: {
+    studentName: string;
+    gradeLevel: string;
+    strand: string;
+    section: string;
+    purpose: string;
+    dateGenerated: Date;
+    registrarName: string;
+    principalName: string;
+  },
+  record: {
+    studentName: string;
+    gradeLevel: string;
+    strand: string;
+    section: string;
+    purpose: string;
+    dateGenerated: Date;
+  },
+  template: { registrarName: string; principalName: string },
+): CertificateEditView["hasOverride"] {
+  return {
+    studentName: effective.studentName !== record.studentName,
+    gradeLevel: effective.gradeLevel !== record.gradeLevel,
+    strand: effective.strand !== record.strand,
+    section: effective.section !== record.section,
+    purpose: effective.purpose !== record.purpose,
+    dateGenerated: effective.dateGenerated.getTime() !== record.dateGenerated.getTime(),
+    registrarName: effective.registrarName !== "" && effective.registrarName !== template.registrarName,
+    principalName: effective.principalName !== "" && effective.principalName !== template.principalName,
   };
 }
 
@@ -661,8 +702,18 @@ export async function generateCertificatePdf(certificateId: string) {
   const section = display.section || "";
   const purpose = display.purpose || "school record validation";
   const { day, monthYear } = manilaDateParts(display.dateGenerated);
-  const template = pickCertificateTemplate(certificate.certificateType, gradeLevel);
+  let template = pickCertificateTemplate(certificate.certificateType, gradeLevel);
   const wordingMap = await getDocumentTemplateWording();
+  let wording = template ? wordingMap[template] : undefined;
+  // Preserve the official certificate routing. Saved per-type wording applies
+  // to custom document types that do not have a built-in certificate layout.
+  if (!template && certificate.requestDocumentTypeId) {
+    const custom = await getDocumentTypeTemplate(certificate.requestDocumentTypeId);
+    if (custom) {
+      template = custom.layoutKey;
+      wording = custom.wording;
+    }
+  }
 
   return Buffer.from(
     await renderCertificatePdf({
@@ -690,7 +741,7 @@ export async function generateCertificatePdf(certificateId: string) {
         schoolYear,
         purpose,
       }),
-      wording: template ? wordingMap[template] : undefined,
+      wording,
       qrUrl: certificate.qrCodeData,
     }),
   );

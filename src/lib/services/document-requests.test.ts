@@ -426,7 +426,7 @@ async function ensureForm137DocumentType(): Promise<{ id: string; created: boole
 
   const [created] = await db
     .insert(documentTypes)
-    .values({ name: "Form 137", code: `F137-TEST-${Date.now()}`, processingDays: 5 })
+    .values({ name: "Form 137", processingDays: 5 })
     .returning({ id: documentTypes.id });
   return { id: created.id, created: true };
 }

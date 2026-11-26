@@ -15,8 +15,7 @@ export default async function RegistrarAuditLogsPage({ searchParams }: { searchP
         title="Logs"
         description="Important registrar actions are recorded locally and mirrored to blockchain audit proofs when configured."
       />
-      <DataTable
-        rows={auditTrail.rows}
+      <DataTable title="Audit log" rows={auditTrail.rows}
         emptyMessage="No audit records found yet."
         columns={[
           { key: "reference", label: "Reference", render: (row) => row.referenceId },

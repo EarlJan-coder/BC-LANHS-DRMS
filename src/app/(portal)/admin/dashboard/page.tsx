@@ -33,8 +33,7 @@ export default async function AdminDashboardPage() {
         ))}
       </div>
       <div className="mt-6">
-        <DataTable
-          rows={auditTrail}
+        <DataTable title="Audit activity" rows={auditTrail}
           emptyMessage="No audit records found yet."
           columns={[
             { key: "action", label: "Action", render: (row) => row.action },

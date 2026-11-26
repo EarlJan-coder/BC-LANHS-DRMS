@@ -103,7 +103,7 @@ export default async function ReportsPage({
           const pageSize = report.pageSize ?? 20;
 
           return (
-            <section key={report.key}>
+            <section key={report.key} id={report.key} className="scroll-mt-20">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-950">{report.title}</h2>

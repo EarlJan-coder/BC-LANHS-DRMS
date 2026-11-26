@@ -40,8 +40,7 @@ export default async function MyRequestsPage({
           initialStatus={status}
         />
       </Card>
-      <DataTable
-        rows={paged.rows}
+      <DataTable title="My document requests" rows={paged.rows}
         emptyMessage="You have not submitted a document request yet."
         columns={[
           {

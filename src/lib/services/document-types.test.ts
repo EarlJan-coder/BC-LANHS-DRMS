@@ -21,7 +21,6 @@ function input(name = "Test Transcript") {
   fixtureIndex += 1;
   return {
     name: `${name} ${Date.now()}-${fixtureIndex}`,
-    code: `TEST_${Date.now()}_${fixtureIndex}`,
     description: "Test document type",
     requirements: ["Valid ID"],
     processingDays: 4,
@@ -38,7 +37,6 @@ describe("document type CRUD (integration, local DB)", { skip: hasDb ? false : "
       const created = await createDocumentType(values);
       id = created.id;
       assert.equal(created.name, values.name);
-      assert.equal(created.code, values.code);
       assert.equal(created.processingDays, values.processingDays);
       assert.equal(created.status, "Active");
     } finally {
@@ -49,11 +47,10 @@ describe("document type CRUD (integration, local DB)", { skip: hasDb ? false : "
   it("update edits name and processing days", async () => {
     const initial = input("Update Transcript");
     const created = await createDocumentType(initial);
-    const updatedInput = { ...initial, name: `${initial.name} Revised`, code: `${initial.code}_REV`, processingDays: 9 };
+    const updatedInput = { ...initial, name: `${initial.name} Revised`, processingDays: 9 };
     try {
       const updated = await updateDocumentType(created.id, updatedInput);
       assert.equal(updated.name, updatedInput.name);
-      assert.equal(updated.code, updatedInput.code);
       assert.equal(updated.processingDays, 9);
     } finally {
       await getDb().delete(documentTypes).where(eq(documentTypes.id, created.id));
@@ -67,6 +64,19 @@ describe("document type CRUD (integration, local DB)", { skip: hasDb ? false : "
       const row = await getDb().query.documentTypes.findFirst({ where: eq(documentTypes.id, created.id) });
       assert.ok(row);
       assert.equal(row.isActive, false);
+    } finally {
+      await getDb().delete(documentTypes).where(eq(documentTypes.id, created.id));
+    }
+  });
+
+  it("update re-enables a deactivated document type", async () => {
+    const initial = input("Re-enable Transcript");
+    const created = await createDocumentType(initial);
+    try {
+      await deactivateDocumentType(created.id);
+      const updated = await updateDocumentType(created.id, { ...initial, isActive: true });
+      assert.equal(updated.isActive, true);
+      assert.equal(updated.status, "Active");
     } finally {
       await getDb().delete(documentTypes).where(eq(documentTypes.id, created.id));
     }

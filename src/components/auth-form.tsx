@@ -27,6 +27,7 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
   const closeDocument = useCallback(() => setOpenDocument(null), []);
   const [addressCity, setAddressCity] = useState("");
   const [addressBarangay, setAddressBarangay] = useState("");
+  const [studentStatus, setStudentStatus] = useState("");
   const [passwordValue, setPasswordValue] = useState("");
 
   // onSubmit (not <form action>): form actions auto-reset uncontrolled fields
@@ -65,7 +66,9 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
         addressCity: formData.get("addressCity"),
         addressBarangay: formData.get("addressBarangay"),
         addressStreetLine: formData.get("addressStreetLine"),
-        lastSchoolYearAttended: formData.get("lastSchoolYearAttended"),
+        studentStatus: formData.get("studentStatus"),
+        currentSchoolYear: formData.get("currentSchoolYear") ?? "",
+        lastSchoolYearAttended: formData.get("lastSchoolYearAttended") ?? "",
         password: formData.get("password"),
         acceptedTerms: termsAccepted,
         acceptedPrivacy: privacyAccepted,
@@ -138,7 +141,7 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
 
           <Link
             href="/sign-in"
-            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-red-800 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-red-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-900 focus-visible:ring-offset-2"
           >
             Return to sign in
           </Link>
@@ -252,18 +255,31 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
                 placeholder="123 Mabini St."
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="lastSchoolYearAttended">
-                Last school year attended <Required />
-              </Label>
-              <Input
-                id="lastSchoolYearAttended"
-                name="lastSchoolYearAttended"
-                required
-                maxLength={40}
-                placeholder="2025-2026"
-              />
-            </div>
+            <section className="grid gap-4 rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+              <div className="grid gap-2">
+                <Label htmlFor="studentStatus">Student status <Required /></Label>
+                <Select id="studentStatus" name="studentStatus" value={studentStatus} onChange={(event) => setStudentStatus(event.target.value)} aria-describedby="student-status-hint" required>
+                  <option value="" disabled>Select status</option>
+                  <option value="student">Student</option>
+                  <option value="alumni">Alumni</option>
+                </Select>
+                <p id="student-status-hint" className="text-xs leading-5 text-slate-500">Choose the option that best describes your current school status.</p>
+              </div>
+              {studentStatus === "student" ? (
+                <div className="grid gap-2 border-t border-slate-200 pt-4">
+                  <Label htmlFor="currentSchoolYear">Current school year <Required /></Label>
+                  <Input id="currentSchoolYear" name="currentSchoolYear" required maxLength={40} placeholder="2025-2026" />
+                  <p className="text-xs leading-5 text-slate-500">Enter the school year you are currently attending.</p>
+                </div>
+              ) : null}
+              {studentStatus === "alumni" ? (
+                <div className="grid gap-2 border-t border-slate-200 pt-4">
+                  <Label htmlFor="lastSchoolYearAttended">Last school year attended <Required /></Label>
+                  <Input id="lastSchoolYearAttended" name="lastSchoolYearAttended" required maxLength={40} placeholder="2025-2026" />
+                  <p className="text-xs leading-5 text-slate-500">Enter the last school year you attended at this school.</p>
+                </div>
+              ) : null}
+            </section>
             <div className="grid gap-2">
               <Label htmlFor="lrn">
                 Learner Reference Number (LRN) <Required />
@@ -322,7 +338,7 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
         ) : null}
 
         {error ? (
-          <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
             {error}
           </p>
         ) : null}

@@ -169,6 +169,27 @@
       "when": 1795336960769,
       "tag": "0023_boring_frank_castle",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795619188660,
+      "tag": "0024_special_mathemanic",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1795624723933,
+      "tag": "0025_smiling_havok",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1795632125207,
+      "tag": "0026_spooky_black_crow",
+      "breakpoints": true
     }
   ]
 }

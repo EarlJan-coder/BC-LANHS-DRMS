@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DownloadButton } from "@/components/ui/download-button";
 import { Spinner } from "@/components/ui/spinner";
+import { changedCertificateFields } from "@/lib/certificate-edit-diff";
 
 export interface CertificateEditValues {
   studentName: string;
@@ -63,21 +64,21 @@ export function CertificatePreviewEditor({
   }
 
   async function save() {
+    // Send only the fields the registrar actually changed: the API writes an
+    // override (and shows the "edited" pill) for every key it receives, so a
+    // full-form payload would mark every field as edited after one change.
+    const changed = changedCertificateFields(values, initial);
+    if (Object.keys(changed).length === 0) {
+      toast.info("No changes to save.");
+      return;
+    }
+
     setSaving(true);
     try {
       const response = await fetch(`/api/certificates/${certificateId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentName: values.studentName,
-          gradeLevel: values.gradeLevel,
-          strand: values.strand,
-          section: values.section,
-          purpose: values.purpose,
-          dateGenerated: values.dateGenerated,
-          registrarName: values.registrarName,
-          principalName: values.principalName,
-        }),
+        body: JSON.stringify(changed),
       });
       const data = await response.json();
 

@@ -43,7 +43,6 @@ async function main() {
       .values(
         DOCUMENT_TYPES.map((name) => ({
           name,
-          code: name.toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/_$/, ""),
           processingDays: name === "Form 137" ? 5 : 3,
           fee: "0",
           isActive: true,

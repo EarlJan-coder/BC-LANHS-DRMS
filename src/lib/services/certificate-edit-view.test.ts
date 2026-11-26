@@ -51,6 +51,29 @@ describe("getCertificateEditView signatory names (integration, local DB)", {
     assert.equal(view.hasOverride.principalName, true);
   });
 
+  it("does not report an override that matches the record value as edited", async () => {
+    const db = getDb();
+    const generatedAt = new Date("2026-01-15T00:00:00Z");
+    const [row] = await db
+      .insert(certificates)
+      .values({
+        certificateNumber: `TEST-CERT-${Date.now()}-C`,
+        verificationCode: `TEST-VERIF-${Date.now()}-C`,
+        qrCodeData: "https://example.test/verify/c",
+        certificateType: "good-moral",
+        generatedAt,
+        // A stored override identical to the record prints exactly what the
+        // record would — it must not show an "edited" pill.
+        overrideDateGenerated: generatedAt,
+      })
+      .returning();
+    insertedIds.push(row.id);
+
+    const view = await getCertificateEditView(row.id);
+    assert.ok(view);
+    assert.equal(view.hasOverride.dateGenerated, false);
+  });
+
   it("inherits the admin signatory template when none were typed", async () => {
     const db = getDb();
     const [row] = await db

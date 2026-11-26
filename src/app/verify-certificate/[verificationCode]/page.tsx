@@ -126,7 +126,7 @@ async function VerificationResult({ verificationCode }: { verificationCode: stri
           {result.valid ? (
             <CheckCircle2 className="h-5 w-5 text-emerald-600" aria-hidden />
           ) : (
-            <XCircle className="h-5 w-5 text-red-600" aria-hidden />
+            <XCircle className="h-5 w-5 text-red-900" aria-hidden />
           )}
           Certificate verification
         </CardTitle>

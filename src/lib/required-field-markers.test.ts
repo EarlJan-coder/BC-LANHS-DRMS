@@ -27,7 +27,7 @@ type Tag = {
 const COMPONENTS_DIR = fileURLToPath(new URL("../components", import.meta.url));
 
 /** Matches the two marker spellings allowed in a label. */
-const MARKER = /<Required \/>|<span className="text-red-600">\*<\/span>/;
+const MARKER = /<Required \/>|<span className="text-red-900">\*<\/span>/;
 
 function skipString(source: string, start: number): number {
   const quote = source[start];

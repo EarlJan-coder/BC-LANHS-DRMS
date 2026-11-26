@@ -37,7 +37,7 @@ export default async function BlockchainAuditTrailPage({ searchParams }: { searc
         <StatCard label="Total records" value={stats.total} icon={ShieldCheck} tone="bg-slate-100 text-slate-600" />
         <StatCard label="Pending" value={stats.pending} icon={Clock} tone="bg-amber-100 text-amber-600" />
         <StatCard label="Submitted" value={stats.submitted} icon={CheckCircle2} tone="bg-emerald-100 text-emerald-600" />
-        <StatCard label="Failed" value={stats.failed} icon={XCircle} tone="bg-red-100 text-red-600" />
+        <StatCard label="Failed" value={stats.failed} icon={XCircle} tone="bg-red-100 text-red-900" />
       </div>
 
       <Card className="mb-5 flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -47,8 +47,7 @@ export default async function BlockchainAuditTrailPage({ searchParams }: { searc
         </div>
         <RetryBlockchainButton />
       </Card>
-      <DataTable
-        rows={auditTrail.rows}
+      <DataTable title="Audit records" rows={auditTrail.rows}
         emptyMessage="No blockchain audit records found yet."
         columns={[
           { key: "reference", label: "Reference", render: (row) => row.referenceId },

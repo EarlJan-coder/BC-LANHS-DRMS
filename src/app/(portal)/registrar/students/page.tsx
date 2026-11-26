@@ -18,11 +18,10 @@ export default async function StudentRecordsPage({ searchParams }: { searchParam
         title="Student records"
         description="Review student accounts and records by LRN."
         actions={
-          <ButtonLink href="/registrar/reports" tone="info">Export report</ButtonLink>
+          <ButtonLink href="/registrar/reports#student-records" tone="info">Export report</ButtonLink>
         }
       />
-      <DataTable
-        rows={students.rows}
+      <DataTable title="Student records" rows={students.rows}
         emptyMessage="No student records found. Students can register from the sign-up page."
         columns={[
           { key: "lrn", label: "LRN", render: (row) => row.lrn },

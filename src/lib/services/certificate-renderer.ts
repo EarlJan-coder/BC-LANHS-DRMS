@@ -573,10 +573,11 @@ export function renderSampleCertificate(
   template: CertTemplateKey,
   wording: TemplateWording,
   names: { registrarName?: string; principalName?: string },
+  blanks: CertBlankValues = SAMPLE_BLANKS[template],
 ): Promise<Uint8Array> {
   return renderCertificatePdf({
     template,
-    blanks: SAMPLE_BLANKS[template],
+    blanks,
     signatureNames: names,
     wording,
   });

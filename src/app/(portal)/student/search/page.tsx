@@ -9,7 +9,13 @@ export default async function StudentSearchPage({
 }) {
   const params = await searchParams;
   const q = typeof params.q === "string" ? params.q : "";
-  const groups = await searchPortal("student", q, { requests: parsePage(params["page-requests"]) });
+  const groups = await searchPortal("student", q, {
+    pages: parsePage(params["page-pages"]),
+    requests: parsePage(params["page-requests"]),
+    documents: parsePage(params["page-documents"]),
+    profile: parsePage(params["page-profile"]),
+    notifications: parsePage(params["page-notifications"]),
+  });
 
   return <SearchResults query={q} groups={groups} searchPath="/student/search" />;
 }

@@ -6,7 +6,7 @@ import { getDb } from "@/db";
 import { students, users } from "@/db/schema";
 import { checkAuthRateLimit } from "@/lib/auth-rate-limit";
 import { composeAddress } from "@/lib/ph-address";
-import { refineAddressParts, strongPasswordSchema } from "@/lib/validators";
+import { refineAddressParts, refineSchoolYearStatus, strongPasswordSchema } from "@/lib/validators";
 import { fanOutNewRegistrationNotification } from "@/lib/services/notifications";
 import { getSystemSettings } from "@/lib/services/system-settings";
 
@@ -21,15 +21,13 @@ const signupSchema = z.object({
   addressCity: z.string().trim().min(1, "City is required.").max(100),
   addressBarangay: z.string().trim().min(1, "Barangay is required.").max(100),
   addressStreetLine: z.string().trim().min(1, "Street line is required.").max(500),
-  lastSchoolYearAttended: z
-    .string()
-    .trim()
-    .min(1, "Last school year attended is required.")
-    .max(40, "Last school year attended must be 40 characters or fewer."),
+  studentStatus: z.enum(["student", "alumni"], { message: "Select whether you are a Student or Alumni." }),
+  currentSchoolYear: z.string().trim().max(40, "Current school year must be 40 characters or fewer."),
+  lastSchoolYearAttended: z.string().trim().max(40, "Last school year attended must be 40 characters or fewer."),
   password: strongPasswordSchema,
   acceptedTerms: z.literal(true, "You must accept the Terms and Conditions to register."),
   acceptedPrivacy: z.literal(true, "You must accept the Privacy Notice to register."),
-}).superRefine(refineAddressParts);
+}).superRefine(refineAddressParts).superRefine(refineSchoolYearStatus);
 
 function postgresCode(error: unknown) {
   let current = error;
@@ -113,7 +111,9 @@ export async function POST(request: Request) {
           barangay: values.addressBarangay,
           city: values.addressCity,
         }),
-        lastSchoolYearAttended: values.lastSchoolYearAttended,
+        studentType: values.studentStatus === "alumni" ? "alumni" : "current",
+        currentSchoolYear: values.studentStatus === "student" ? values.currentSchoolYear : null,
+        lastSchoolYearAttended: values.studentStatus === "alumni" ? values.lastSchoolYearAttended : null,
       });
 
       return createdUser;

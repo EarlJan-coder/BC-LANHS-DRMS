@@ -13,7 +13,7 @@ export const REQUEST_STATUSES: Array<{ value: RequestStatus; label: string; tone
   { value: "pending", label: "Pending", tone: "bg-yellow-50 text-yellow-700 ring-yellow-200" },
   { value: "under_review", label: "Under Review", tone: "bg-sky-50 text-sky-700 ring-sky-200" },
   { value: "approved", label: "Approved", tone: "bg-emerald-50 text-emerald-700 ring-emerald-200" },
-  { value: "rejected", label: "Rejected", tone: "bg-red-50 text-red-700 ring-red-200" },
+  { value: "rejected", label: "Rejected", tone: "bg-red-50 text-red-900 ring-red-200" },
   { value: "processing", label: "Processing", tone: "bg-purple-50 text-purple-700 ring-purple-200" },
   { value: "ready_for_pickup", label: "Ready for Pickup", tone: "bg-teal-50 text-teal-700 ring-teal-200" },
   { value: "claimed", label: "Claimed", tone: "bg-slate-100 text-slate-700 ring-slate-200" },

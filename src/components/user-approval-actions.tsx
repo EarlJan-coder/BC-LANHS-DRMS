@@ -66,7 +66,7 @@ export function UserApprovalActions({
           Decline
         </Button>
       </div>
-      {error ? <p className="mt-1 text-xs text-red-700" role="alert">{error}</p> : null}
+      {error ? <p className="mt-1 text-xs text-red-900" role="alert">{error}</p> : null}
       <ConfirmDialog
         open={confirmingDecline}
         title="Decline this account?"

@@ -75,7 +75,6 @@ describe("report row filters (integration, local DB)", {
       .insert(documentTypes)
       .values({
         name: typeName,
-        code: `RPT_${Date.now()}_${fixtureIndex}`,
         description: "Fixture for report filter tests",
         requirements: [],
         processingDays: 1,

@@ -31,8 +31,7 @@ export default async function StudentDashboardPage() {
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_360px]">
-        <DataTable
-          rows={requests}
+        <DataTable title="Document requests" rows={requests}
           emptyMessage="You have not submitted a document request yet."
           columns={[
             { key: "tracking", label: "Tracking no.", render: (row) => row.trackingNumber },

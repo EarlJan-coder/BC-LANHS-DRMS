@@ -1,6 +1,28 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { certificateOverrideSchema, documentRequestSchema, passwordChangeSchema, profileUpdateSchema, registrationDecisionSchema, studentRecordSchema } from "@/lib/validators";
+import { certificateOverrideSchema, documentRequestSchema, passwordChangeSchema, profileUpdateSchema, refineSchoolYearStatus, registrationDecisionSchema, studentRecordSchema } from "@/lib/validators";
+
+describe("refineSchoolYearStatus", () => {
+  function issues(values: Parameters<typeof refineSchoolYearStatus>[0]) {
+    const issues: { path: PropertyKey[]; message: string }[] = [];
+    const ctx = {
+      addIssue: (issue: unknown) => {
+        if (typeof issue === "string") issues.push({ path: [], message: issue });
+        else if (typeof issue === "object" && issue !== null) {
+          const detail = issue as { path?: PropertyKey[]; message?: string };
+          issues.push({ path: detail.path ?? [], message: detail.message ?? "" });
+        }
+      },
+    } as unknown as Parameters<typeof refineSchoolYearStatus>[1];
+    refineSchoolYearStatus(values, ctx);
+    return issues;
+  }
+  it("rejects a student without a current school year", () => assert.deepEqual(issues({ studentStatus: "student", currentSchoolYear: "", lastSchoolYearAttended: "" }), [{ path: ["currentSchoolYear"], message: "Enter your current school year." }]));
+  it("accepts a student with a current school year", () => assert.deepEqual(issues({ studentStatus: "student", currentSchoolYear: "2026-2027" }), []));
+  it("rejects alumni without a last school year attended", () => assert.deepEqual(issues({ studentStatus: "alumni", lastSchoolYearAttended: "   " }), [{ path: ["lastSchoolYearAttended"], message: "Last school year attended is required." }]));
+  it("accepts alumni with a last school year attended", () => assert.deepEqual(issues({ studentStatus: "alumni", lastSchoolYearAttended: "2025-2026" }), []));
+  it("does not require last school year for students", () => assert.deepEqual(issues({ studentStatus: "student", currentSchoolYear: "2026-2027", lastSchoolYearAttended: "" }), []));
+});
 
 describe("passwordChangeSchema", () => {
   it("rejects a new password missing any required character class", () => {

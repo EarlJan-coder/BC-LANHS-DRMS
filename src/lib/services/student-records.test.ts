@@ -6,10 +6,10 @@ const require = createRequire(import.meta.url);
 require("@next/env").loadEnvConfig(process.cwd());
 process.env.SESSION_SECRET ||= "test-secret-test-secret-test-secret-32b";
 
-const { eq } = await import("drizzle-orm");
+const { and, eq } = await import("drizzle-orm");
 const { getDb, closeDb } = await import("@/db");
-const { students, users } = await import("@/db/schema");
-const { updateStudentRecord } = await import("@/lib/services/student-records");
+const { auditLogs, students, users } = await import("@/db/schema");
+const { deleteStudentRecord, updateStudentRecord } = await import("@/lib/services/student-records");
 
 const hasDb = Boolean(process.env.DATABASE_URL);
 let fixtureIndex = 0;
@@ -112,6 +112,22 @@ describe("updateStudentRecord last school year (integration, local DB)", {
       assert.equal(student?.enrollmentStatus, "transferred");
     } finally {
       await cleanup(fixture.userId);
+    }
+  });
+});
+
+describe("deleteStudentRecord (integration, local DB)", { skip: hasDb ? false : "DATABASE_URL not configured" }, () => {
+  it("deletes the linked portal account", async () => {
+    const fixture = await createStudentFixture();
+    const [actor] = await getDb().insert(users).values({ email: `registrar-delete-${Date.now()}@example.test`, firstName: "R", lastName: "D", passwordHash: "hash", role: "registrar" }).returning({ id: users.id });
+    try {
+      assert.deepEqual(await deleteStudentRecord(fixture.studentId, { id: actor.id, role: "registrar" }), { id: fixture.studentId });
+      assert.equal(await getDb().query.users.findFirst({ where: eq(users.id, fixture.userId) }), undefined);
+      assert.equal(await getDb().query.students.findFirst({ where: eq(students.id, fixture.studentId) }), undefined);
+    } finally {
+      await getDb().delete(auditLogs).where(and(eq(auditLogs.entityId, fixture.userId), eq(auditLogs.action, "user.delete")));
+      await cleanup(fixture.userId);
+      await getDb().delete(users).where(eq(users.id, actor.id));
     }
   });
 });
