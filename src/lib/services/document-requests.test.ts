@@ -321,6 +321,27 @@ describe("updateDocumentRequestStatus approval (integration, local DB)", {
 
       const row = await db.query.documentRequests.findFirst({ where: eq(documentRequests.id, created.id) });
       assert.equal(row?.status, "approved");
+      const approvalChainRows = await db.select().from(blockchainAuditLogs).where(eq(blockchainAuditLogs.referenceId, created.trackingNumber));
+      assert.ok(approvalChainRows.length > 0, "approval should create an on-chain audit row");
+    } finally {
+      await cleanupRequestArtifacts(created.id, [created.trackingNumber], user.id);
+    }
+  });
+
+  it("rejects a request with a local audit row and no chain row", async () => {
+    const db = getDb();
+    const user = await createStudentUser("2025-2026");
+    const created = await createDocumentRequest(requestPayload, testEffects(user));
+    try {
+      await updateDocumentRequestStatus(
+        created.id,
+        { status: "rejected", remarks: "Request rejected.", rejectionReason: "Incorrect or incomplete information" },
+        "registrar",
+      );
+      const chainRows = await db.select().from(blockchainAuditLogs).where(eq(blockchainAuditLogs.referenceId, created.trackingNumber));
+      const auditRows = await db.select().from(auditLogs).where(eq(auditLogs.entityId, created.id));
+      assert.equal(chainRows.length, 0, "rejection must not create a blockchain audit row");
+      assert.ok(auditRows.some((row) => row.action === "Request rejected"), "rejection should remain in the local audit log");
     } finally {
       await cleanupRequestArtifacts(created.id, [created.trackingNumber], user.id);
     }

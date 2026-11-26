@@ -29,6 +29,8 @@ export type AuditedActionInput = {
   hashMetadata?: Record<string, unknown>;
   eventType?: string;
   previousRecordHash?: string;
+  /** Set false to retain the local audit row without submitting this event on-chain. */
+  onChain?: boolean;
 };
 
 /**
@@ -72,7 +74,7 @@ export async function recordAuditedAction(input: AuditedActionInput) {
   const recordHash = createRecordHashFromCanonical(canonical);
 
   const referenceType = input.referenceType ?? input.entityType;
-  const trackOnChain = isOnChainReferenceType(referenceType);
+  const trackOnChain = isOnChainReferenceType(referenceType) && input.onChain !== false;
   let blockchainLogId: string | undefined;
 
   if (db) {

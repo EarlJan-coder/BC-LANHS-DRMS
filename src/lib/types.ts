@@ -37,7 +37,7 @@ export type DocumentRequestView = {
   status: RequestStatus;
   requestedAt: string;
   updatedAt: string;
-  blockchainStatus: "pending" | "submitted" | "failed" | "verified";
+  blockchainStatus: "not_required" | "pending" | "submitted" | "failed" | "verified";
 };
 
 export type AuditTrailView = {

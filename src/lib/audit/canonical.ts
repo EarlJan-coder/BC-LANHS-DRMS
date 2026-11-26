@@ -4,6 +4,18 @@ export interface CanonicalCertificate {
   schoolYear: string;
 }
 
+export function certificateHashMetadata(input: {
+  certificateNumber: string;
+  studentId: string | null;
+  schoolYearNeeded: string | null;
+}): CanonicalCertificate & Record<string, unknown> {
+  return {
+    certificateNumber: input.certificateNumber,
+    studentId: input.studentId ?? "",
+    schoolYear: input.schoolYearNeeded ?? "",
+  };
+}
+
 export interface CanonicalDocumentRequest {
   trackingNumber: string;
   documentType: string;

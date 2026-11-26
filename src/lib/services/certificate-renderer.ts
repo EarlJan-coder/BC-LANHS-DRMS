@@ -81,6 +81,8 @@ export interface CertificateRenderOptions {
   wording?: TemplateWording;
   /** Verification URL encoded into the bottom-right QR code. */
   qrUrl?: string;
+  /** Printed in the clear bottom-left corner, opposite the verification QR code. */
+  certificateNumber?: string;
 }
 
 /** Matches the certificate-type routing the body text already uses. The COE
@@ -555,6 +557,17 @@ export async function renderCertificatePdf(options: CertificateRenderOptions): P
         layout.bodyIndent,
       );
     }
+  }
+
+  const certificateNumber = options.certificateNumber?.trim();
+  if (certificateNumber) {
+    page.drawText(`Certificate No. ${certificateNumber}`, {
+      x: 18,
+      y: 8.5,
+      size: 9.5,
+      font: fonts.bookmanBold,
+      color: BLACK,
+    });
   }
 
   if (options.qrUrl) {

@@ -10,16 +10,13 @@ import {
   users,
 } from "@/db/schema";
 import { ensureCurrentDbUser } from "@/lib/auth";
+import { certificateHashMetadata } from "@/lib/audit/canonical";
 import { SCHOOL_NAME } from "@/lib/constants";
 import { sendWorkflowEmail } from "@/lib/email";
 import type { CertificateVerificationView, CertificateView } from "@/lib/types";
 import { makePaged, PAGE_SIZE, type Paged } from "@/lib/pagination";
 import { AppError, composeGradeValue, formatDate, generatePrefixedId, studentFullName, ZERO_HASH } from "@/lib/utils";
-import {
-  certificateGenerateSchema,
-  certificateOverrideSchema,
-  type CertificateOverrideValues,
-} from "@/lib/validators";
+import { certificateGenerateSchema } from "@/lib/validators";
 import { recordAuditedAction } from "./audit-log";
 import { getDocumentSignatoryTemplate } from "./document-signatory-template";
 import { getDocumentTemplateWording } from "./document-template-wording";
@@ -261,11 +258,11 @@ export async function generateCertificate(input: unknown) {
       documentType: certificateType,
       schoolYear,
     },
-    hashMetadata: {
+    hashMetadata: certificateHashMetadata({
       certificateNumber: created.certificateNumber,
       studentId: student.id,
-      schoolYear,
-    },
+      schoolYearNeeded: request?.schoolYearNeeded ?? null,
+    }),
     eventType: "CERTIFICATE_ISSUED",
     previousRecordHash: ZERO_HASH,
   });
@@ -612,82 +609,6 @@ export function resolveCertificateEditFlags(
   };
 }
 
-const OVERRIDE_FIELDS = ["studentName", "gradeLevel", "strand", "section", "purpose", "dateGenerated", "registrarName", "principalName"] as const;
-
-type OverrideField = (typeof OVERRIDE_FIELDS)[number];
-
-/** Column updates for the fields the caller actually sent. A missing key leaves
- * the stored value untouched; a blank value (parsed to undefined) clears it —
- * for signatory names that means printing no name above the signature line. */
-export function buildOverrideUpdates(
-  provided: readonly OverrideField[],
-  parsed: CertificateOverrideValues,
-): Partial<typeof certificates.$inferInsert> {
-  const updates: Partial<typeof certificates.$inferInsert> = {};
-  if (provided.includes("studentName")) updates.overrideStudentName = parsed.studentName ?? null;
-  if (provided.includes("gradeLevel")) updates.overrideGradeLevel = parsed.gradeLevel ?? null;
-  if (provided.includes("strand")) updates.overrideStrand = parsed.strand ?? null;
-  if (provided.includes("section")) updates.overrideSection = parsed.section ?? null;
-  if (provided.includes("purpose")) updates.overridePurpose = parsed.purpose ?? null;
-  if (provided.includes("dateGenerated")) updates.overrideDateGenerated = parsed.dateGenerated ?? null;
-  if (provided.includes("registrarName")) updates.overrideRegistrarName = parsed.registrarName ?? null;
-  if (provided.includes("principalName")) updates.overridePrincipalName = parsed.principalName ?? null;
-  return updates;
-}
-
-/** Save PDF content overrides. Provided-key semantics: a missing key leaves the
- * stored override untouched, a blank value clears it (the schema maps
- * blank/whitespace to undefined) — back to the live record value, or, for the
- * signatory names, to printing no name at all. */
-export async function updateCertificateOverrides(certificateId: string, input: unknown): Promise<CertificateEditView | null> {
-  const db = getDb();
-  const actor = await ensureCurrentDbUser();
-
-  const existing = await db.query.certificates.findFirst({
-    where: eq(certificates.id, certificateId),
-  });
-
-  if (!existing) {
-    throw new Error("Certificate not found.");
-  }
-
-  const raw = input && typeof input === "object" && !Array.isArray(input) ? (input as Record<string, unknown>) : {};
-  const provided = OVERRIDE_FIELDS.filter((field) => field in raw);
-  if (provided.length === 0) {
-    throw new Error("No editable fields were provided.");
-  }
-
-  const parsed = certificateOverrideSchema.parse(input);
-  const updates = buildOverrideUpdates(provided, parsed);
-
-  await db
-    .update(certificates)
-    .set({ ...updates, updatedAt: new Date() })
-    .where(eq(certificates.id, certificateId));
-
-  // Overrides change only the printed PDF content. The canonical hash metadata
-  // stays identical to issuance, so the record hash is logged unchanged and the
-  // certificate's verification hash is not recomputed.
-  await recordAuditedAction({
-    referenceType: "certificate",
-    referenceId: existing.certificateNumber,
-    action: "Certificate PDF content updated",
-    actorRole: actor?.role ?? "registrar",
-    actorUserId: actor?.id,
-    entityType: "certificate",
-    entityId: existing.id,
-    metadata: { changedFields: provided },
-    hashMetadata: {
-      certificateNumber: existing.certificateNumber,
-      studentId: existing.studentId ?? "",
-      schoolYear: "",
-    },
-    previousRecordHash: existing.recordHash ?? ZERO_HASH,
-  });
-
-  return getCertificateEditView(certificateId);
-}
-
 export async function generateCertificatePdf(certificateId: string) {
   const certificate = await loadCertificateDisplayRow(certificateId);
   if (!certificate) {
@@ -743,6 +664,7 @@ export async function generateCertificatePdf(certificateId: string) {
       }),
       wording,
       qrUrl: certificate.qrCodeData,
+      certificateNumber: certificate.certificateNumber,
     }),
   );
 }

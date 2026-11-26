@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Input, Label, Required, Select, Textarea } from "@/components/ui/input";
 import { DOCUMENT_REQUEST_REASONS, DOCUMENT_TYPES, GRADE_LEVELS, SHS_STRANDS } from "@/lib/constants";
+import { buildRequestReviewRows } from "@/lib/request-review";
 
 /** Sentinel choice appended after the predefined request reasons. */
 const OTHER_REASON = "Other";
@@ -18,6 +19,7 @@ export function RequestForm() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [gradeLevel, setGradeLevel] = useState("");
   const [requestReason, setRequestReason] = useState("");
+  const [reviewRows, setReviewRows] = useState<ReturnType<typeof buildRequestReviewRows>>([]);
   const pendingFormRef = useRef<FormData | null>(null);
 
   const needsStrand = gradeLevel === "11" || gradeLevel === "12";
@@ -36,6 +38,15 @@ export function RequestForm() {
       return;
     }
     pendingFormRef.current = formData;
+    setReviewRows(buildRequestReviewRows({
+      documentType: String(formData.get("documentType") ?? ""),
+      reason,
+      purpose,
+      gradeLevel: String(formData.get("gradeLevelNeeded") ?? ""),
+      strandNeeded: needsStrand ? String(formData.get("strandNeeded") ?? "") : "",
+      sectionNeeded: String(formData.get("sectionNeeded") ?? ""),
+      remarks: String(formData.get("remarks") ?? ""),
+    }));
     setConfirmOpen(true);
   }
 
@@ -196,12 +207,21 @@ export function RequestForm() {
       <ConfirmDialog
         open={confirmOpen}
         title="Submit this document request?"
-        message="It will be sent to the registrar for processing."
+        message="Please check that these details are correct before submitting."
         confirmLabel="Submit request"
         loading={loading}
         onConfirm={submitRequest}
         onCancel={() => setConfirmOpen(false)}
-      />
+      >
+        <dl className="grid gap-0.5 rounded-xl border border-border bg-slate-50 px-4 py-2">
+          {reviewRows.map((row) => (
+            <div key={row.label} className="grid gap-1 border-b border-slate-200/80 py-2.5 last:border-0 sm:grid-cols-[minmax(9rem,0.38fr)_1fr] sm:gap-4">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{row.label}</dt>
+              <dd className="break-words text-sm font-medium leading-5 text-slate-900">{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </ConfirmDialog>
     </>
   );
 }

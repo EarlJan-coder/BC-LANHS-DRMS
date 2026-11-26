@@ -1,7 +1,7 @@
 import { getDb } from "@/db";
-import { certificates } from "@/db/schema";
+import { certificates, documentRequests } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { buildCanonicalCertificate } from "@/lib/audit/canonical";
+import { buildCanonicalCertificate, certificateHashMetadata } from "@/lib/audit/canonical";
 import { createRecordHashFromCanonical } from "@/lib/audit/hash";
 import { getRecordIndices, getAuditRecordFull, getLatestAuditRecord } from "@/lib/blockchain/client";
 import type { OnChainAuditRecord } from "@/lib/blockchain/client";
@@ -29,13 +29,23 @@ export interface VerificationResult {
   eventTimeline?: LifecycleEvent[];
 }
 
+export function certificateProofMatches(computedHash: string, recordHashes: string[]) {
+  return recordHashes.some((recordHash) => computedHash.toLowerCase() === recordHash.toLowerCase());
+}
+
 export async function verifyCertificateOnChain(certificateId: string): Promise<VerificationResult> {
   const db = getDb();
   if (!db) {
     return { valid: false, blockchainVerified: false, reason: "Database not available" };
   }
 
-  const cert = await db.query.certificates.findFirst({ where: eq(certificates.id, certificateId) });
+  const [row] = await db
+    .select({ certificate: certificates, schoolYearNeeded: documentRequests.schoolYearNeeded })
+    .from(certificates)
+    .leftJoin(documentRequests, eq(certificates.requestId, documentRequests.id))
+    .where(eq(certificates.id, certificateId))
+    .limit(1);
+  const cert = row?.certificate;
   if (!cert) return { valid: false, blockchainVerified: false, reason: "Certificate not found" };
 
   // Certificates must be linked to a student
@@ -43,18 +53,12 @@ export async function verifyCertificateOnChain(certificateId: string): Promise<V
     return { valid: false, blockchainVerified: false, reason: "No student linked to certificate" };
   }
 
-  // The school_year_id column was removed in the migration that dropped
-  // academic structure, so the canonical hash is recomputed with an empty
-  // school year. Existing certificates issued before the drop will not match
-  // their original on-chain hash unless they are reissued.
-  const schoolYearName = "";
-
   // Build canonical certificate
-  const canonical = buildCanonicalCertificate({
+  const canonical = buildCanonicalCertificate(certificateHashMetadata({
     certificateNumber: cert.certificateNumber,
     studentId: cert.studentId,
-    schoolYear: schoolYearName,
-  });
+    schoolYearNeeded: row.schoolYearNeeded,
+  }));
 
   const computedHash = createRecordHashFromCanonical(canonical);
 
@@ -69,14 +73,15 @@ export async function verifyCertificateOnChain(certificateId: string): Promise<V
     return { valid: false, blockchainVerified: false, reason: "Failed to read blockchain record" };
   }
 
-  const matches = computedHash.toLowerCase() === latest.recordHash.toLowerCase();
   const network = process.env.BLOCKCHAIN_NETWORK ?? "unknown";
 
   // Build event timeline from all on-chain records
   const eventTimeline: LifecycleEvent[] = [];
+  const recordHashes: string[] = [latest.recordHash];
 
   for (const idx of indices) {
     const record: OnChainAuditRecord | null = await getAuditRecordFull(idx);
+    if (record) recordHashes.push(record.recordHash);
     if (record && record.eventType) {
       eventTimeline.push({
         eventType: record.eventType,
@@ -91,6 +96,8 @@ export async function verifyCertificateOnChain(certificateId: string): Promise<V
 
   // Sort by timestamp ascending for chronological order
   eventTimeline.sort((a, b) => a.timestamp - b.timestamp);
+
+  const matches = certificateProofMatches(computedHash, recordHashes);
 
   return {
     valid: matches,
