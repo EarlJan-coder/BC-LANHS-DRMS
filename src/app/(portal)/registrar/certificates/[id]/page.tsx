@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Download, ExternalLink, PencilLine, QrCode } from "lucide-react";
+import { Download, ExternalLink, QrCode } from "lucide-react";
 import { notFound } from "next/navigation";
 import QRCode from "qrcode";
 import { SectionHeading } from "@/components/section-heading";
@@ -32,10 +32,6 @@ export default async function CertificateDetailsPage({
           <>
             <ButtonLink href="/registrar/certificates" tone="secondary">
               Back
-            </ButtonLink>
-            <ButtonLink href={`/registrar/certificates/${certificate.id}/edit`} tone="secondary">
-              <PencilLine className="h-4 w-4" aria-hidden />
-              Preview &amp; edit PDF
             </ButtonLink>
             <DownloadButton href={`/api/certificates/${certificate.id}/pdf`} tone="info" loadingLabel="Preparing PDF…">
               <Download className="h-4 w-4" aria-hidden />
@@ -95,6 +91,20 @@ export default async function CertificateDetailsPage({
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mt-6 overflow-hidden">
+        <CardHeader>
+          <CardTitle>Certificate preview</CardTitle>
+          <p className="text-sm text-slate-500">Use Download PDF to view or save the file.</p>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <iframe
+            src={`/api/certificates/${certificate.id}/pdf?inline=1`}
+            title={`PDF preview of certificate ${certificate.certificateNumber}`}
+            className="h-[min(1100px,75vh)] min-h-[540px] w-full rounded-lg border border-border bg-slate-100"
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

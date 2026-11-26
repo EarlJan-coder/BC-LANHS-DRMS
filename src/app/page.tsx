@@ -42,6 +42,11 @@ export default function Home() {
               label="About"
               className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:text-brand"
             />
+            <PendingLink
+              href="/verify"
+              label="Verify"
+              className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:text-brand"
+            />
             <ButtonLink href="/sign-in" tone="secondary">
               Login
             </ButtonLink>
@@ -78,6 +83,9 @@ export default function Home() {
                 <ButtonLink href="/sign-up" className="bg-brand-dark hover:bg-red-950">
                   Register account
                 </ButtonLink>
+                <ButtonLink href="/verify" tone="secondary" className="border-white/30 bg-white/10 text-white hover:bg-white/20">
+                  Verify a certificate
+                </ButtonLink>
               </div>
             </div>
           </MotionReveal>
@@ -106,6 +114,9 @@ export default function Home() {
                 <Icon className="h-6 w-6 text-brand" aria-hidden />
                 <h2 className="mt-4 text-base font-semibold text-slate-950">{item.title}</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-500">{item.copy}</p>
+                {item.title === "Certificate verification" ? (
+                  <PendingLink href="/verify" label="Verify a document" className="mt-4 inline-flex text-sm font-semibold text-brand hover:underline" />
+                ) : null}
               </Card>
             </MotionReveal>
           );

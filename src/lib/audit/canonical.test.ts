@@ -4,10 +4,29 @@ import {
   buildCanonicalCertificate,
   buildCanonicalDocumentRequest,
   buildCanonicalStatusChange,
+  certificateHashMetadata,
 } from "./canonical";
 import { createRecordHashFromCanonical, stableJson } from "./hash";
 
 describe("canonical hashing", () => {
+  it("builds certificate hash metadata from nullable request fields", () => {
+    assert.deepEqual(certificateHashMetadata({ certificateNumber: "GRAD-1", studentId: "s-1", schoolYearNeeded: "2025-2026" }), {
+      certificateNumber: "GRAD-1", studentId: "s-1", schoolYear: "2025-2026",
+    });
+    assert.deepEqual(certificateHashMetadata({ certificateNumber: "GRAD-1", studentId: null, schoolYearNeeded: null }), {
+      certificateNumber: "GRAD-1", studentId: "", schoolYear: "",
+    });
+  });
+
+  it("keeps issuance and verification certificate hashes aligned", () => {
+    const issuance = certificateHashMetadata({ certificateNumber: "GRAD-1", studentId: "s-1", schoolYearNeeded: "2025-2026" });
+    const verification = certificateHashMetadata({ certificateNumber: "GRAD-1", studentId: "s-1", schoolYearNeeded: "2025-2026" });
+    assert.equal(
+      createRecordHashFromCanonical(buildCanonicalCertificate(issuance)),
+      createRecordHashFromCanonical(buildCanonicalCertificate(verification)),
+    );
+  });
+
   it("certificate: same input produces same hash", () => {
     const c1 = buildCanonicalCertificate({
       certificateNumber: "CERT-20260912-ABC123",

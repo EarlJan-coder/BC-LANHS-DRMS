@@ -227,6 +227,7 @@ export async function createDocumentRequest(input: unknown, effects: CreateDocum
       gradeLevelNeeded: values.gradeLevelNeeded,
       strandNeeded: values.strandNeeded,
     },
+    onChain: false,
   });
 
   return {
@@ -612,6 +613,7 @@ export async function updateDocumentRequestStatus(requestId: string, input: unkn
       fromStatus: previousStatus,
       toStatus: values.status,
     },
+    onChain: values.status === "approved",
   });
 
   return {

@@ -9,6 +9,17 @@ const { eq, inArray } = await import("drizzle-orm");
 const { getDb, closeDb } = await import("@/db");
 const { auditLogs, documentRequests, documentTypes } = await import("@/db/schema");
 const { getDocumentRequestView, listDocumentRequestViews, listLocalAuditTrailViews } = await import("@/lib/services/live-data");
+const { deriveDocumentRequestBlockchainStatus } = await import("@/lib/services/live-data");
+
+describe("document request blockchain status", () => {
+  it("marks rejected requests without a chain row as not required", () => {
+    assert.equal(deriveDocumentRequestBlockchainStatus("rejected"), "not_required");
+  });
+
+  it("keeps pending requests without a chain row pending", () => {
+    assert.equal(deriveDocumentRequestBlockchainStatus("pending"), "pending");
+  });
+});
 
 const hasDb = Boolean(process.env.DATABASE_URL);
 

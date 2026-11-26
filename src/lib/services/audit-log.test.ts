@@ -122,6 +122,28 @@ describe("recordAuditedAction (integration, local DB)", {
     }
   });
 
+  it("keeps explicitly local document actions out of the chain log", async () => {
+    const reference = fixtureReference();
+    try {
+      const result = await recordAuditedAction({
+        referenceType: "document_request",
+        referenceId: reference,
+        action: "Document request submitted",
+        actorRole: "student",
+        entityType: "document_request",
+        entityId: reference,
+        onChain: false,
+        hashMetadata: { trackingNumber: reference, documentType: "Form 137", status: "pending", schoolYearNeeded: null, gradeLevelNeeded: null },
+      });
+      assert.equal(result.blockchainStatus, null);
+      const db = getDb();
+      assert.equal((await db.select().from(blockchainAuditLogs).where(eq(blockchainAuditLogs.referenceId, reference))).length, 0);
+      assert.equal((await db.select().from(auditLogs).where(eq(auditLogs.entityId, reference))).length, 1);
+    } finally {
+      await deleteFixtures([reference]);
+    }
+  });
+
   it("keeps registration decisions in the local audit log only", async () => {
     const reference = fixtureReference();
     try {

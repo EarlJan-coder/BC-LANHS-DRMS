@@ -100,9 +100,16 @@ const documentRequestSelection = {
   userLastName: users.lastName,
 };
 
+export function deriveDocumentRequestBlockchainStatus(
+  status: RequestStatus,
+  blockchainStatus?: DocumentRequestView["blockchainStatus"],
+): DocumentRequestView["blockchainStatus"] {
+  return blockchainStatus ?? (status === "rejected" || status === "cancelled" ? "not_required" : "pending");
+}
+
 function mapDocumentRequestView(
   row: DocumentRequestDbRow,
-  blockchainStatus: DocumentRequestView["blockchainStatus"] = "pending",
+  blockchainStatus?: DocumentRequestView["blockchainStatus"],
 ): DocumentRequestView {
   return {
     id: row.id,
@@ -124,7 +131,7 @@ function mapDocumentRequestView(
     status: row.status,
     requestedAt: formatDate(row.createdAt),
     updatedAt: formatDate(row.updatedAt),
-    blockchainStatus,
+    blockchainStatus: deriveDocumentRequestBlockchainStatus(row.status, blockchainStatus),
   };
 }
 
@@ -238,7 +245,7 @@ export async function listDocumentRequestViews(options: { currentUserOnly?: bool
   }
 
   const latestStatuses = await latestBlockchainStatuses(rows.map((row) => row.trackingNumber));
-  const views = rows.map((row) => mapDocumentRequestView(row, latestStatuses.get(row.trackingNumber) ?? "pending"));
+  const views = rows.map((row) => mapDocumentRequestView(row, latestStatuses.get(row.trackingNumber)));
   if (options.page !== undefined) return makePaged(views, total, options.page, options.pageSize);
   return views;
 }
@@ -258,7 +265,7 @@ export async function getDocumentRequestView(id: string, currentUserOnly = false
   const row = rows[0];
   if (!row) return null;
   const statuses = await latestBlockchainStatuses([row.trackingNumber]);
-  return mapDocumentRequestView(row, statuses.get(row.trackingNumber) ?? "pending");
+  return mapDocumentRequestView(row, statuses.get(row.trackingNumber));
 }
 
 export async function listRequestStatusHistoryViews(requestId: string) {
@@ -462,7 +469,7 @@ export async function getStudentDetailView(id: string) {
     .where(requestScope)
     .orderBy(desc(documentRequests.createdAt));
   const requestStatuses = await latestBlockchainStatuses(requestRows.map((row) => row.trackingNumber));
-  const requests = requestRows.map((row) => mapDocumentRequestView(row, requestStatuses.get(row.trackingNumber) ?? "pending"));
+  const requests = requestRows.map((row) => mapDocumentRequestView(row, requestStatuses.get(row.trackingNumber)));
 
   const certificateRows = await db
     .select({
