@@ -10,9 +10,12 @@ export default async function AdminSearchPage({
   const params = await searchParams;
   const q = typeof params.q === "string" ? params.q : "";
   const groups = await searchPortal("admin", q, {
+    pages: parsePage(params["page-pages"]),
     users: parsePage(params["page-users"]),
     "document-types": parsePage(params["page-document-types"]),
+    registrations: parsePage(params["page-registrations"]),
     blockchain: parsePage(params["page-blockchain"]),
+    notifications: parsePage(params["page-notifications"]),
   });
 
   return <SearchResults query={q} groups={groups} searchPath="/admin/search" />;

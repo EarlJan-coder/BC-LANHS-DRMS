@@ -4,6 +4,7 @@ import { ResetPasswordForm } from "@/components/reset-password-form";
 import { SectionHeading } from "@/components/section-heading";
 import { UserApprovalActions } from "@/components/user-approval-actions";
 import { UserStatusActions } from "@/components/user-status-actions";
+import { UserDeleteAction } from "@/components/user-delete-action";
 import { listUserViews } from "@/lib/services/live-data";
 import { Pagination } from "@/components/ui/pagination";
 import { parsePage } from "@/lib/pagination";
@@ -26,8 +27,7 @@ export default async function UserManagementPage({ searchParams }: { searchParam
         description="Review self-registered accounts and manage portal access. The administrator account is fixed."
       />
       <AddAccountForm />
-      <DataTable
-        rows={users.rows}
+      <DataTable title="Registered accounts" rows={users.rows}
         emptyMessage="No registered accounts yet."
         columns={[
           { key: "name", label: "Name", render: (row) => row.name },
@@ -50,7 +50,10 @@ export default async function UserManagementPage({ searchParams }: { searchParam
               return (
                 <div className="flex flex-col items-start gap-2">
                   <UserApprovalActions userId={row.id} registrationStatus={row.registrationStatus} />
-                  <UserStatusActions userId={row.id} status={row.rawStatus} />
+                  <div className="flex items-center gap-1">
+                    <UserStatusActions userId={row.id} status={row.rawStatus} />
+                    <UserDeleteAction userId={row.id} />
+                  </div>
                   <ResetPasswordForm userId={row.id} email={row.email} />
                 </div>
               );

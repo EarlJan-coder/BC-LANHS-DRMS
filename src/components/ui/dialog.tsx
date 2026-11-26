@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { AlertTriangle } from "lucide-react";
 import { Button, type ButtonTone } from "@/components/ui/button";
 
 export interface ConfirmDialogProps {
@@ -138,7 +139,7 @@ function ConfirmDialogPanel({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-slate-950/55 backdrop-blur-[2px]"
         onClick={loading ? undefined : onCancel}
         aria-hidden="true"
       />
@@ -147,17 +148,22 @@ function ConfirmDialogPanel({
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
-        className="relative w-full max-w-md rounded-lg border border-border bg-white p-6 shadow-xl"
+        className="relative w-full max-w-md overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20"
       >
-        <h2 id="confirm-dialog-title" className="text-base font-semibold text-slate-900">
-          {title}
-        </h2>
-        <p className="mt-2 text-sm text-slate-600">{message}</p>
+        <div className={tone === "danger" ? "flex items-start gap-3 border-b border-red-200 bg-red-50/80 px-5 py-5 sm:px-6" : "flex items-start gap-3 border-b border-border bg-slate-50/80 px-5 py-5 sm:px-6"}>
+          <span className={tone === "danger" ? "grid h-10 w-10 shrink-0 place-items-center rounded-full bg-red-100 text-red-900" : "grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-200 text-slate-700"}>
+            <AlertTriangle className="h-5 w-5" aria-hidden />
+          </span>
+          <div className="min-w-0 pt-0.5">
+            <h2 id="confirm-dialog-title" className="text-lg font-semibold tracking-tight text-slate-950">{title}</h2>
+            <p className="mt-1.5 text-sm leading-6 text-slate-600">{message}</p>
+          </div>
+        </div>
 
-        {children}
+        {children ? <div className="px-5 pt-4 sm:px-6">{children}</div> : null}
 
         {reason ? (
-          <div className="mt-4">
+          <div className="px-5 pt-4 sm:px-6">
             <label
               htmlFor={reasonOptions ? "confirm-dialog-reason-choice" : "confirm-dialog-reason"}
               className="block text-sm font-medium text-slate-700"
@@ -220,8 +226,8 @@ function ConfirmDialogPanel({
           </div>
         ) : null}
 
-        <div className="mt-6 flex justify-end gap-2">
-          <Button type="button" tone="secondary" onClick={onCancel} disabled={loading}>
+        <div className="flex flex-col gap-2 border-t border-border bg-slate-50/70 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+          <Button type="button" tone="secondary" className="w-full sm:w-auto sm:min-w-28" onClick={onCancel} disabled={loading}>
             {cancelLabel}
           </Button>
           <Button
@@ -230,6 +236,7 @@ function ConfirmDialogPanel({
             tone={tone}
             loading={loading}
             disabled={!canConfirm}
+            className="w-full sm:w-auto sm:min-w-32"
             onClick={() =>
               onConfirm(
                 reasonOptions ? (choosingOther ? trimmedReason : selectedChoice) : trimmedReason,

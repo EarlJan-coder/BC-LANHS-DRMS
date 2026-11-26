@@ -231,8 +231,9 @@ describe("registration decisions and fan-out (integration, local DB)", { skip: h
 });
 
 describe("listPendingRegistrations (integration, local DB)", { skip: hasDb ? false : "DATABASE_URL not configured" }, () => {
-  it("shows the LRN and last school year attended for each pending registration", async () => {
+  it("shows the LRN, status, and school year for each pending registration", async () => {
     const fromStudentRecord = await createUser("student");
+    const fromCurrentStudent = await createUser("student");
     const fromUserLrnOnly = await createUser("student");
     const bare = await createUser("student");
     const studentLrn = "310000000001";
@@ -245,7 +246,16 @@ describe("listPendingRegistrations (integration, local DB)", { skip: hasDb ? fal
           firstName: "Riley",
           lastName: "Santos",
           lastSchoolYearAttended: "2025-2026",
+          studentType: "alumni",
         });
+      await getDb().insert(students).values({
+        userId: fromCurrentStudent.id,
+        lrn: "310000000005",
+        firstName: "Taylor",
+        lastName: "Reyes",
+        currentSchoolYear: "2026-2027",
+        studentType: "current",
+      });
       await getDb().update(users).set({ lrn: "310000000002" }).where(eq(users.id, fromUserLrnOnly.id));
 
       const rows = await listPendingRegistrations();
@@ -253,22 +263,29 @@ describe("listPendingRegistrations (integration, local DB)", { skip: hasDb ? fal
       const withRecord = rows.find((row) => row.id === fromStudentRecord.id);
       assert.ok(withRecord);
       assert.equal(withRecord.lrn, studentLrn);
-      assert.equal(withRecord.lastSchoolYearAttended, "2025-2026");
+      assert.equal(withRecord.studentStatus, "Alumni");
+      assert.equal(withRecord.schoolYear, "2025-2026");
+
+      const currentStudent = rows.find((row) => row.id === fromCurrentStudent.id);
+      assert.equal(currentStudent?.studentStatus, "Student");
+      assert.equal(currentStudent?.schoolYear, "2026-2027");
 
       const withUserLrn = rows.find((row) => row.id === fromUserLrnOnly.id);
       assert.ok(withUserLrn);
       assert.equal(withUserLrn.lrn, "310000000002");
-      assert.equal(withUserLrn.lastSchoolYearAttended, "Not set");
+      assert.equal(withUserLrn.studentStatus, "Not set");
+      assert.equal(withUserLrn.schoolYear, "Not set");
 
       const withoutDetails = rows.find((row) => row.id === bare.id);
       assert.ok(withoutDetails);
       assert.equal(withoutDetails.lrn, "Not set");
-      assert.equal(withoutDetails.lastSchoolYearAttended, "Not set");
+      assert.equal(withoutDetails.studentStatus, "Not set");
+      assert.equal(withoutDetails.schoolYear, "Not set");
     } finally {
       await getDb()
         .delete(students)
-        .where(inArray(students.userId, [fromStudentRecord.id, fromUserLrnOnly.id, bare.id]));
-      await cleanup([fromStudentRecord.id, fromUserLrnOnly.id, bare.id]);
+        .where(inArray(students.userId, [fromStudentRecord.id, fromCurrentStudent.id, fromUserLrnOnly.id, bare.id]));
+      await cleanup([fromStudentRecord.id, fromCurrentStudent.id, fromUserLrnOnly.id, bare.id]);
     }
   });
 
@@ -284,6 +301,7 @@ describe("listPendingRegistrations (integration, local DB)", { skip: hasDb ? fal
             firstName: "Riley",
             lastName: "Santos",
             lastSchoolYearAttended: "2024-2025",
+            studentType: "alumni",
             createdAt: new Date("2024-06-01T00:00:00Z"),
           },
           {
@@ -299,7 +317,7 @@ describe("listPendingRegistrations (integration, local DB)", { skip: hasDb ? fal
       const rows = await listPendingRegistrations();
       const matches = rows.filter((row) => row.id === student.id);
       assert.equal(matches.length, 1);
-      assert.equal(matches[0]?.lastSchoolYearAttended, "2024-2025");
+      assert.equal(matches[0]?.schoolYear, "2024-2025");
     } finally {
       await getDb().delete(students).where(inArray(students.userId, [student.id]));
       await cleanup([student.id]);

@@ -203,7 +203,7 @@ export function NotificationBell({
           {badgeLabel && (
             <span
               aria-hidden
-              className="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.125rem] items-center justify-center rounded-full bg-red-600 px-1 py-0.5 text-[10px] font-bold leading-none text-white ring-2 ring-white"
+              className="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.125rem] items-center justify-center rounded-full bg-red-900 px-1 py-0.5 text-[10px] font-bold leading-none text-white ring-2 ring-white"
             >
               {badgeLabel}
             </span>
@@ -271,7 +271,7 @@ export function NotificationBell({
                       {busy === item.id ? (
                         <Spinner className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
                       ) : (
-                        <div className={cn("mt-1 h-2 w-2 shrink-0 rounded-full", item.isRead ? "bg-transparent" : "bg-red-500")} aria-hidden />
+                        <div className={cn("mt-1 h-2 w-2 shrink-0 rounded-full", item.isRead ? "bg-transparent" : "bg-red-900")} aria-hidden />
                       )}
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-slate-900">{item.title}</p>

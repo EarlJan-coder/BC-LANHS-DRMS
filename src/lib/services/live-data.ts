@@ -383,7 +383,6 @@ export async function listStudentViews(options: PageOptions | { all?: true } = {
       address: students.address,
       lastSchoolYearAttended: students.lastSchoolYearAttended,
       enrollmentStatus: students.enrollmentStatus,
-      hasLinkedRecords: sql<boolean>`exists (select 1 from document_requests where document_requests.student_id = ${students.id}) or exists (select 1 from certificates where certificates.student_id = ${students.id})`,
     })
     .from(students)
     .leftJoin(users, eq(students.userId, users.id))
@@ -418,7 +417,6 @@ export async function listStudentViews(options: PageOptions | { all?: true } = {
     address: row.address ?? "",
     lastSchoolYearAttended: row.lastSchoolYearAttended ?? "",
     status: row.enrollmentStatus,
-    hasLinkedRecords: row.hasLinkedRecords,
   }));
   if ("page" in options) return makePaged(views, total, options.page, options.pageSize);
   return views;
@@ -546,7 +544,7 @@ export async function getCurrentStudentProfile() {
   } satisfies StudentProfileView;
 }
 
-export async function listCurrentUserNotifications(limit = 20) {
+export async function listCurrentUserNotifications(limit?: number) {
   const db = getDb();
   const user = await ensureCurrentDbUser();
 
@@ -554,7 +552,7 @@ export async function listCurrentUserNotifications(limit = 20) {
     return [];
   }
 
-  return db
+  const query = db
     .select({
       id: notifications.id,
       title: notifications.title,
@@ -564,8 +562,8 @@ export async function listCurrentUserNotifications(limit = 20) {
     })
     .from(notifications)
     .where(eq(notifications.userId, user.id))
-    .orderBy(desc(notifications.createdAt))
-    .limit(limit);
+    .orderBy(desc(notifications.createdAt));
+  return limit === undefined ? query : query.limit(limit);
 }
 
 export function listUserViews(options: PageOptions): Promise<Paged<UserView>>;
@@ -608,7 +606,6 @@ export async function listDocumentTypeViews() {
   return rows.map<DocumentTypeView>((row) => ({
     id: row.id,
     name: row.name,
-    code: row.code,
     description: row.description ?? "",
     requirements: row.requirements,
     processingDays: row.processingDays,

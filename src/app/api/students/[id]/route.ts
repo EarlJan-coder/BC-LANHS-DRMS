@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { students, users } from "@/db/schema";
 import { getCurrentDbUser } from "@/lib/auth";
+import { AppError } from "@/lib/utils";
 import {
   assertStudentRecordAccess,
   deleteStudentRecord,
@@ -20,6 +21,10 @@ function handleStudentRecordError(error: unknown, fallback: string) {
   }
 
   if (error instanceof StudentRecordError) {
+    return NextResponse.json({ error: error.message }, { status: error.status });
+  }
+
+  if (error instanceof AppError) {
     return NextResponse.json({ error: error.message }, { status: error.status });
   }
 
@@ -97,7 +102,9 @@ export async function DELETE(
   try {
     await assertStudentRecordAccess();
     const { id } = await params;
-    await deleteStudentRecord(id);
+    const actor = await getCurrentDbUser();
+    if (!actor) return NextResponse.json({ error: "Please sign in to continue." }, { status: 401 });
+    await deleteStudentRecord(id, { id: actor.id, role: actor.role });
 
     return NextResponse.json({ ok: true });
   } catch (error) {

@@ -28,6 +28,18 @@ export function refineAddressParts(
   }
 }
 
+export function refineSchoolYearStatus(
+  values: { studentStatus?: string; currentSchoolYear?: string; lastSchoolYearAttended?: string },
+  ctx: z.RefinementCtx,
+): void {
+  if (values.studentStatus === "student" && !values.currentSchoolYear?.trim()) {
+    ctx.addIssue({ code: "custom", path: ["currentSchoolYear"], message: "Enter your current school year." });
+  }
+  if (values.studentStatus === "alumni" && !values.lastSchoolYearAttended?.trim()) {
+    ctx.addIssue({ code: "custom", path: ["lastSchoolYearAttended"], message: "Last school year attended is required." });
+  }
+}
+
 /** Grades 11-12 are senior high: they require a strand and use the SHS certificate wording. */
 export function isSeniorHighGrade(gradeLevel: string): boolean {
   return gradeLevel === "11" || gradeLevel === "12";
@@ -210,7 +222,6 @@ const checkboxBoolean = z
 
 export const documentTypeMutationSchema = z.object({
   name: z.string().trim().min(2, "Document type name is required.").max(120, "Document type name must be 120 characters or less."),
-  code: z.string().trim().min(2, "Document type code is required.").max(40, "Document type code must be 40 characters or less.").transform((value) => value.toUpperCase()),
   description: z.string().trim().max(500, "Description must be 500 characters or less.").optional().default(""),
   requirements: z.array(z.string()).optional().default([]),
   processingDays: z.coerce.number().int("Processing days must be a whole number.").min(0).max(365).default(3),

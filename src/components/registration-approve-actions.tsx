@@ -47,7 +47,12 @@ export function RegistrationApproveActions({ registration }: { registration: Pen
       <td className="px-4 py-3 font-medium text-slate-800">{registration.name}</td>
       <td className="px-4 py-3 text-slate-700">{registration.lrn}</td>
       <td className="px-4 py-3 text-slate-700">{registration.email}</td>
-      <td className="px-4 py-3 text-slate-700">{registration.lastSchoolYearAttended}</td>
+      <td className="px-4 py-3 text-slate-700">
+        <span className={registration.studentStatus === "Student" ? "inline-flex rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-800" : registration.studentStatus === "Alumni" ? "inline-flex rounded-full bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-800" : "inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600"}>
+          {registration.studentStatus}
+        </span>
+      </td>
+      <td className="px-4 py-3 text-slate-700">{registration.schoolYear}</td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
           <Button type="button" tone="success" onClick={() => decide("approved")} loading={busy === "approved"} disabled={busy !== null}>
@@ -57,7 +62,7 @@ export function RegistrationApproveActions({ registration }: { registration: Pen
             Decline
           </Button>
         </div>
-        {error ? <p className="mt-1 text-xs text-red-700" role="alert">{error}</p> : null}
+        {error ? <p className="mt-1 text-xs text-red-900" role="alert">{error}</p> : null}
         <ConfirmDialog
           open={confirmingDecline}
           title="Decline this registration?"

@@ -14,13 +14,14 @@ export function SearchResults({ query, groups, searchPath }: { query: string; gr
       <div>
         <SectionHeading title="Search" description="Find records, requests, students, and more across this portal." />
         <Card className="p-8 text-center text-sm text-slate-500">
-          Type a keyword in the search bar above — tracking number, student name, LRN, document type, or email.
+          Search tracking numbers, student names, LRNs, emails, documents, notifications, or portal page names.
         </Card>
       </div>
     );
   }
 
   const withHits = groups.filter((group) => group.total > 0);
+  const totalMatches = withHits.reduce((sum, group) => sum + group.total, 0);
   const pageQuery = Object.fromEntries(
     groups.map((group) => [`page-${group.key}`, group.page > 1 ? String(group.page) : undefined]),
   );
@@ -41,7 +42,7 @@ export function SearchResults({ query, groups, searchPath }: { query: string; gr
     <div>
       <SectionHeading
         title={`Results for “${trimmed}”`}
-        description="Matches grouped by record type across this portal."
+        description={`${totalMatches} ${totalMatches === 1 ? "match" : "matches"} across ${withHits.length} sections available to your role.`}
       />
       <div className="grid gap-4">
         {withHits.map((group) => (

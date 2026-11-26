@@ -7,12 +7,12 @@ const require = createRequire(import.meta.url);
 require("@next/env").loadEnvConfig(process.cwd());
 process.env.SESSION_SECRET ||= "test-secret-test-secret-test-secret-32b";
 
-const { eq, inArray } = await import("drizzle-orm");
+const { and, eq, inArray } = await import("drizzle-orm");
 const { getDb, closeDb } = await import("@/db");
-const { students, users } = await import("@/db/schema");
+const { auditLogs, certificates, documentRequests, notifications, requestStatusHistory, students, users } = await import("@/db/schema");
 const { comparePassword } = await import("@/lib/password");
 const { userCreateSchema, passwordChangeSchema } = await import("@/lib/validators");
-const { createPortalAccount, assertAdmin, resetUserPassword, changeOwnPassword } = await import("@/lib/services/account-admin");
+const { createPortalAccount, assertAdmin, resetUserPassword, changeOwnPassword, deletePortalAccount } = await import("@/lib/services/account-admin");
 
 const hasDb = Boolean(process.env.DATABASE_URL);
 // Run-unique fixture tag: a crashed run can leak fixture rows, and fixed
@@ -246,6 +246,82 @@ describe("changeOwnPassword (integration, local DB)", {
       assert.equal(row.mustChangePassword, true);
     } finally {
       await deleteUsers([created.id]);
+    }
+  });
+});
+
+describe("deletePortalAccount (integration, local DB)", { skip: hasDb ? false : "DATABASE_URL not configured" }, () => {
+  test("deletes linked records and preserves audit history with a null actor", async () => {
+    const target = await createPortalAccount({ email: fixtureEmail("delete-student"), firstName: "Del", lastName: "Student", role: "student", lrn: `8${String(Date.now()).slice(-11)}` });
+    const actor = await getDb().insert(users).values({ email: fixtureEmail("delete-admin"), firstName: "Ada", lastName: "Admin", passwordHash: "hash", role: "admin" }).returning({ id: users.id });
+    const student = await getDb().query.students.findFirst({ where: eq(students.userId, target.id) });
+    assert.ok(student);
+    let requestId = "";
+    let historyId = "";
+    let certificateId = "";
+    let auditId = "";
+    try {
+      await getDb().insert(notifications).values({ userId: target.id, title: "Test", message: "Test" });
+      const [request] = await getDb().insert(documentRequests).values({ trackingNumber: `DEL-${Date.now()}`, studentId: student.id, requestedByUserId: target.id, purpose: "Account deletion test request" }).returning({ id: documentRequests.id });
+      requestId = request.id;
+      const [history] = await getDb().insert(requestStatusHistory).values({ requestId, actorUserId: target.id, toStatus: "pending" }).returning({ id: requestStatusHistory.id });
+      historyId = history.id;
+      const [certificate] = await getDb().insert(certificates).values({ certificateNumber: `DEL-${Date.now()}`, requestId, studentId: student.id, certificateType: "Test", verificationCode: `DEL-${Date.now()}-${Math.random()}`, qrCodeData: "test" }).returning({ id: certificates.id });
+      certificateId = certificate.id;
+      const [audit] = await getDb().insert(auditLogs).values({ actorUserId: target.id, actorRole: "student", action: "test", entityType: "user", entityId: target.id, recordHash: `0x${"1".repeat(64)}` }).returning({ id: auditLogs.id });
+      auditId = audit.id;
+
+      await deletePortalAccount(target.id, { id: actor[0].id, role: "admin" });
+
+      assert.equal(await getDb().query.users.findFirst({ where: eq(users.id, target.id) }), undefined);
+      assert.equal(await getDb().query.students.findFirst({ where: eq(students.id, student.id) }), undefined);
+      assert.equal(await getDb().query.documentRequests.findFirst({ where: eq(documentRequests.id, requestId) }), undefined);
+      assert.equal(await getDb().query.requestStatusHistory.findFirst({ where: eq(requestStatusHistory.id, historyId) }), undefined);
+      assert.equal(await getDb().query.certificates.findFirst({ where: eq(certificates.id, certificateId) }), undefined);
+      const retainedAudit = await getDb().query.auditLogs.findFirst({ where: eq(auditLogs.id, auditId) });
+      assert.ok(retainedAudit);
+      assert.equal(retainedAudit.actorUserId, null);
+    } finally {
+      if (auditId) await getDb().delete(auditLogs).where(eq(auditLogs.id, auditId));
+      await getDb().delete(auditLogs).where(and(eq(auditLogs.entityId, target.id), eq(auditLogs.action, "user.delete")));
+      if (requestId) await getDb().delete(documentRequests).where(eq(documentRequests.id, requestId));
+      await getDb().delete(notifications).where(eq(notifications.userId, target.id));
+      await deleteUsers([target.id, actor[0].id]);
+    }
+  });
+
+  test("refuses to delete an administrator account", async () => {
+    const [admin] = await getDb().insert(users).values({ email: fixtureEmail("admin-delete-guard"), firstName: "A", lastName: "D", passwordHash: "hash", role: "admin" }).returning({ id: users.id });
+    try { await assert.rejects(() => deletePortalAccount(admin.id, { id: "other", role: "admin" }), (error: AppError) => error.status === 403); }
+    finally { await deleteUsers([admin.id]); }
+  });
+
+  test("refuses self-deletion", async () => {
+    const user = await createPortalAccount({ email: fixtureEmail("self-delete"), firstName: "S", lastName: "D", role: "registrar" });
+    try { await assert.rejects(() => deletePortalAccount(user.id, { id: user.id, role: "registrar" }), (error: AppError) => error.status === 409); }
+    finally { await deleteUsers([user.id]); }
+  });
+
+  test("deletes a registrar and unlinks their assignments from surviving requests", async () => {
+    const registrar = await createPortalAccount({ email: fixtureEmail("delete-registrar"), firstName: "R", lastName: "D", role: "registrar" });
+    const owner = await createPortalAccount({ email: fixtureEmail("request-owner"), firstName: "O", lastName: "W", role: "student", lrn: `7${String(Date.now()).slice(-11)}` });
+    const student = await getDb().query.students.findFirst({ where: eq(students.userId, owner.id) });
+    assert.ok(student);
+    let requestId = "";
+    try {
+      const [request] = await getDb().insert(documentRequests).values({ trackingNumber: `ASSIGN-${Date.now()}`, studentId: student.id, requestedByUserId: owner.id, assignedToUserId: registrar.id, purpose: "Surviving test request" }).returning({ id: documentRequests.id });
+      requestId = request.id;
+      const [actor] = await getDb().insert(users).values({ email: fixtureEmail("request-admin"), firstName: "A", lastName: "D", passwordHash: "hash", role: "admin" }).returning({ id: users.id });
+      try {
+        await deletePortalAccount(registrar.id, { id: actor.id, role: "admin" });
+        assert.equal((await getDb().query.documentRequests.findFirst({ where: eq(documentRequests.id, requestId) }))?.assignedToUserId, null);
+      } finally {
+        await getDb().delete(auditLogs).where(and(eq(auditLogs.entityId, registrar.id), eq(auditLogs.action, "user.delete")));
+        await deleteUsers([actor.id]);
+      }
+    } finally {
+      if (requestId) await getDb().delete(documentRequests).where(eq(documentRequests.id, requestId));
+      await deleteUsers([registrar.id, owner.id]);
     }
   });
 });

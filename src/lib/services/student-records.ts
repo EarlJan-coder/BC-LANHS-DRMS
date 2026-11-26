@@ -1,10 +1,12 @@
-import { count, eq } from "drizzle-orm";
+import { eq, inArray, or } from "drizzle-orm";
 import type { z } from "zod";
 import { getDb } from "@/db";
-import { certificates, documentRequests, students, users } from "@/db/schema";
+import { certificates, documentRequests, requestStatusHistory, students, users, type UserRole } from "@/db/schema";
 import { getCurrentRole } from "@/lib/auth";
 import { AppError } from "@/lib/utils";
 import { studentRecordSchema } from "@/lib/validators";
+import { deletePortalAccount } from "@/lib/services/account-admin";
+import { recordAuditedAction } from "@/lib/services/audit-log";
 
 export class StudentRecordError extends AppError {
   constructor(message: string, status = 400) {
@@ -124,27 +126,38 @@ export async function updateStudentRecord(id: string, values: StudentRecordValue
   });
 }
 
-export async function deleteStudentRecord(id: string) {
+export async function deleteStudentRecord(id: string, actor: { id: string; role: UserRole }): Promise<{ id: string }> {
   const db = getDb();
-  const [requestCount, certificateCount] = await Promise.all([
-    db.select({ value: count() }).from(documentRequests).where(eq(documentRequests.studentId, id)),
-    db.select({ value: count() }).from(certificates).where(eq(certificates.studentId, id)),
-  ]);
-
-  const linkedRecords = Number(requestCount[0]?.value ?? 0) + Number(certificateCount[0]?.value ?? 0);
-
-  if (linkedRecords > 0) {
-    throw new StudentRecordError(
-      "This student has linked document requests or certificates. Update the status instead.",
-      409,
-    );
+  const [student] = await db.select({ id: students.id, userId: students.userId }).from(students).where(eq(students.id, id)).limit(1);
+  if (!student) throw new StudentRecordError("Student record not found.", 404);
+  if (student.userId) {
+    await deletePortalAccount(student.userId, actor);
+    return { id };
   }
 
-  const [deleted] = await db.delete(students).where(eq(students.id, id)).returning({ id: students.id });
-
-  if (!deleted) {
-    throw new StudentRecordError("Student record not found.", 404);
-  }
-
-  return deleted;
+  await db.transaction(async (tx) => {
+    const requestRows = await tx.select({ id: documentRequests.id }).from(documentRequests).where(eq(documentRequests.studentId, id));
+    const requestIds = requestRows.map((row) => row.id);
+    if (requestIds.length) {
+      await tx.delete(requestStatusHistory).where(inArray(requestStatusHistory.requestId, requestIds));
+      await tx.delete(certificates).where(or(inArray(certificates.requestId, requestIds), eq(certificates.studentId, id)));
+      await tx.delete(documentRequests).where(inArray(documentRequests.id, requestIds));
+    } else {
+      await tx.delete(certificates).where(eq(certificates.studentId, id));
+    }
+    await tx.delete(students).where(eq(students.id, id));
+  });
+  await recordAuditedAction({
+    referenceType: "student",
+    referenceId: id,
+    action: "student.delete",
+    entityType: "student",
+    entityId: id,
+    actorUserId: actor.id,
+    actorRole: actor.role,
+    description: "Student record deleted",
+    metadata: {},
+    hashMetadata: {},
+  });
+  return { id };
 }

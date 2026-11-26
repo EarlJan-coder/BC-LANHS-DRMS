@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Modal } from "@/components/ui/modal";
 import { Input, Label, Required, Select } from "@/components/ui/input";
 import { roleLabel } from "@/lib/utils";
 
@@ -135,17 +136,16 @@ export function AddAccountForm() {
 
   return (
     <div className="mb-6">
-      {!isOpen ? (
-        <Button type="button" tone="success" onClick={() => setIsOpen(true)}>
-          Add account
-        </Button>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Add account</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+      <Button type="button" tone="success" onClick={() => setIsOpen(true)}>
+        Add account
+      </Button>
+      <Modal
+        open={isOpen}
+        onClose={() => { if (!loading) setIsOpen(false); }}
+        title="Add account"
+        description="Create a registrar or student account with a temporary password."
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="firstName">First name <Required /></Label>
@@ -228,10 +228,8 @@ export function AddAccountForm() {
                   Cancel
                 </Button>
               </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -31,6 +31,8 @@ export async function listPendingRegistrations(): Promise<PendingRegistrationVie
     .select({
       userId: students.userId,
       lrn: students.lrn,
+      studentType: students.studentType,
+      currentSchoolYear: students.currentSchoolYear,
       lastSchoolYearAttended: students.lastSchoolYearAttended,
     })
     .from(students)
@@ -51,7 +53,8 @@ export async function listPendingRegistrations(): Promise<PendingRegistrationVie
       // users.lrn is nullable for accounts that predate it; the linked student
       // record carries the LRN for those.
       lrn: row.lrn?.trim() || student?.lrn?.trim() || "Not set",
-      lastSchoolYearAttended: student?.lastSchoolYearAttended?.trim() || "Not set",
+      studentStatus: student ? (student.studentType === "alumni" ? "Alumni" : "Student") : "Not set",
+      schoolYear: (student?.studentType === "alumni" ? student.lastSchoolYearAttended : student?.currentSchoolYear)?.trim() || "Not set",
       createdAt: row.createdAt.toISOString(),
     };
   });

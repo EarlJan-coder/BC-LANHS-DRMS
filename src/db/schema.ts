@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
@@ -61,6 +61,7 @@ export const users = pgTable(
   },
   (table) => [
     uniqueIndex("users_email_idx").on(table.email),
+    uniqueIndex("users_single_admin_idx").on(table.role).where(sql`${table.role} = 'admin'`),
     index("users_lrn_idx").on(table.lrn),
     index("users_role_idx").on(table.role),
     index("users_status_idx").on(table.status),
@@ -83,6 +84,7 @@ export const students = pgTable(
     contactNumber: varchar("contact_number", { length: 30 }),
     address: text("address"),
     lastSchoolYearAttended: varchar("last_school_year_attended", { length: 40 }),
+    currentSchoolYear: varchar("current_school_year", { length: 40 }),
     studentType: studentTypeEnum("student_type").notNull().default("current"),
     status: studentStatusEnum("status").notNull().default("enrolled"),
     enrollmentStatus: varchar("enrollment_status", { length: 40 }).notNull().default("enrolled"),
@@ -111,7 +113,6 @@ export const documentTypes = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     name: varchar("name", { length: 120 }).notNull(),
-    code: varchar("code", { length: 40 }).notNull(),
     description: text("description"),
     requirements: jsonb("requirements").$type<string[]>().notNull().default([]),
     processingDays: integer("processing_days").notNull().default(3),
@@ -121,7 +122,6 @@ export const documentTypes = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("document_types_code_idx").on(table.code),
     uniqueIndex("document_types_name_idx").on(table.name),
   ],
 );
@@ -139,6 +139,18 @@ export const documentTemplateWording = pgTable("document_template_wording", {
   body: text("body"),
   principalTitle: text("principal_title"),
   registrarTitle: text("registrar_title"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const documentTypeTemplates = pgTable("document_type_templates", {
+  documentTypeId: uuid("document_type_id")
+    .primaryKey()
+    .references(() => documentTypes.id, { onDelete: "cascade" }),
+  layoutKey: varchar("layout_key", { length: 40 }).notNull().default("enrolment-jhs"),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  principalTitle: text("principal_title").notNull().default("Principal IV"),
+  registrarTitle: text("registrar_title").notNull().default(""),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -14,7 +14,7 @@ const tones: Record<ButtonTone, string> = {
   ghost: "text-slate-700 hover:bg-rose-50 hover:text-brand focus-visible:outline-brand",
   success: "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 focus-visible:outline-emerald-600",
   info: "bg-blue-600 text-white shadow-sm hover:bg-blue-700 focus-visible:outline-blue-600",
-  danger: "bg-red-600 text-white hover:bg-red-700 focus-visible:outline-red-600",
+  danger: "bg-red-900 text-white hover:bg-red-950 focus-visible:outline-red-900",
 };
 
 const sizes: Record<ButtonSize, string> = {

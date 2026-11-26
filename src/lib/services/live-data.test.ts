@@ -62,7 +62,7 @@ describe("live detail queries (integration, local DB)", { skip: hasDb ? false : 
     const tag = `FEE-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
     const [type] = await db
       .insert(documentTypes)
-      .values({ name: tag, code: tag.slice(-30).toUpperCase(), fee: "75.50" })
+      .values({ name: tag, fee: "75.50" })
       .returning({ id: documentTypes.id });
     const [request] = await db
       .insert(documentRequests)
@@ -83,7 +83,7 @@ describe("live detail queries (integration, local DB)", { skip: hasDb ? false : 
     const tag = `SNAP-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
     const [type] = await db
       .insert(documentTypes)
-      .values({ name: tag, code: tag.slice(-30).toUpperCase(), fee: "75.50" })
+      .values({ name: tag, fee: "75.50" })
       .returning({ id: documentTypes.id });
     const [request] = await db
       .insert(documentRequests)

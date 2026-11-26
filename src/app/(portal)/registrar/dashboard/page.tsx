@@ -27,8 +27,7 @@ export default async function RegistrarDashboardPage() {
         ))}
       </div>
       <div className="mt-6">
-        <DataTable
-          rows={requests}
+        <DataTable title="Document requests" rows={requests}
           emptyMessage="No document requests have been submitted yet."
           columns={[
             { key: "tracking", label: "Tracking no.", render: (row) => row.trackingNumber },

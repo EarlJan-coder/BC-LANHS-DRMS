@@ -51,10 +51,12 @@ export function UserStatusActions({
       <Button
         type="button"
         size="icon"
-        tone="success"
+        tone="ghost"
+        className="text-emerald-700 hover:bg-emerald-50 hover:text-emerald-900"
         onClick={save}
         loading={loading}
         aria-label="Save user"
+        title="Save user"
       >
         {loading ? null : <Save className="h-4 w-4" />}
       </Button>

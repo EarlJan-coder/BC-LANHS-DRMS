@@ -100,6 +100,7 @@ function HeaderSearchForm({ role, defaultValue = "" }: { role: DashboardRole; de
             type="search"
             name="q"
             defaultValue={defaultValue}
+            autoFocus
             placeholder="Search records, requests, students"
             aria-label="Search records, requests, students"
             className="ml-2 w-full min-w-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500"
@@ -163,7 +164,9 @@ export function PortalShell({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const changePasswordRef = useRef<HTMLElement>(null);
+  const globalSearchRef = useRef<HTMLDivElement>(null);
 
   // While the change-password modal is open: Escape closes it and focus moves
   // to its first field (matching ConfirmDialog's keyboard behavior).
@@ -181,6 +184,23 @@ export function PortalShell({
       window.clearTimeout(timer);
     };
   }, [changePasswordOpen]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+    const focusTimer = window.setTimeout(() => {
+      globalSearchRef.current?.querySelector<HTMLInputElement>('input[type="search"]')?.focus({ preventScroll: true });
+    }, 120);
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setSearchOpen(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.clearTimeout(focusTimer);
+    };
+  }, [searchOpen]);
 
   const toggleMobileMenu = () => setMobileMenuOpen((prev) => !prev);
   const closeMobileMenu = () => setMobileMenuOpen(false);
@@ -350,6 +370,21 @@ export function PortalShell({
               <AppLogo compact />
             </div>
 
+            {searchOpen ? (
+              <div ref={globalSearchRef} className="flex min-w-0 max-w-lg flex-1 items-center gap-2">
+                <Suspense fallback={<HeaderSearchForm role={role} />}>
+                  <HeaderSearch role={role} />
+                </Suspense>
+                <button type="button" aria-label="Close search" onClick={() => setSearchOpen(false)} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border text-slate-600 transition hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            ) : (
+              <button type="button" aria-label="Search" onClick={() => setSearchOpen(true)} className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-slate-600 transition hover:bg-slate-50 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
+                <Search className="h-5 w-5" />
+              </button>
+            )}
+
             {/* Right cluster: role pill + bell */}
             <div className="ml-auto flex items-center gap-2">
               <span className="hidden text-xs font-medium text-black sm:inline-flex">
@@ -363,12 +398,6 @@ export function PortalShell({
             </div>
           </div>
 
-          {/* Search bar on its own row, clearly separated */}
-          <div className="border-t border-border/50 px-4 py-2 sm:px-6">
-            <Suspense fallback={<HeaderSearchForm role={role} />}>
-              <HeaderSearch role={role} />
-            </Suspense>
-          </div>
         </header>
 
         <main className="px-4 py-6 sm:px-6 lg:px-8">{children}</main>

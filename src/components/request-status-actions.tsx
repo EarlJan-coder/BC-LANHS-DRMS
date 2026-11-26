@@ -22,7 +22,7 @@ const icons: Record<RequestStatus, LucideIcon> = {
 /** Highlight classes for the button matching the request's current status. */
 const activeColors: Record<StatusColor, string> = {
   green: "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 focus-visible:outline-emerald-600",
-  red: "bg-red-600 text-white shadow-sm hover:bg-red-700 focus-visible:outline-red-600",
+  red: "bg-red-900 text-white shadow-sm hover:bg-red-950 focus-visible:outline-red-900",
   amber: "bg-amber-500 text-white shadow-sm hover:bg-amber-600 focus-visible:outline-amber-600",
   blue: "bg-blue-600 text-white shadow-sm hover:bg-blue-700 focus-visible:outline-blue-600",
   purple: "bg-violet-600 text-white shadow-sm hover:bg-violet-700 focus-visible:outline-violet-600",

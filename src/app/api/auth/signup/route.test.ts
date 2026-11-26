@@ -34,7 +34,9 @@ function signupPayload(overrides: Record<string, string | boolean> = {}) {
     addressCity: "Trece Martires City",
     addressBarangay: "Aguado",
     addressStreetLine: "12 Mabini Street",
-    lastSchoolYearAttended: "2025-2026",
+    studentStatus: "student",
+    currentSchoolYear: "2025-2026",
+    lastSchoolYearAttended: "",
     password: "Registration-Test-Passw0rd!",
     acceptedTerms: true,
     acceptedPrivacy: true,
@@ -176,7 +178,7 @@ describe("student signup (integration, local DB)", { skip: hasDb ? false : "DATA
     }
   });
 
-  it("persists middle name, phone, composed address, and last school year on the student record", async () => {
+  it("persists middle name, phone, composed address, and current school year on the student record", async () => {
     const payload = signupPayload();
     let createdUserId = "";
 
@@ -190,18 +192,59 @@ describe("student signup (integration, local DB)", { skip: hasDb ? false : "DATA
       assert.equal(student?.middleName, payload.middleName);
       assert.equal(student?.contactNumber, payload.phone);
       assert.equal(student?.address, "12 Mabini Street, Brgy. Aguado, Trece Martires City");
-      assert.equal(student?.lastSchoolYearAttended, "2025-2026");
+      assert.equal(student?.lastSchoolYearAttended, null);
+      assert.equal(student?.currentSchoolYear, "2025-2026");
+      assert.equal(student?.studentType, "current");
     } finally {
       await cleanup(createdUserId ? [createdUserId] : []);
     }
   });
 
-  it("rejects signup without a last school year attended", async () => {
-    const payload = signupPayload({ lastSchoolYearAttended: "" });
+  it("rejects a student signup without a current school year", async () => {
+    const payload = signupPayload({ currentSchoolYear: "" });
     const response = await postSignup(payload);
     assert.equal(response.status, 400);
     const body = await response.json();
-    assert.match(body.error, /last school year/i);
+    assert.equal(body.error, "Enter your current school year.");
+  });
+
+  it("rejects an alumni signup without a last school year attended", async () => {
+    const response = await postSignup(signupPayload({ studentStatus: "alumni", lastSchoolYearAttended: "" }));
+    assert.equal(response.status, 400);
+    assert.equal((await response.json()).error, "Last school year attended is required.");
+  });
+
+  it("stores alumni status and the last school year on the student record", async () => {
+    const payload = signupPayload({ studentStatus: "alumni", lastSchoolYearAttended: "2024-2025", currentSchoolYear: "" });
+    let userId = "";
+    try {
+      assert.equal((await postSignup(payload)).status, 201);
+      const user = await getDb().query.users.findFirst({ where: eq(users.email, payload.email) });
+      assert.ok(user);
+      userId = user.id;
+      const student = await getDb().query.students.findFirst({ where: eq(students.userId, user.id) });
+      assert.equal(student?.studentType, "alumni");
+      assert.equal(student?.lastSchoolYearAttended, "2024-2025");
+      assert.equal(student?.currentSchoolYear, null);
+    } finally { await cleanup(userId ? [userId] : []); }
+  });
+
+  it("a student signup may omit the last school year attended", async () => {
+    const payload = signupPayload({ lastSchoolYearAttended: "" });
+    let userId = "";
+    try {
+      assert.equal((await postSignup(payload)).status, 201);
+      userId = (await getDb().query.users.findFirst({ where: eq(users.email, payload.email) }))?.id ?? "";
+    } finally { await cleanup(userId ? [userId] : []); }
+  });
+
+  it("an alumni signup may omit the current school year", async () => {
+    const payload = signupPayload({ studentStatus: "alumni", lastSchoolYearAttended: "2024-2025", currentSchoolYear: "" });
+    let userId = "";
+    try {
+      assert.equal((await postSignup(payload)).status, 201);
+      userId = (await getDb().query.users.findFirst({ where: eq(users.email, payload.email) }))?.id ?? "";
+    } finally { await cleanup(userId ? [userId] : []); }
   });
 
   it("rejects signup when the Terms and Conditions are not accepted", async () => {

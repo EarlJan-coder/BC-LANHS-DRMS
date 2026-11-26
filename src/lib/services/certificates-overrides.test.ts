@@ -1,6 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { buildOverrideUpdates, resolveCertificateDisplayFields } from "@/lib/services/certificates";
+import {
+  buildOverrideUpdates,
+  resolveCertificateDisplayFields,
+  resolveCertificateEditFlags,
+} from "@/lib/services/certificates";
 
 const liveRow = {
   firstName: "Juan",
@@ -119,5 +123,72 @@ describe("buildOverrideUpdates", () => {
     assert.deepEqual(updates, { overrideRegistrarName: null });
     assert.equal("overridePrincipalName" in updates, false);
     assert.equal("overrideStudentName" in updates, false);
+  });
+});
+
+describe("resolveCertificateEditFlags", () => {
+  const record = {
+    studentName: "Juan Santos Dela Cruz",
+    gradeLevel: "12",
+    strand: "ABM",
+    section: "Sampaguita",
+    purpose: "Scholarship application",
+    dateGenerated: new Date("2026-01-15T00:00:00Z"),
+  };
+  const template = { registrarName: "Ana Reyes", principalName: "Dr. Luis Ramos" };
+  const noSignatories = { registrarName: "", principalName: "" };
+
+  it("reports nothing as edited when the effective values match the record", () => {
+    assert.deepEqual(resolveCertificateEditFlags({ ...record, ...noSignatories }, record, template), {
+      studentName: false,
+      gradeLevel: false,
+      strand: false,
+      section: false,
+      purpose: false,
+      dateGenerated: false,
+      registrarName: false,
+      principalName: false,
+    });
+  });
+
+  it("reports only the field whose effective value differs from the record", () => {
+    const flags = resolveCertificateEditFlags(
+      { ...record, purpose: "Employment requirement", ...noSignatories },
+      record,
+      template,
+    );
+    assert.equal(flags.purpose, true);
+    for (const field of ["studentName", "gradeLevel", "strand", "section", "dateGenerated", "registrarName", "principalName"] as const) {
+      assert.equal(flags[field], false, `${field} should not be flagged`);
+    }
+  });
+
+  it("reports a date override that differs from the record date", () => {
+    const flags = resolveCertificateEditFlags(
+      { ...record, dateGenerated: new Date("2026-06-01T00:00:00Z"), ...noSignatories },
+      record,
+      template,
+    );
+    assert.equal(flags.dateGenerated, true);
+  });
+
+  it("does not report a signatory override that matches the admin template", () => {
+    const flags = resolveCertificateEditFlags(
+      { ...record, registrarName: template.registrarName, principalName: "" },
+      record,
+      template,
+    );
+    assert.equal(flags.registrarName, false);
+    assert.equal(flags.principalName, false);
+  });
+
+  it("reports a signatory override that differs from the admin template", () => {
+    const flags = resolveCertificateEditFlags(
+      { ...record, registrarName: "Maria Luna", principalName: "" },
+      record,
+      template,
+    );
+    assert.equal(flags.registrarName, true);
+    assert.equal(flags.principalName, false);
   });
 });

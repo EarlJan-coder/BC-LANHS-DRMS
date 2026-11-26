@@ -30,7 +30,7 @@ export function Label({ className, ...props }: LabelHTMLAttributes<HTMLLabelElem
  */
 export function Required() {
   return (
-    <span className="text-red-600" aria-hidden="true">
+    <span className="text-red-900" aria-hidden="true">
       *
     </span>
   );
