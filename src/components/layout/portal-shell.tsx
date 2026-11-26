@@ -153,10 +153,12 @@ export function PortalShell({
   children,
   unreadCount,
   viewerRole,
+  studentType,
 }: {
   children: ReactNode;
   unreadCount?: number;
   viewerRole?: UserRole;
+  studentType?: "current" | "alumni" | "transferee";
 }) {
   const pathname = usePathname();
   const role = roleFromPath(pathname);
@@ -388,7 +390,7 @@ export function PortalShell({
             {/* Right cluster: role pill + bell */}
             <div className="ml-auto flex items-center gap-2">
               <span className="hidden text-xs font-medium text-black sm:inline-flex">
-                {ROLE_LABELS[role]}
+                {role === "student" && studentType === "alumni" ? "Alumni" : ROLE_LABELS[role]}
               </span>
               <NotificationBell
                 initialUnreadCount={unreadCount ?? 0}
