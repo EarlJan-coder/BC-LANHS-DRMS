@@ -1,4 +1,5 @@
-import { Blocks, Database, Mail, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Blocks, Database, Mail, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { AppLogo } from "@/components/layout/app-logo";
 import { Card } from "@/components/ui/card";
 import { SCHOOL_NAME } from "@/lib/constants";
@@ -14,7 +15,16 @@ export default function AboutPage() {
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
-        <AppLogo />
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <AppLogo />
+          <Link
+            href="/"
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-rose-200 hover:bg-rose-50 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Back to home
+          </Link>
+        </div>
         <div className="mt-10">
           <p className="text-sm font-semibold uppercase text-brand">{SCHOOL_NAME}</p>
           <h1 className="mt-3 text-3xl font-semibold text-slate-950">About the system</h1>

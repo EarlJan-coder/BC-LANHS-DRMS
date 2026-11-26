@@ -85,7 +85,7 @@ export function QrScanButton() {
 
   return (
     <div className="grid gap-3">
-      <Button type="button" tone="secondary" onClick={scanning ? stopCamera : startCamera}>
+      <Button type="button" tone="secondary" className="w-full sm:w-auto" onClick={scanning ? stopCamera : startCamera}>
         {scanning ? <CameraOff className="h-4 w-4" aria-hidden /> : <Camera className="h-4 w-4" aria-hidden />}
         {scanning ? "Stop camera" : "Scan QR code"}
       </Button>

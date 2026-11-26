@@ -1,4 +1,5 @@
-import { CheckCircle2, Clock3, ShieldAlert, ShieldCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock3, ShieldAlert, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { VerifyForm } from "@/components/verify-form";
 import { verifyPublicReference, type PublicVerificationResult } from "@/lib/services/verification-lookup";
@@ -27,26 +28,35 @@ export default async function VerifyPage({ searchParams }: { searchParams: Searc
   const result = hasQuery ? await verifyPublicReference(query) : null;
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(ellipse_at_top,_#fff1f2_0%,_#f8fafc_46%,_#f8fafc_100%)] px-4 py-10 sm:px-6 sm:py-16">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-8 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand text-white shadow-lg shadow-brand/20">
-            <ShieldCheck className="h-7 w-7" aria-hidden />
+    <main className="min-h-screen bg-[radial-gradient(ellipse_at_top,_#fff1f2_0%,_#f8fafc_46%,_#f8fafc_100%)] px-4 py-6 sm:px-6 sm:py-12">
+      <div className="mx-auto max-w-6xl">
+        <Link
+          href="/"
+          className="mb-7 inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/80 bg-white/80 px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur transition hover:border-rose-200 hover:bg-white hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 sm:mb-10 sm:px-4"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Back to home
+        </Link>
+        <div className="mb-7 flex items-center gap-4 text-left sm:mb-10 sm:block sm:text-center">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand text-white shadow-lg shadow-brand/20 sm:mx-auto sm:h-14 sm:w-14">
+            <ShieldCheck className="h-6 w-6 sm:h-7 sm:w-7" aria-hidden />
           </div>
-          <p className="mt-5 text-xs font-bold uppercase tracking-[0.2em] text-brand">Public document service</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Verify a school document</h1>
-          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-600 sm:text-base">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand sm:mt-5 sm:text-xs sm:tracking-[0.2em]">Public document service</p>
+            <h1 className="mt-1 text-2xl font-bold leading-tight tracking-tight text-slate-950 sm:mt-2 sm:text-4xl">Verify a school document</h1>
+            <p className="mt-1.5 max-w-xl text-sm leading-5 text-slate-600 sm:mx-auto sm:mt-3 sm:text-base sm:leading-6">
             Check a certificate using its number or scan the QR code printed on the document.
-          </p>
+            </p>
+          </div>
         </div>
 
-        <div className="grid items-start gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-          <Card className="border-white/80 shadow-xl shadow-slate-200/60">
+        <div className="grid items-start gap-4 sm:gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+          <Card className="overflow-hidden rounded-2xl border-white/80 shadow-xl shadow-slate-200/60">
             <CardHeader>
               <CardTitle>Look up a document</CardTitle>
               <p className="text-sm leading-6 text-slate-500">Enter either number. Your lookup is checked against the school record and its public proof.</p>
             </CardHeader>
-            <CardContent><VerifyForm certificateNumber={query.certificateNumber} trackingNumber={query.trackingNumber} /></CardContent>
+            <CardContent className="p-4 sm:p-5"><VerifyForm certificateNumber={query.certificateNumber} trackingNumber={query.trackingNumber} /></CardContent>
           </Card>
 
           {result ? <VerificationCard result={result} /> : (
@@ -61,7 +71,7 @@ export default async function VerifyPage({ searchParams }: { searchParams: Searc
             </div>
           )}
         </div>
-        <p className="mt-8 text-center text-xs text-slate-500">Public verification shows limited document details and never includes student contact information.</p>
+        <p className="mx-auto mt-5 max-w-2xl text-center text-xs leading-5 text-slate-500 sm:mt-8 sm:text-sm sm:leading-6">Public verification shows limited document details and never includes student contact information.</p>
       </div>
     </main>
   );
@@ -85,7 +95,7 @@ function VerificationCard({ result }: { result: PublicVerificationResult }) {
           <Icon className="h-4 w-4" aria-hidden />{status.label}
         </span>
       </div>
-      <CardContent>
+      <CardContent className="p-4 sm:p-5">
         <dl className="divide-y divide-slate-100">
           {fields.map((field) => (
             <div key={field.label} className="grid gap-1 py-3.5 sm:grid-cols-[minmax(9rem,0.42fr)_1fr] sm:gap-4">
