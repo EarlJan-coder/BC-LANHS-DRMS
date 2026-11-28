@@ -4,15 +4,17 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTransition, useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input, Label, Select } from "@/components/ui/input";
+import { Label, Select } from "@/components/ui/input";
+import { FormattedDateInput } from "@/components/ui/formatted-date-input";
 import { Spinner } from "@/components/ui/spinner";
-import { REQUEST_STATUSES } from "@/lib/constants";
+import { GRADE_LEVELS, REQUEST_STATUSES } from "@/lib/constants";
 
 type FilterValues = {
   from: string;
   to: string;
   documentType: string;
   status: string;
+  gradeLevel: string;
 };
 
 /** Period + document type + status filters for the registrar reports page.
@@ -26,6 +28,7 @@ export function ReportFilterBar({
   initialTo,
   initialDocumentType,
   initialStatus,
+  initialGradeLevel,
   periodLabel,
   documentTypes,
 }: {
@@ -33,6 +36,7 @@ export function ReportFilterBar({
   initialTo?: string;
   initialDocumentType?: string;
   initialStatus?: string;
+  initialGradeLevel?: string;
   periodLabel: string;
   documentTypes: string[];
 }) {
@@ -41,11 +45,12 @@ export function ReportFilterBar({
   // leaving stale local state behind.
   return (
     <ReportFilterFields
-      key={`${initialFrom ?? ""}|${initialTo ?? ""}|${initialDocumentType ?? ""}|${initialStatus ?? ""}`}
+      key={`${initialFrom ?? ""}|${initialTo ?? ""}|${initialDocumentType ?? ""}|${initialStatus ?? ""}|${initialGradeLevel ?? ""}`}
       initialFrom={initialFrom}
       initialTo={initialTo}
       initialDocumentType={initialDocumentType}
       initialStatus={initialStatus}
+      initialGradeLevel={initialGradeLevel}
       periodLabel={periodLabel}
       documentTypes={documentTypes}
     />
@@ -57,6 +62,7 @@ function ReportFilterFields({
   initialTo,
   initialDocumentType,
   initialStatus,
+  initialGradeLevel,
   periodLabel,
   documentTypes,
 }: {
@@ -64,6 +70,7 @@ function ReportFilterFields({
   initialTo?: string;
   initialDocumentType?: string;
   initialStatus?: string;
+  initialGradeLevel?: string;
   periodLabel: string;
   documentTypes: string[];
 }) {
@@ -73,11 +80,12 @@ function ReportFilterFields({
   const [to, setTo] = useState(initialTo ?? "");
   const [documentType, setDocumentType] = useState(initialDocumentType ?? "");
   const [status, setStatus] = useState(initialStatus ?? "");
+  const [gradeLevel, setGradeLevel] = useState(initialGradeLevel ?? "");
   const [isPending, startTransition] = useTransition();
 
   const statusLabel =
     REQUEST_STATUSES.find((item) => item.value === status)?.label ?? status;
-  const hasFilters = Boolean(from || to || documentType || status);
+  const hasFilters = Boolean(from || to || documentType || status || gradeLevel);
 
   function apply(next: FilterValues) {
     const params = new URLSearchParams();
@@ -85,6 +93,7 @@ function ReportFilterFields({
     if (next.to) params.set("to", next.to);
     if (next.documentType) params.set("documentType", next.documentType);
     if (next.status) params.set("status", next.status);
+    if (next.gradeLevel) params.set("gradeLevel", next.gradeLevel);
     const query = params.toString();
     startTransition(() => {
       router.replace(query ? `${pathname}?${query}` : pathname);
@@ -92,16 +101,17 @@ function ReportFilterFields({
   }
 
   function update(patch: Partial<FilterValues>) {
-    const next: FilterValues = { from, to, documentType, status, ...patch };
+    const next: FilterValues = { from, to, documentType, status, gradeLevel, ...patch };
     setFrom(next.from);
     setTo(next.to);
     setDocumentType(next.documentType);
     setStatus(next.status);
+    setGradeLevel(next.gradeLevel);
     apply(next);
   }
 
   function clear() {
-    update({ from: "", to: "", documentType: "", status: "" });
+    update({ from: "", to: "", documentType: "", status: "", gradeLevel: "" });
   }
 
   // Keep a selected type visible even if the catalogue no longer lists it
@@ -113,27 +123,27 @@ function ReportFilterFields({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <div className="grid gap-1.5">
           <Label htmlFor="report-from">From</Label>
-          <Input
+          <FormattedDateInput
             id="report-from"
-            type="date"
+            label="start date"
             value={from}
+            onChange={(value) => update({ from: value })}
             max={to || undefined}
             disabled={isPending}
-            onChange={(event) => update({ from: event.target.value })}
           />
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="report-to">To</Label>
-          <Input
+          <FormattedDateInput
             id="report-to"
-            type="date"
+            label="end date"
             value={to}
+            onChange={(value) => update({ to: value })}
             min={from || undefined}
             disabled={isPending}
-            onChange={(event) => update({ to: event.target.value })}
           />
         </div>
         <div className="grid gap-1.5">
@@ -168,6 +178,13 @@ function ReportFilterFields({
             ))}
           </Select>
         </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="report-grade-level">Grade level</Label>
+          <Select id="report-grade-level" value={gradeLevel} disabled={isPending} onChange={(event) => update({ gradeLevel: event.target.value })}>
+            <option value="">All grades</option>
+            {GRADE_LEVELS.map((grade) => <option key={grade} value={grade}>Grade {grade}</option>)}
+          </Select>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
@@ -191,6 +208,9 @@ function ReportFilterFields({
               disabled={isPending}
               onRemove={() => update({ status: "" })}
             />
+          ) : null}
+          {gradeLevel ? (
+            <FilterChip label={`Grade ${gradeLevel}`} ariaLabel={`Remove grade level filter (Grade ${gradeLevel})`} disabled={isPending} onRemove={() => update({ gradeLevel: "" })} />
           ) : null}
         </div>
         {hasFilters ? (

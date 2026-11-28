@@ -33,13 +33,14 @@ export async function createPortalAccount(input: {
   lastName: string;
   role: UserRole;
   lrn?: string;
+  studentStatus?: "student" | "alumni";
 }): Promise<{ id: string; email: string; role: UserRole; temporaryPassword: string }> {
   if (input.role === "admin") {
     throw new AppError("Administrator accounts cannot be created here.", 400);
   }
 
   const lrn = input.role === "student" ? input.lrn?.trim() : undefined;
-  if (input.role === "student" && !lrn) {
+  if (input.role === "student" && input.studentStatus !== "alumni" && !lrn) {
     throw new AppError("LRN is required for student accounts.", 400);
   }
 
@@ -82,10 +83,11 @@ export async function createPortalAccount(input: {
       if (input.role === "student") {
         await tx.insert(students).values({
           userId: user.id,
-          lrn: lrn!,
+          lrn: lrn ?? null,
           firstName: input.firstName,
           lastName: input.lastName,
           email: input.email,
+          studentType: input.studentStatus === "alumni" ? "alumni" : "current",
         });
       }
 

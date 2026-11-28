@@ -1,4 +1,3 @@
-import { Rows3 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Card } from "@/components/ui/card";
 import { TableSearch } from "@/components/ui/table-search";
@@ -27,35 +26,32 @@ export function DataTable<T>({
 }) {
   return (
     <Card className="overflow-hidden" data-table-card>
-      <div className="flex flex-col gap-3 border-b border-border bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 border-b border-slate-100 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         {title ? (
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-rose-50 text-brand">
-              <Rows3 className="h-4 w-4" aria-hidden />
-            </span>
+          <div className="flex min-w-0 items-center">
             <div className="min-w-0">
-              <h3 className="truncate text-sm font-semibold text-slate-950">{title}</h3>
-              <p className="mt-0.5 text-xs text-slate-500">{rows.length} {rows.length === 1 ? "record" : "records"} on this page</p>
+              <h3 className="truncate text-sm font-semibold tracking-tight text-slate-950">{title}</h3>
+              <p className="mt-0.5 text-xs text-slate-500">{rows.length.toLocaleString("en-US")} {rows.length === 1 ? "record" : "records"} shown</p>
             </div>
           </div>
         ) : null}
         <TableSearch label={title ? `Search ${title}` : undefined} />
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-border text-sm">
-          <thead className="bg-slate-50">
+        <table className="min-w-full divide-y divide-slate-100 text-sm">
+          <thead className="bg-slate-50/80">
             <tr>
               {columns.map((column) => (
-                <th key={column.key} className="whitespace-nowrap px-4 py-3 text-left font-semibold text-slate-600">
+                <th key={column.key} className="whitespace-nowrap px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                   {column.label}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-border bg-white">
+          <tbody className="divide-y divide-slate-100 bg-white">
             {rows.length === 0 ? (
               <tr data-empty-row>
-                <td className="px-4 py-8 text-center text-sm text-slate-500" colSpan={columns.length}>
+                <td className="px-4 py-12 text-center text-sm text-slate-500" colSpan={columns.length}>
                   {emptyMessage}
                 </td>
               </tr>
@@ -64,9 +60,9 @@ export function DataTable<T>({
                 renderRow ? (
                   renderRow(row, index)
                 ) : (
-                    <tr key={index} className={cn("hover:bg-rose-50/40", rowClassName?.(row))}>
+                    <tr key={index} className={cn("transition-colors hover:bg-slate-50/80", rowClassName?.(row))}>
                     {columns.map((column) => (
-                      <td key={column.key} className="whitespace-nowrap px-4 py-3 text-slate-700">
+                      <td key={column.key} className="whitespace-nowrap px-4 py-3.5 text-slate-700">
                         {column.render(row)}
                       </td>
                     ))}

@@ -1,8 +1,6 @@
-import { Database, Download } from "lucide-react";
 import { DashboardCard } from "@/components/dashboard-card";
 import { DataTable } from "@/components/data-table";
 import { SectionHeading } from "@/components/section-heading";
-import { ButtonLink } from "@/components/ui/button";
 import { getAdminDashboardData } from "@/lib/services/live-data";
 import { humanizeStatus, roleLabel } from "@/lib/utils";
 
@@ -14,18 +12,6 @@ export default async function AdminDashboardPage() {
       <SectionHeading
         title="Admin dashboard"
         description="Manage users, school configuration, backups, and blockchain audit visibility."
-        actions={
-          <>
-            <ButtonLink href="/admin/settings" tone="secondary">
-              <Database className="h-4 w-4" aria-hidden />
-              Settings
-            </ButtonLink>
-            <ButtonLink href="/admin/blockchain" tone="info">
-              <Download className="h-4 w-4" aria-hidden />
-              Audit trail
-            </ButtonLink>
-          </>
-        }
       />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
         {stats.map((stat) => (

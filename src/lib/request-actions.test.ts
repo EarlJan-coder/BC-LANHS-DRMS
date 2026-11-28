@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { REQUEST_ACTIONS, buildStatusUpdatePayload, disabledStatusActions } from "@/lib/request-actions";
+import { REQUEST_ACTIONS, buildStatusUpdatePayload, disabledStatusActions, visibleStatusActions } from "@/lib/request-actions";
 
 describe("REQUEST_ACTIONS", () => {
   it("is exactly the five registrar status actions", () => {
@@ -44,6 +44,11 @@ describe("buildStatusUpdatePayload", () => {
     assert.equal(payload.rejectionReason, "Missing requirements");
     assert.equal(payload.registrarRemarks, "Registrar rejected this request. Reason: Missing requirements");
     assert.equal(payload.remarks, "Status updated to rejected.");
+  });
+
+  it("uses the active staff role in generated remarks", () => {
+    const payload = buildStatusUpdatePayload("processing", undefined, "Administrator");
+    assert.equal(payload?.registrarRemarks, "Administrator marked this request as processing.");
   });
 
   it("builds payloads for the non-reject statuses without a rejection reason", () => {
@@ -93,5 +98,21 @@ describe("disabledStatusActions", () => {
 
   it("disables nothing when the status is unknown", () => {
     assert.deepEqual(disabledStatusActions(undefined), []);
+  });
+});
+
+describe("visibleStatusActions", () => {
+  it("shows only approval actions before approval and after rejection", () => {
+    for (const status of ["pending", "under_review", "cancelled", "rejected"] as const) {
+      assert.deepEqual(visibleStatusActions(status), ["approved", "rejected"]);
+    }
+    assert.deepEqual(visibleStatusActions(undefined), ["approved", "rejected"]);
+  });
+
+  it("shows workflow actions after approval", () => {
+    const actions = ["approved", "rejected", "processing", "ready_for_pickup", "claimed"];
+    for (const status of ["approved", "processing", "ready_for_pickup", "claimed"] as const) {
+      assert.deepEqual(visibleStatusActions(status), actions);
+    }
   });
 });

@@ -46,7 +46,7 @@ export default async function StudentRecordsPage({ searchParams }: { searchParam
           { key: "status", label: "Status", render: (row) => humanizeStatus(row.status) },
           {
             key: "view",
-            label: "View",
+            label: "Action",
             render: (row) => <StudentRecordModal student={row} />,
           },
         ]}

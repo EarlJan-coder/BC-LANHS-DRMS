@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
 import { Input, Label, Required, Select } from "@/components/ui/input";
 import { roleLabel } from "@/lib/utils";
@@ -15,6 +14,7 @@ type FormState = {
   lastName: string;
   role: "registrar" | "student";
   lrn: string;
+  studentStatus: "student" | "alumni";
 };
 
 type CreatedUser = {
@@ -29,6 +29,7 @@ const initialFormState: FormState = {
   lastName: "",
   role: "registrar",
   lrn: "",
+  studentStatus: "student",
 };
 
 
@@ -58,6 +59,7 @@ export function AddAccountForm() {
           lastName: form.lastName,
           role: form.role,
           lrn: form.role === "student" ? form.lrn : undefined,
+          studentStatus: form.role === "student" ? form.studentStatus : undefined,
         }),
       });
       const data = await response.json();
@@ -95,56 +97,53 @@ export function AddAccountForm() {
     }
   }
 
-  if (created) {
-    return (
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Account created</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <dl className="grid gap-2 text-sm">
-            <div className="flex justify-between gap-4">
-              <dt className="text-slate-500">Name</dt>
-              <dd className="font-medium text-slate-900">{created.fullName}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-slate-500">Email</dt>
-              <dd className="font-medium text-slate-900">{created.user.email}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-slate-500">Role</dt>
-              <dd className="font-medium text-slate-900">{roleLabel(created.user.role)}</dd>
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <dt className="text-slate-500">Temporary password</dt>
-              <dd className="flex items-center gap-2">
-                <code className="rounded bg-slate-100 px-2 py-1 text-sm text-slate-900">{created.password}</code>
-                <Button type="button" size="sm" tone="secondary" onClick={copyPassword}>
-                  {copied ? "Copied" : "Copy"}
-                </Button>
-              </dd>
-            </div>
-          </dl>
-          <p className="text-sm text-slate-600">They will be required to change this password when they first sign in.</p>
-          <div>
-            <Button type="button" tone="success" onClick={() => setCreated(null)}>Create another account</Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <div className="mb-6">
+    <div>
       <Button type="button" tone="success" onClick={() => setIsOpen(true)}>
         Add account
       </Button>
       <Modal
-        open={isOpen}
-        onClose={() => { if (!loading) setIsOpen(false); }}
-        title="Add account"
-        description="Create a registrar or student account with a temporary password."
+        open={isOpen || Boolean(created)}
+        onClose={() => {
+          if (loading) return;
+          if (created) setCreated(null);
+          else setIsOpen(false);
+        }}
+        title={created ? "Account created" : "Add account"}
+        description={created ? "Share this temporary sign-in password with the account owner." : "Create a registrar or student account with a temporary password."}
+        className={created ? "max-w-md" : undefined}
       >
+        {created ? (
+          <div className="space-y-5">
+            <dl className="grid gap-3 text-sm">
+              <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-b border-slate-100 pb-2">
+                <dt className="text-slate-500">Name</dt>
+                <dd className="font-medium text-slate-900">{created.fullName}</dd>
+              </div>
+              <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-b border-slate-100 pb-2">
+                <dt className="text-slate-500">Email</dt>
+                <dd className="break-all text-right font-medium text-slate-900">{created.user.email}</dd>
+              </div>
+              <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-b border-slate-100 pb-2">
+                <dt className="text-slate-500">Role</dt>
+                <dd className="font-medium text-slate-900">{roleLabel(created.user.role)}</dd>
+              </div>
+            </dl>
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-900">Temporary password</p>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                <code className="min-w-0 break-all rounded bg-white px-2.5 py-1.5 text-sm font-semibold text-slate-900">{created.password}</code>
+                <Button type="button" size="sm" tone="secondary" onClick={copyPassword}>
+                  {copied ? "Copied" : "Copy password"}
+                </Button>
+              </div>
+            </div>
+            <p className="text-sm leading-5 text-slate-600">They will be required to change this password when they first sign in.</p>
+            <div className="flex justify-end border-t border-slate-100 pt-4">
+              <Button type="button" tone="success" onClick={() => setCreated(null)}>Done</Button>
+            </div>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
@@ -198,16 +197,24 @@ export function AddAccountForm() {
                 </div>
                 {form.role === "student" ? (
                   <div className="space-y-1.5">
-                    <Label htmlFor="lrn">LRN <Required /></Label>
+                    <Label htmlFor="lrn">LRN {form.studentStatus !== "alumni" ? <Required /> : null}</Label>
                     <Input
                       id="lrn"
                       name="lrn"
                       value={form.lrn}
                       onChange={(event) => updateField("lrn", event.target.value)}
-                      required
-                      maxLength={30}
+                      required={form.studentStatus !== "alumni"}
+                      inputMode="numeric"
+                      pattern={form.studentStatus === "alumni" ? undefined : "[0-9]{12}"}
+                      minLength={form.studentStatus === "alumni" ? undefined : 12}
+                      maxLength={12}
                       autoComplete="off"
                     />
+                    <Label htmlFor="studentStatus">Student status</Label>
+                    <Select id="studentStatus" value={form.studentStatus} onChange={(event) => updateField("studentStatus", event.target.value as FormState["studentStatus"])}>
+                      <option value="student">Student</option>
+                      <option value="alumni">Alumni</option>
+                    </Select>
                   </div>
                 ) : null}
               </div>
@@ -229,6 +236,7 @@ export function AddAccountForm() {
                 </Button>
               </div>
         </form>
+        )}
       </Modal>
     </div>
   );

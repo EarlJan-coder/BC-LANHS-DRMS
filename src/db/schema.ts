@@ -73,7 +73,7 @@ export const students = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     userId: uuid("user_id").references(() => users.id),
-    lrn: varchar("lrn", { length: 30 }).notNull(),
+    lrn: varchar("lrn", { length: 30 }),
     firstName: varchar("first_name", { length: 100 }).notNull(),
     middleName: varchar("middle_name", { length: 100 }),
     lastName: varchar("last_name", { length: 100 }).notNull(),

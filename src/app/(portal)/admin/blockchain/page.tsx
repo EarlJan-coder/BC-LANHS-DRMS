@@ -1,8 +1,9 @@
-import { Clock, CheckCircle2, XCircle, ShieldCheck } from "lucide-react";
+import { Clock, CheckCircle2, Download, XCircle, ShieldCheck } from "lucide-react";
 import { DataTable } from "@/components/data-table";
 import { RetryBlockchainButton } from "@/components/retry-blockchain-button";
 import { SectionHeading } from "@/components/section-heading";
 import { Card } from "@/components/ui/card";
+import { DownloadButton } from "@/components/ui/download-button";
 import { getBlockchainAuditStats, listAuditTrailViews } from "@/lib/services/live-data";
 import { Pagination } from "@/components/ui/pagination";
 import { parsePage } from "@/lib/pagination";
@@ -31,6 +32,12 @@ export default async function BlockchainAuditTrailPage({ searchParams }: { searc
       <SectionHeading
         title="Blockchain audit trail"
         description="Verify local audit records against hash proofs submitted to the DocumentRequestAudit smart contract."
+        actions={
+          <DownloadButton href="/api/admin/blockchain/pdf" filename="lanhs-audit-trail.pdf" loadingLabel="Preparing PDF…">
+            <Download className="h-4 w-4" aria-hidden />
+            Download audit trail
+          </DownloadButton>
+        }
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">

@@ -97,6 +97,19 @@ describe("createPortalAccount (integration, local DB)", {
     }
   });
 
+  test("createPortalAccount creates alumni accounts without an LRN", async () => {
+    const created = await createPortalAccount({
+      email: fixtureEmail("alumni"), firstName: "Alex", lastName: "Rivera", role: "student", studentStatus: "alumni",
+    });
+    try {
+      const row = await getDb().query.students.findFirst({ where: eq(students.userId, created.id) });
+      assert.equal(row?.studentType, "alumni");
+      assert.equal(row?.lrn, null);
+    } finally {
+      await deleteUsers([created.id]);
+    }
+  });
+
   test("createPortalAccount rejects a duplicate email with a 409", async () => {
     const created = await createPortalAccount({
       email: fixtureEmail("dup"),

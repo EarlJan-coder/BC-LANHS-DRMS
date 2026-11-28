@@ -96,6 +96,12 @@ export const updateRequestStatusSchema = z.object({
 // into students.address; each part is optional but must be non-blank when sent
 // (the form sends all three together — the service rejects partial addresses).
 export const profileUpdateSchema = z.object({
+  firstName: z.string().trim().min(1, "First name is required.").max(100).optional(),
+  middleName: z.string().trim().max(60).optional(),
+  lastName: z.string().trim().min(1, "Last name is required.").max(100).optional(),
+  suffix: z.string().trim().max(60).optional(),
+  birthDate: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid birth date."), z.literal("")]).optional(),
+  gender: z.string().trim().max(30).optional(),
   contactNumber: z.string().trim().max(30).optional(),
   email: z.string().trim().toLowerCase().email("Enter a valid email address.").max(191).optional(),
   lastSchoolYearAttended: z
@@ -176,12 +182,29 @@ export const userCreateSchema = z
     lastName: z.string().trim().min(1, "Last name is required.").max(100),
     role: z.enum(["registrar", "student"]),
     lrn: z.string().trim().max(30).optional(),
+    studentStatus: z.enum(["student", "alumni"]).optional(),
   })
   .superRefine((value, ctx) => {
-    if (value.role === "student" && !value.lrn) {
+    if (value.role === "student" && value.studentStatus !== "alumni" && !value.lrn) {
       ctx.addIssue({ code: "custom", path: ["lrn"], message: "LRN is required for student accounts." });
     }
   });
+
+export function refineLrnByStatus(
+  values: { studentStatus?: string; lrn?: string },
+  ctx: z.RefinementCtx,
+): void {
+  const lrn = values.lrn?.trim();
+  if (values.studentStatus === "alumni") {
+    if (lrn && !/^\d{12}$/.test(lrn)) {
+      ctx.addIssue({ code: "custom", path: ["lrn"], message: "Enter your 12-digit LRN." });
+    }
+    return;
+  }
+  if (!lrn || !/^\d{12}$/.test(lrn)) {
+    ctx.addIssue({ code: "custom", path: ["lrn"], message: "Enter your 12-digit LRN." });
+  }
+}
 
 export const registrationDecisionSchema = z
   .object({

@@ -39,11 +39,25 @@ export function roleLabel(role: string): string {
 }
 
 export function formatDate(date: Date | null | undefined, fallback = "Not set") {
-  return date ? date.toISOString().slice(0, 10) : fallback;
+  if (!date) return fallback;
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Manila",
+    month: "long",
+    day: "2-digit",
+    year: "numeric",
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("month")} ${part("day")} ${part("year")}`;
 }
 
 export function formatDateTime(date: Date | null | undefined) {
-  return date ? date.toISOString().slice(0, 16).replace("T", " ") : "Not set";
+  if (!date) return "Not set";
+  const time = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Manila",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+  return `${formatDate(date)} ${time}`;
 }
 
 /** Printed grade value for certificates and request slips: e.g.

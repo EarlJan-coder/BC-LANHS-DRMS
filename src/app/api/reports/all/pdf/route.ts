@@ -18,6 +18,7 @@ export async function GET(request: Request) {
     const filters = parseReportFilters(
       url.searchParams.get("documentType") ?? undefined,
       url.searchParams.get("status") ?? undefined,
+      url.searchParams.get("gradeLevel") ?? undefined,
     );
 
     const pdf = await renderAllReportsPdf(range, filters);

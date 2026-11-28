@@ -20,10 +20,12 @@ export async function PATCH(
     const updated = await updateDocumentRequestStatus(id, body, role === "admin" ? "admin" : "registrar");
 
     revalidatePath(`/registrar/requests/${id}`);
+    revalidatePath(`/admin/requests/${id}`);
     if (updated.trackingNumber && updated.trackingNumber !== id) {
       revalidatePath(`/registrar/requests/${updated.trackingNumber}`);
     }
     revalidatePath("/registrar/requests");
+    revalidatePath("/admin/requests");
     revalidatePath(`/student/requests/${id}`);
     if (updated.trackingNumber && updated.trackingNumber !== id) {
       revalidatePath(`/student/requests/${updated.trackingNumber}`);

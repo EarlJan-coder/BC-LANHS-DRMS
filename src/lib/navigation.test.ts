@@ -38,3 +38,41 @@ describe("isNavItemActive", () => {
     assert.deepEqual(activeLabels("/student/requests-archive"), []);
   });
 });
+
+describe("admin navigation parity", () => {
+  it("includes the admin workflow pages and omits the removed student and logs pages", () => {
+    const hrefs = navigationByRole.admin.map((item) => item.href);
+    for (const href of ["/admin/requests", "/admin/certificates", "/admin/reports", "/admin/users"]) {
+      assert.ok(hrefs.includes(href), `missing admin navigation item: ${href}`);
+    }
+    assert.ok(!hrefs.includes("/admin/students"));
+    assert.ok(!hrefs.includes("/admin/audit-logs"));
+  });
+
+  it("groups admin links into a clear sidebar hierarchy", () => {
+    const nav = navigationByRole.admin;
+    const sectionHeadings = nav
+      .filter((item, index) => item.section !== nav[index - 1]?.section)
+      .map((item) => item.section);
+    assert.deepEqual(sectionHeadings, ["Overview", "Student services", "Administration", "System"]);
+    assert.deepEqual(nav.filter((item) => item.section === "Student services").map((item) => item.label), [
+      "Requests", "Registrations", "Certificates", "Reports",
+    ]);
+  });
+});
+
+describe("portal sidebar hierarchy", () => {
+  it("groups registrar work into workflow, records, and insights", () => {
+    const sections = navigationByRole.registrar
+      .filter((item, index) => item.section !== navigationByRole.registrar[index - 1]?.section)
+      .map((item) => item.section);
+    assert.deepEqual(sections, ["Overview", "Workflow", "Records", "Insights"]);
+  });
+
+  it("groups student links into overview, requests, and account", () => {
+    const sections = navigationByRole.student
+      .filter((item, index) => item.section !== navigationByRole.student[index - 1]?.section)
+      .map((item) => item.section);
+    assert.deepEqual(sections, ["Overview", "Requests", "Account"]);
+  });
+});

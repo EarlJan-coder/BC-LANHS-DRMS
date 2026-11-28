@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { certificates, documentRequests, documentTypes, notifications, students, users } from "@/db/schema";
 import { buildNewRequestNotification, buildRegistrationDecisionNotification } from "@/lib/notifications";
-import { AppError } from "@/lib/utils";
+import { AppError, formatDateTime } from "@/lib/utils";
 import { makePaged, PAGE_SIZE, type Paged } from "@/lib/pagination";
 
 /**
@@ -150,7 +150,7 @@ export async function getNotificationDetail(userId: string, notificationId: stri
   const notificationSummary = {
     title: notification.title,
     message: notification.message,
-    createdAt: notification.createdAt.toISOString(),
+    createdAt: formatDateTime(notification.createdAt),
   };
   if (!notification.referenceType || !notification.referenceId) {
     return { kind: "message" as const, record: notificationSummary };
@@ -192,7 +192,7 @@ export async function getNotificationDetail(userId: string, notificationId: stri
         lrn: registration.lrn?.trim() || studentRecord?.lrn?.trim() || "",
         lastSchoolYearAttended: studentRecord?.lastSchoolYearAttended ?? "",
         registrationStatus: registration.registrationStatus,
-        createdAt: registration.createdAt.toISOString(),
+        createdAt: formatDateTime(registration.createdAt),
         notification: notificationSummary,
       },
     };

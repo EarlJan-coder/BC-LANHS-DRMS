@@ -6,13 +6,13 @@ import { getDb } from "@/db";
 import { students, users } from "@/db/schema";
 import { checkAuthRateLimit } from "@/lib/auth-rate-limit";
 import { composeAddress } from "@/lib/ph-address";
-import { refineAddressParts, refineSchoolYearStatus, strongPasswordSchema } from "@/lib/validators";
+import { refineAddressParts, refineLrnByStatus, refineSchoolYearStatus, strongPasswordSchema } from "@/lib/validators";
 import { fanOutNewRegistrationNotification } from "@/lib/services/notifications";
 import { getSystemSettings } from "@/lib/services/system-settings";
 
 const signupSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email address.").max(191),
-  lrn: z.string().trim().regex(/^\d{12}$/, "Enter your 12-digit LRN."),
+  lrn: z.string().trim().optional(),
   firstName: z.string().trim().min(1, "First name is required.").max(100),
   middleName: z.string().trim().max(100).optional(),
   lastName: z.string().trim().min(1, "Last name is required.").max(100),
@@ -27,7 +27,7 @@ const signupSchema = z.object({
   password: strongPasswordSchema,
   acceptedTerms: z.literal(true, "You must accept the Terms and Conditions to register."),
   acceptedPrivacy: z.literal(true, "You must accept the Privacy Notice to register."),
-}).superRefine(refineAddressParts).superRefine(refineSchoolYearStatus);
+}).superRefine(refineAddressParts).superRefine(refineSchoolYearStatus).superRefine(refineLrnByStatus);
 
 function postgresCode(error: unknown) {
   let current = error;
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
         .insert(users)
         .values({
           email: values.email,
-          lrn: values.lrn,
+          lrn: values.lrn || null,
           passwordHash,
           firstName: values.firstName,
           lastName: values.lastName,
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
 
       await tx.insert(students).values({
         userId: createdUser.id,
-        lrn: values.lrn,
+        lrn: values.lrn || null,
         firstName: values.firstName,
         middleName: values.middleName?.trim() || null,
         lastName: values.lastName,

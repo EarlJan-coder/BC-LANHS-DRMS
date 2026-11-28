@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import type { RequestStatus } from "@/db/schema";
 import { REQUEST_REJECT_REASONS } from "@/lib/constants";
-import { REQUEST_ACTIONS, buildStatusUpdatePayload, disabledStatusActions, type StatusColor } from "@/lib/request-actions";
+import { REQUEST_ACTIONS, buildStatusUpdatePayload, disabledStatusActions, visibleStatusActions, type StatusColor } from "@/lib/request-actions";
 import { cn } from "@/lib/utils";
 
 const icons: Record<RequestStatus, LucideIcon> = {
@@ -31,10 +31,12 @@ const activeColors: Record<StatusColor, string> = {
 export function RequestStatusActions({
   requestId,
   currentStatus,
+  basePath = "/registrar",
   onStatusChange,
 }: {
   requestId: string;
   currentStatus?: RequestStatus;
+  basePath?: "/registrar" | "/admin";
   onStatusChange?: (newStatus: RequestStatus, remarks: string) => void;
 }) {
   const router = useRouter();
@@ -42,7 +44,7 @@ export function RequestStatusActions({
   const [pendingAction, setPendingAction] = useState<(typeof REQUEST_ACTIONS)[number] | null>(null);
 
   async function submitStatus(status: RequestStatus, rejectionReason?: string) {
-    const payload = buildStatusUpdatePayload(status, rejectionReason);
+    const payload = buildStatusUpdatePayload(status, rejectionReason, basePath === "/admin" ? "Administrator" : "Registrar");
     if (!payload) {
       toast.error("Enter a rejection reason.");
       return;
@@ -68,7 +70,7 @@ export function RequestStatusActions({
         // unique per certificate, so a client navigation cannot serve stale
         // content for it.
         toast.success("Approved — certificate generated.");
-        router.push(`/registrar/certificates/${data.certificateId}`);
+        router.push(`${basePath}/certificates/${data.certificateId}`);
         router.refresh();
         return;
       }
@@ -91,11 +93,12 @@ export function RequestStatusActions({
   }
 
   const disabledStatuses = disabledStatusActions(currentStatus);
+  const visibleStatuses = visibleStatusActions(currentStatus);
 
   return (
     <>
       <div className="flex flex-wrap gap-2">
-        {REQUEST_ACTIONS.map((action) => {
+        {REQUEST_ACTIONS.filter((action) => visibleStatuses.includes(action.status)).map((action) => {
           const Icon = icons[action.status];
           const isActive = currentStatus === action.status;
 
@@ -124,7 +127,9 @@ export function RequestStatusActions({
       <ConfirmDialog
         open={pendingAction !== null}
         title={pendingAction ? `${pendingAction.label} this request?` : ""}
-        message={pendingAction?.confirm ?? ""}
+        message={pendingAction?.status === "approved"
+          ? "Approve this document request? A certificate will be generated automatically after approval."
+          : pendingAction?.confirm ?? ""}
         confirmLabel={pendingAction?.label}
         tone={pendingAction?.status === "rejected" ? "danger" : "success"}
         loading={loading !== null}

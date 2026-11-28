@@ -1,6 +1,21 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { formatDocumentFee, humanizeStatus, roleLabel, sanitizeRedirectPath } from "@/lib/utils";
+import { formatDate, formatDateTime, formatDocumentFee, humanizeStatus, roleLabel, sanitizeRedirectPath } from "@/lib/utils";
+
+describe("date formatting", () => {
+  it("uses a full month, two-digit day, and year in Manila time", () => {
+    assert.equal(formatDate(new Date("2026-10-31T16:30:00.000Z")), "November 01 2026");
+  });
+
+  it("keeps the same date style for timestamps", () => {
+    assert.equal(formatDateTime(new Date("2026-10-31T16:30:00.000Z")), "November 01 2026 12:30 AM");
+  });
+
+  it("uses the existing fallback for missing dates", () => {
+    assert.equal(formatDate(null), "Not set");
+    assert.equal(formatDateTime(undefined), "Not set");
+  });
+});
 
 describe("formatDocumentFee", () => {
   it("shows No fee when the document type is free", () => {

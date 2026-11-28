@@ -88,6 +88,39 @@ describe("updateStudentProfile (integration, local DB)", { skip: hasDb ? false :
     }
   });
 
+  it("updates personal details and synchronizes the linked user name", async () => {
+    const userId = await createStudentFixture(true);
+    try {
+      await updateStudentProfile(userId, {
+        firstName: "Juan", middleName: "C", lastName: "Dela Cruz", suffix: "Jr.",
+        birthDate: "2008-05-01", gender: "Female",
+      });
+      const student = await getDb().query.students.findFirst({ where: eq(students.userId, userId) });
+      const user = await getDb().query.users.findFirst({ where: eq(users.id, userId) });
+      assert.equal(student?.firstName, "Juan");
+      assert.equal(student?.middleName, "C");
+      assert.equal(student?.lastName, "Dela Cruz");
+      assert.equal(student?.suffix, "Jr.");
+      assert.equal(student?.birthDate?.toISOString().slice(0, 10), "2008-05-01");
+      assert.equal(student?.gender, "Female");
+      assert.equal(user?.firstName, "Juan");
+      assert.equal(user?.lastName, "Dela Cruz");
+    } finally {
+      await cleanup(userId);
+    }
+  });
+
+  it("allows linked users to update their name before a student record is linked", async () => {
+    const userId = await createStudentFixture(false);
+    try {
+      await updateStudentProfile(userId, { firstName: "Jamie Updated", lastName: "Santos" });
+      const user = await getDb().query.users.findFirst({ where: eq(users.id, userId) });
+      assert.equal(user?.firstName, "Jamie Updated");
+    } finally {
+      await cleanup(userId);
+    }
+  });
+
   it("rejects a partial address update", async () => {
     const userId = await createStudentFixture(true);
 

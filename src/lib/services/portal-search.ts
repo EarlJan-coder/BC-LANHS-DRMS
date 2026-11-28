@@ -149,7 +149,7 @@ export async function searchPortal(role: DashboardRole, rawQuery: string, pages:
         "My profile",
         "/student/profile",
         [{
-          hit: { id: "profile", title: profile.name, subtitle: profile.email, meta: profile.lrn, href: "/student/profile" },
+          hit: { id: "profile", title: profile.name, subtitle: profile.email, meta: profile.lrn || "Not set", href: "/student/profile" },
           haystack: [profile.name, profile.email, profile.lrn, profile.contactNumber, profile.address, profile.lastSchoolYearAttended],
         }],
         query,
@@ -282,16 +282,31 @@ export async function searchPortal(role: DashboardRole, rawQuery: string, pages:
     ];
   }
 
-  const [users, documentTypes, auditTrail, registrations, notifications] = await Promise.all([
+  const [users, documentTypes, auditTrail, registrations, notifications, requests, students, certificates] = await Promise.all([
     listUserViews({ all: true }),
     listDocumentTypeViews(),
     listAuditTrailViews({ all: true }),
     listPendingRegistrations(),
     listCurrentUserNotifications(undefined),
+    listDocumentRequestViews({ all: true }),
+    listStudentViews({ all: true }),
+    listCertificateViews({ all: true }),
   ]);
 
   return [
     buildGroup("pages", "Portal pages", undefined, pageCandidates(role), query, pages.pages ?? 1),
+    buildGroup("requests", "Document requests", "/admin/requests", requests.map((request) => ({
+      hit: { id: request.id, title: request.trackingNumber, subtitle: `${request.documentType} — ${request.studentName}`, meta: statusLabel(request.status), href: `/admin/requests/${request.id}` },
+      haystack: [request.trackingNumber, request.documentType, request.purpose, request.studentName, request.lrn, request.gradeLevelNeeded, statusLabel(request.status)],
+    })), query, pages.requests ?? 1),
+    buildGroup("students", "Student records", "/admin/users#student-records", students.map((student) => ({
+      hit: { id: student.id, title: student.name, subtitle: `LRN ${student.lrn || "Not set"}`, meta: student.status, href: `/admin/users/${student.id}` },
+      haystack: [student.name, student.lrn, student.email, student.phone, student.address, student.lastSchoolYearAttended, student.status],
+    })), query, pages.students ?? 1),
+    buildGroup("certificates", "Certificates", "/admin/certificates", certificates.map((certificate) => ({
+      hit: { id: certificate.id, title: certificate.certificateNumber, subtitle: `${certificate.certificateType} — ${certificate.studentName}`, meta: certificate.blockchainStatus, href: `/admin/certificates/${certificate.id}` },
+      haystack: [certificate.certificateNumber, certificate.certificateType, certificate.studentName, certificate.schoolYear, certificate.verificationCode, certificate.blockchainStatus],
+    })), query, pages.certificates ?? 1),
     buildGroup(
       "users",
       "Users",
