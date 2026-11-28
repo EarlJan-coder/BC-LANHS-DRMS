@@ -147,10 +147,10 @@ describe("generateRequestSlipPdf access (integration, local DB)", {
   });
 });
 
-async function createStudentUser(lastSchoolYearAttended: string | null) {
+async function createStudentUser(lastSchoolYearAttended: string | null, options: { lrn?: string | null; studentType?: "current" | "alumni" } = {}) {
   fixtureIndex += 1;
   const db = getDb();
-  const lrn = `9${String(Date.now() + fixtureIndex).slice(-11)}`;
+  const lrn = options.lrn === undefined ? `9${String(Date.now() + fixtureIndex).slice(-11)}` : options.lrn;
   const [user] = await db
     .insert(users)
     .values({
@@ -169,6 +169,7 @@ async function createStudentUser(lastSchoolYearAttended: string | null) {
     firstName: "Jamie",
     lastName: "Santos",
     lastSchoolYearAttended,
+    studentType: options.studentType ?? "current",
   });
   return user;
 }
@@ -235,6 +236,18 @@ describe("last school year eligibility (integration, local DB)", { skip: hasDb ?
       await cleanupStudentUser(user.id);
     }
   });
+
+  it("allows alumni without an LRN and keeps current students gated on LRN", async () => {
+    const alumni = await createStudentUser("2025-2026", { lrn: null, studentType: "alumni" });
+    const current = await createStudentUser("2025-2026", { lrn: null });
+    try {
+      assert.deepEqual(await getRequestEligibility(alumni), { eligible: true, reason: null });
+      assert.deepEqual(await getRequestEligibility(current), { eligible: false, reason: "no_lrn" });
+    } finally {
+      await cleanupStudentUser(alumni.id);
+      await cleanupStudentUser(current.id);
+    }
+  });
 });
 
 describe("createDocumentRequest school year snapshot (integration, local DB)", {
@@ -277,6 +290,24 @@ describe("createDocumentRequest school year snapshot (integration, local DB)", {
   });
 });
 
+describe("createDocumentRequest active document type enforcement (integration, local DB)", { skip: hasDb ? false : "DATABASE_URL not configured" }, () => {
+  it("rejects a document type that has been deactivated", async () => {
+    const db = getDb();
+    const user = await createStudentUser("2025-2026");
+    const name = `Inactive request type ${Date.now()}`;
+    const [type] = await db.insert(documentTypes).values({ name, isActive: false }).returning();
+    try {
+      await assert.rejects(
+        () => createDocumentRequest({ ...requestPayload, documentType: name }, testEffects(user)),
+        (error: unknown) => error instanceof AppError && error.status === 409 && error.message === "This document type is no longer available for requests.",
+      );
+    } finally {
+      await db.delete(documentTypes).where(eq(documentTypes.id, type.id));
+      await cleanupStudentUser(user.id);
+    }
+  });
+});
+
 /** Removes a request with everything the approval flow writes around it. */
 async function cleanupRequestArtifacts(requestId: string, referenceIds: string[], userId?: string) {
   const db = getDb();
@@ -298,6 +329,19 @@ async function cleanupRequestArtifacts(requestId: string, referenceIds: string[]
 describe("updateDocumentRequestStatus approval (integration, local DB)", {
   skip: hasDb ? false : "DATABASE_URL not configured",
 }, () => {
+  it("rejects fulfillment statuses until a request is approved", async () => {
+    const user = await createStudentUser("2025-2026");
+    const created = await createDocumentRequest(requestPayload, testEffects(user));
+    try {
+      await assert.rejects(
+        () => updateDocumentRequestStatus(created.id, { status: "processing" }, "registrar"),
+        (error: unknown) => error instanceof AppError && error.status === 409 && error.message === "Invalid status transition.",
+      );
+    } finally {
+      await cleanupRequestArtifacts(created.id, [created.trackingNumber], user.id);
+    }
+  });
+
   it("generates the certificate automatically when the request is approved", async () => {
     const db = getDb();
     const user = await createStudentUser("2025-2026");

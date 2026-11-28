@@ -5,6 +5,12 @@ import { composeAddress } from "@/lib/ph-address";
 import { AppError } from "@/lib/utils";
 
 export type ProfileUpdateValues = {
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  suffix?: string;
+  birthDate?: string;
+  gender?: string;
   contactNumber?: string;
   email?: string;
   lastSchoolYearAttended?: string;
@@ -37,6 +43,10 @@ export async function updateStudentProfile(userId: string, values: ProfileUpdate
   const updatesAddress = addressParts.length === ADDRESS_FIELDS.length;
 
   const updatesStudentRecord =
+    values.middleName !== undefined ||
+    values.suffix !== undefined ||
+    values.birthDate !== undefined ||
+    values.gender !== undefined ||
     values.contactNumber !== undefined ||
     values.lastSchoolYearAttended !== undefined ||
     updatesAddress;
@@ -58,6 +68,12 @@ export async function updateStudentProfile(userId: string, values: ProfileUpdate
         .update(students)
         .set({
           ...(values.contactNumber !== undefined ? { contactNumber: values.contactNumber || null } : {}),
+          ...(values.firstName !== undefined ? { firstName: values.firstName } : {}),
+          ...(values.middleName !== undefined ? { middleName: values.middleName || null } : {}),
+          ...(values.lastName !== undefined ? { lastName: values.lastName } : {}),
+          ...(values.suffix !== undefined ? { suffix: values.suffix || null } : {}),
+          ...(values.birthDate !== undefined ? { birthDate: values.birthDate ? new Date(`${values.birthDate}T00:00:00.000Z`) : null } : {}),
+          ...(values.gender !== undefined ? { gender: values.gender || null } : {}),
           ...(values.lastSchoolYearAttended !== undefined
             ? { lastSchoolYearAttended: values.lastSchoolYearAttended }
             : {}),
@@ -74,6 +90,14 @@ export async function updateStudentProfile(userId: string, values: ProfileUpdate
           updatedAt: now,
         })
         .where(eq(students.id, existingProfile.id));
+    }
+
+    if (values.firstName !== undefined || values.lastName !== undefined) {
+      await tx.update(users).set({
+        ...(values.firstName !== undefined ? { firstName: values.firstName } : {}),
+        ...(values.lastName !== undefined ? { lastName: values.lastName } : {}),
+        updatedAt: now,
+      }).where(eq(users.id, userId));
     }
 
     if (values.email !== undefined) {

@@ -20,9 +20,11 @@ export interface TimelineItem {
 export function RegistrarRequestDetailsView({
   request,
   initialTimeline,
+  basePath = "/registrar",
 }: {
   request: DocumentRequestView;
   initialTimeline: TimelineItem[];
+  basePath?: "/registrar" | "/admin";
 }) {
   const [override, setOverride] = useState<{
     status?: RequestStatus;
@@ -43,7 +45,7 @@ export function RegistrarRequestDetailsView({
       fromStatus: prevStatus,
       toStatus: newStatus,
       remarks: newRemarks,
-      actorUserName: "Registrar",
+      actorUserName: basePath === "/admin" ? "Administrator" : "Registrar",
       createdAt: formatDateTime(new Date()),
     };
 
@@ -79,6 +81,7 @@ export function RegistrarRequestDetailsView({
             <RequestStatusActions
               requestId={request.id}
               currentStatus={currentStatus}
+              basePath={basePath}
               onStatusChange={handleStatusChange}
             />
           </CardContent>

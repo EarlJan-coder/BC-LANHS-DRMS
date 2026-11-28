@@ -53,6 +53,7 @@ export type AuditTrailView = {
 
 export type StudentView = {
   id: string;
+  userId: string | null;
   accountLinked: boolean;
   registrationStatus: RegistrationStatus;
   lrn: string;
@@ -92,6 +93,12 @@ export type DocumentTypeView = {
 };
 
 export type StudentProfileView = {
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  suffix: string;
+  birthDate: string;
+  gender: string;
   name: string;
   email: string;
   lrn: string;
@@ -103,6 +110,7 @@ export type StudentProfileView = {
 
 export type CertificateView = {
   id: string;
+  requestId: string | null;
   certificateNumber: string;
   certificateType: string;
   studentName: string;

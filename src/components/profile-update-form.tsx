@@ -6,9 +6,16 @@ import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Required, Select } from "@/components/ui/input";
+import { FormattedDateInput } from "@/components/ui/formatted-date-input";
 import { CITY_NAMES, barangaysFor, parseAddress } from "@/lib/ph-address";
 
 export function ProfileUpdateForm({
+  firstName,
+  middleName,
+  lastName,
+  suffix,
+  birthDate,
+  gender,
   email,
   contactNumber,
   address,
@@ -16,6 +23,12 @@ export function ProfileUpdateForm({
   hasStudentRecord,
   triggerClassName,
 }: {
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  suffix: string;
+  birthDate: string;
+  gender: string;
   email: string;
   contactNumber: string;
   address: string;
@@ -26,6 +39,7 @@ export function ProfileUpdateForm({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [birthDateValue, setBirthDateValue] = useState(birthDate);
   const initialAddress = parseAddress(editableValue(address));
   const [addressCity, setAddressCity] = useState(initialAddress.city);
   const [addressBarangay, setAddressBarangay] = useState(initialAddress.barangay);
@@ -51,6 +65,12 @@ export function ProfileUpdateForm({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          firstName: formData.get("firstName"),
+          middleName: formData.get("middleName") ?? undefined,
+          lastName: formData.get("lastName"),
+          suffix: formData.get("suffix") ?? undefined,
+          birthDate: formData.get("birthDate") ?? undefined,
+          gender: formData.get("gender") ?? undefined,
           contactNumber: formData.get("contactNumber") ?? undefined,
           email: formData.get("email") ?? undefined,
           lastSchoolYearAttended: formData.get("lastSchoolYearAttended") ?? undefined,
@@ -120,7 +140,36 @@ export function ProfileUpdateForm({
 
             <form onSubmit={submit}>
               <fieldset disabled={saving} className="contents">
-                <div className="grid max-h-[70vh] gap-4 overflow-y-auto px-5 py-5">
+            <div className="grid max-h-[70vh] gap-4 overflow-y-auto px-5 py-5">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="profile-firstName">First name <Required /></Label>
+                      <Input id="profile-firstName" name="firstName" defaultValue={firstName} maxLength={100} required />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="profile-middleName">Middle name</Label>
+                      <Input id="profile-middleName" name="middleName" defaultValue={middleName} maxLength={60} disabled={!hasStudentRecord} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="profile-lastName">Last name <Required /></Label>
+                      <Input id="profile-lastName" name="lastName" defaultValue={lastName} maxLength={100} required />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="profile-suffix">Suffix</Label>
+                      <Input id="profile-suffix" name="suffix" defaultValue={suffix} maxLength={60} disabled={!hasStudentRecord} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="profile-birthDate">Birth date</Label>
+                      <FormattedDateInput id="profile-birthDate" label="birth date" name="birthDate" value={birthDateValue} onChange={setBirthDateValue} disabled={!hasStudentRecord} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="profile-gender">Gender</Label>
+                      <Select id="profile-gender" name="gender" defaultValue={gender} disabled={!hasStudentRecord}>
+                        <option value="">Select gender</option>
+                        {[...new Set(["Male", "Female", ...(gender && !["Male", "Female"].includes(gender) ? [gender] : [])])].map((value) => <option key={value} value={value}>{value}</option>)}
+                      </Select>
+                    </div>
+                  </div>
                   <div className="grid gap-2">
                     <Label htmlFor="profile-lastSchoolYearAttended">
                       Last school year attended <Required />

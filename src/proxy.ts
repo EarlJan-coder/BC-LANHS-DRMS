@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { SESSION_COOKIE, isSessionValidForUser, verifySessionToken } from "@/lib/session-token";
 import { canAccessWithRegistrationStatus } from "@/lib/registration-access";
+import { roleCanAccessPath } from "@/lib/auth";
 
 const protectedPrefixes = [
   "/dashboard",
@@ -26,16 +27,76 @@ const protectedPrefixes = [
 ];
 
 const passwordChangeAllowlist = ["/change-password", "/api/profile/password", "/api/auth/logout"];
+const publicApiPaths = new Set(["/api/auth/login", "/api/auth/signup"]);
+
+function continuePageRequest(request: NextRequest) {
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const isDev = process.env.NODE_ENV === "development";
+  const isProd = process.env.NODE_ENV === "production";
+  const csp = [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
+    "script-src-attr 'none'",
+    `style-src 'self' 'nonce-${nonce}' 'unsafe-inline'`,
+    // Framer Motion and a few interactive controls set style attributes at
+    // runtime. Keep those working while keeping executable scripts nonce-only.
+    "style-src-attr 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    ...(isProd ? ["upgrade-insecure-requests"] : []),
+  ].join("; ");
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", csp);
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  response.headers.set("Content-Security-Policy", csp);
+  return response;
+}
+
+function isStateChangingMethod(method: string) {
+  return !["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());
+}
+
+function hasSameOriginSource(request: NextRequest) {
+  const source = request.headers.get("origin") ?? request.headers.get("referer");
+  if (!source || source === "null") return false;
+
+  try {
+    return new URL(source).origin === request.nextUrl.origin;
+  } catch {
+    return false;
+  }
+}
 
 function isProtectedPath(pathname: string) {
+  if (pathname === "/api" || pathname.startsWith("/api/")) {
+    return !publicApiPaths.has(pathname);
+  }
+
   return protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
 export { isProtectedPath };
 
 export async function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // SameSite cookies are the first CSRF defense. Requiring an exact Origin or
+  // Referer match on API writes adds a server-side check for browsers that
+  // attach the session cookie to a forged request.
+  if (pathname.startsWith("/api/") && isStateChangingMethod(request.method) && !hasSameOriginSource(request)) {
+    return NextResponse.json({ error: "Cross-origin request rejected." }, { status: 403 });
+  }
+
   if (!isProtectedPath(request.nextUrl.pathname)) {
-    return NextResponse.next();
+    return pathname.startsWith("/api/") ? NextResponse.next() : continuePageRequest(request);
   }
 
   const token = request.cookies.get(SESSION_COOKIE)?.value;
@@ -57,17 +118,18 @@ export async function proxy(request: NextRequest) {
           canAccessWithRegistrationStatus(user.role, user.registrationStatus) &&
           isSessionValidForUser(session, user)
         ) {
+          if (!pathname.startsWith("/api/") && !roleCanAccessPath(user.role, pathname)) {
+            return NextResponse.redirect(new URL("/dashboard", request.url));
+          }
+
           if (user.mustChangePassword && !passwordChangeAllowlist.includes(request.nextUrl.pathname)) {
             return request.nextUrl.pathname.startsWith("/api/")
               ? NextResponse.json({ error: "Change your password before continuing." }, { status: 403 })
               : NextResponse.redirect(new URL("/change-password", request.url));
           }
 
-          return NextResponse.next();
+          return pathname.startsWith("/api/") ? NextResponse.next() : continuePageRequest(request);
         }
-      } else {
-        // No database configured: fall back to signature-only verification.
-        return NextResponse.next();
       }
     } catch {
       // Treat an invalid or expired cookie as signed out.
@@ -84,22 +146,19 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/api/:path*",
+    // Scope nonce CSP to HTML routes that render dynamically. Static assets
+    // and the framework's static 404 response do not need a request nonce.
+    "/",
+    "/about",
     "/dashboard/:path*",
     "/student/:path*",
     "/registrar/:path*",
     "/admin/:path*",
     "/change-password",
-    "/api/document-requests/:path*",
-    "/api/users/:path*",
-    "/api/profile/:path*",
-    "/api/students/:path*",
-    "/api/certificates/:path*",
-    "/api/audit/:path*",
-    "/api/blockchain/:path*",
-    "/api/reports/:path*",
-    "/api/registrations/:path*",
-    "/api/notifications/:path*",
-    "/api/document-types/:path*",
-    "/api/settings/:path*",
+    "/sign-in/:path*",
+    "/sign-up/:path*",
+    "/verify",
+    "/verify-certificate/:path*",
   ],
 };

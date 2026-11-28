@@ -13,6 +13,7 @@ const {
   REPORT_KEYS,
   formatPeriodLabel,
   formatReportDate,
+  formatReportDateTime,
   getReportData,
   parseReportFilters,
   parseReportRange,
@@ -39,12 +40,19 @@ describe("parseReportFilters", () => {
     assert.equal(filters.documentType, undefined);
     assert.equal(filters.status, undefined);
   });
+
+  it("validates grade levels and preserves supported grades", () => {
+    assert.deepEqual(parseReportFilters("Good Moral Certificate", "pending", "11"), {
+      documentType: "Good Moral Certificate", status: "pending", gradeLevel: "11",
+    });
+    assert.equal(parseReportFilters(undefined, undefined, "99").gradeLevel, undefined);
+  });
 });
 
 describe("report date formatting", () => {
   it("renders an ISO day as a human-readable date", () => {
-    assert.equal(formatReportDate("2026-11-11"), "Nov. 11, 2026");
-    assert.equal(formatReportDate("2026-01-05"), "Jan. 5, 2026");
+    assert.equal(formatReportDate("2026-11-11"), "November 11 2026");
+    assert.equal(formatReportDate("2026-01-05"), "January 05 2026");
   });
 
   it("passes unparseable values through untouched", () => {
@@ -52,9 +60,13 @@ describe("report date formatting", () => {
     assert.equal(formatReportDate(""), "");
   });
 
+  it("formats timestamps with the full date and Manila time", () => {
+    assert.equal(formatReportDateTime(new Date("2026-10-31T16:30:00.000Z")), "November 01 2026 12:30 AM");
+  });
+
   it("humanizes the coverage period label", () => {
     const range = parseReportRange("2026-11-01", "2026-11-17");
-    assert.equal(formatPeriodLabel(range), "Nov. 1, 2026 to Nov. 17, 2026");
+    assert.equal(formatPeriodLabel(range), "November 01 2026 to November 17 2026");
     assert.equal(formatPeriodLabel({}), "All time");
   });
 });
@@ -132,14 +144,26 @@ describe("report row filters (integration, local DB)", {
         status: "pending",
       });
       assert.equal(pending.total, 1);
-      assert.equal(pending.rows[0]?.[3], "Pending");
+      assert.equal(pending.rows[0]?.[4], "Pending");
 
       const approved = await getReportData("request-summary", {}, {
         documentType: typeName,
         status: "approved",
       });
       assert.equal(approved.total, 1);
-      assert.equal(approved.rows[0]?.[3], "Approved");
+      assert.equal(approved.rows[0]?.[4], "Approved");
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("filters request summary rows by grade level", async () => {
+    await seed();
+    try {
+      await getDb().update(documentRequests).set({ gradeLevelNeeded: "7" }).where(inArray(documentRequests.id, requestIds));
+      const report = await getReportData("request-summary", {}, { gradeLevel: "7" });
+      assert.ok(report.rows.length >= 3);
+      assert.ok(report.rows.every((row) => row[3] === "7"));
     } finally {
       await cleanup();
     }

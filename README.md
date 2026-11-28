@@ -2,7 +2,7 @@
 
 Luis Aguado National High School Student Records and Document Request Management System.
 
-LANHS DRMS is a full-stack registrar portal for online document requests, student records, bulk student import, certificate PDF generation with preview overrides, QR verification, email notifications, and blockchain-backed audit proofs.
+LANHS DRMS is a full-stack registrar portal for online document requests, student record management, certificate PDF generation with preview overrides, QR verification, email notifications, and blockchain-backed audit proofs.
 
 ## Features
 
@@ -11,10 +11,10 @@ LANHS DRMS is a full-stack registrar portal for online document requests, studen
 - Local user role management backed by PostgreSQL.
 - Student document request submission with tracking numbers, remarks, status timeline, notifications, email attempts, request-slip PDFs (staff or the requesting student only), and audit logging. The request form takes grade as a dropdown (7–12) and a strand dropdown (ABM / HUMSS) that appears only for grades 11–12.
 - Registrar request queue with search/filter, status actions, certificate generation, ready/claimed workflow, and blockchain proof status.
-- Student records with bulk CSV/XLSX import: XLSX template download, preview validation, per-row error messages, duplicate LRN detection, atomic batch saving, and a batch audit entry.
+- Student record management for registrars, with linked student accounts, profile editing, and record views in Admin User Management.
 - Certificate PDFs that reproduce the school's official DepEd templates 1:1 (Good Moral Character, Enrolment, Graduation), with QR verification, a registrar preview editor for per-certificate content overrides (including the signatory names), a public privacy-safe verification page, and blockchain hash proof.
 - Registrar notifications: document-request submissions fan out one in-app notification per ACTIVE registrar (no admin copies); registrar nav shows an unread badge (server-rendered count, "99+" cap) with mark-one / mark-all read at /registrar/notifications.
-- Admin user, document type, school year, grade level, section, settings, and blockchain retry screens.
+- Admin user management, student record views, document type and certificate template configuration, system settings, reports, and blockchain audit/retry screens.
 - Solidity smart contract and Hardhat workflow for local and Sepolia deployment.
 
 ## Tech Stack
@@ -25,7 +25,6 @@ LANHS DRMS is a full-stack registrar portal for online document requests, studen
 - PostgreSQL and Drizzle ORM
 - Local email/LRN authentication with bcrypt password hashes and signed sessions
 - Resend email
-- `xlsx` for spreadsheet import
 - `pdf-lib` and `qrcode` for certificate PDFs and verification QR codes
 - Solidity, Hardhat, and Ethers.js
 
@@ -72,7 +71,6 @@ Operational variables (optional; each is documented in `.env.example`):
 
 - `TRUST_PROXY` — enables per-address auth rate-limit buckets; see Local Authentication.
 - `IP_ATTEMPT_LIMIT` (default `20`) and `LOGIN_ATTEMPT_LIMIT` (default `5`) — auth attempt caps per 15-minute window.
-- `SEED_PASSWORD` — required before `npm run db:seed`; 8–72 bytes, development only.
 - `ALLOW_REMOTE_SEED` — set to `"true"` to allow seeding a database on a non-local host.
 - `ALLOW_DESTRUCTIVE_MIGRATIONS` — set to `"true"` only after taking a backup, to let pending irreversible data deletes run under `npm run db:migrate`; see Database.
 
@@ -122,13 +120,13 @@ npm run db:migrate
 >
 > In general, the guard's hash-mismatch message prints the exact current hash to write into that row; only do this when the database already reflects the current file.
 
-Seed sample data:
+Seed development document types:
 
 ```bash
 npm run db:seed
 ```
 
-Before running the seed command, set `SEED_PASSWORD` to a development-only password of 8–72 bytes. The four sample accounts (admin, registrar, student, alumni) use that password and must not be seeded in production — the seeder refuses to run when `NODE_ENV` is `production`, and it also refuses a database on a non-local host unless `ALLOW_REMOTE_SEED="true"` is set. Seed data includes the 2026-2027 school year, grade levels 7–12, two Grade 12 sections, document types, the four sample accounts, one sample student, and one sample document request with its status history.
+The seeder inserts the configured document types only. It refuses to run when `NODE_ENV` is `production`, and refuses a database on a non-local host unless `ALLOW_REMOTE_SEED="true"` is set. It does not create sample accounts or student/request records. Create the first admin with `npm run auth:bootstrap-admin`; additional registrar and student accounts can be provisioned through the admin portal.
 
 ## Local Authentication
 
@@ -140,7 +138,7 @@ Session JWTs carry the user's `token_version`, and every authenticated request c
 
 When an unauthenticated browser request is redirected to `/sign-in`, the original path is preserved as a sanitized `?next=` parameter and the user returns there after logging in. Only same-origin, non-API page paths are accepted; anything else falls back to `/dashboard`.
 
-Registrars can add student records in bulk from **Student records → Import students** (see the Student Import section below): download the XLSX template, fill it in, and upload a CSV or Excel file. The import validates, previews, and saves the full batch atomically. It creates student records only; students create their own login accounts later.
+Student records are created along with student signups and admin-provisioned student accounts. Registrars can review and edit them from **Student records**; administrators can view student profiles, requests, and certificates from **User management**. The current portal does not include a bulk CSV/XLSX student import workflow.
 
 Login allows at most `IP_ATTEMPT_LIMIT` attempts per client address (default 20) and `LOGIN_ATTEMPT_LIMIT` attempts per address-and-identifier pair (default 5) in a 15-minute window; signup allows `LOGIN_ATTEMPT_LIMIT` attempts per email in the same window. A successful login clears its address and credential buckets instead of counting against them. The limiter stores HMACs of those keys in PostgreSQL, not raw addresses or identifiers.
 
@@ -176,23 +174,9 @@ RESEND_FROM_EMAIL="LANHS DRMS <no-reply@lanhsdrms.online>"
 
 Request submission, request updates, and certificate generation attempt professional school-themed email notifications. Email failures do not roll back the main database transaction.
 
-## Student Import (CSV/XLSX)
+## Student Records
 
-Registrar workflow:
-
-1. Go to `/registrar/students/import` (**Student records → Import students**).
-2. Download the XLSX template.
-3. Fill the required columns (12-digit LRN, first name, last name, student type, status, enrollment status). Guardian, contact, academic placement, and the remaining columns are optional.
-4. Upload a CSV or Excel file (5 MB and 500 rows maximum).
-5. Review valid rows and error rows.
-6. Save the batch.
-
-Validation checks include required fields, 12-digit LRNs, `YYYY-MM-DD` birth dates, valid emails, duplicate LRNs within the file and against existing student records, and grade level, section, and school year names against academic setup. Saving is atomic — either the whole batch lands or none of it — and writes one batch audit entry naming the imported LRNs. The import creates student records only; students create their own login accounts later.
-
-XLSX date cells (for example Birth Date) are read with `sheet_to_json`'s `UTC: true` option so the Excel calendar date survives every server timezone. A regression test pins this; it can only detect a revert when the suite runs in a non-UTC timezone, so run `npm run test:unit` with a non-UTC `TZ` in at least one CI job.
-
-> [!WARNING]
-> **Data audit:** deployments that ran an XLSX student import **before** the `UTC: true` fix on a server in a timezone ahead of UTC may have birth dates stored one day early — re-check imported birth dates against the source spreadsheets. Known follow-up: `birth_date` is stored as `timestamptz`, so read-side date formatting can still display the previous day in timezones behind UTC until display formatting is made timezone-aware.
+Student records are linked to accounts when a student signs up or when an administrator provisions a student account. A student signup is placed on hold until registration approval. Registrars manage records from `/registrar/students`; administrators can browse student records under `/admin/users` and open a student's profile, requests, and generated certificates. The student record view supports editing and deletion according to the user's role and whether an account is linked. There is currently no bulk spreadsheet import page or upload API.
 
 ## Certificates
 
@@ -205,7 +189,7 @@ Registrar workflow:
 3. Download the PDF.
 4. Scan the QR code or open `/verify-certificate/[verificationCode]`.
 
-The public verification page shows only non-sensitive information: certificate number, partial student name, certificate type, issue date, school, and blockchain transaction status.
+The public verification page shows certificate-related information such as certificate number, student or requestor name, document type, issue date, school, and proof status. It does not display the full student profile fields such as LRN, address, or contact number.
 
 ### Template internals
 

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Modal } from "@/components/ui/modal";
 
 export function ResetPasswordForm({ userId, email }: { userId: string; email: string }) {
   const router = useRouter();
@@ -49,42 +49,41 @@ export function ResetPasswordForm({ userId, email }: { userId: string; email: st
     }
   }
 
-  if (reset) {
-    return (
-      <Card className="w-full min-w-[260px]">
-        <CardHeader>
-          <CardTitle>Password reset</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <dl className="grid gap-2 text-sm">
-            <div className="flex justify-between gap-4">
-              <dt className="text-slate-500">Email</dt>
-              <dd className="font-medium text-slate-900">{reset.email}</dd>
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <dt className="text-slate-500">Temporary password</dt>
-              <dd className="flex items-center gap-2">
-                <code className="rounded bg-slate-100 px-2 py-1 text-sm text-slate-900">{reset.password}</code>
-                <Button type="button" size="sm" tone="secondary" onClick={copyPassword}>
-                  {copied ? "Copied" : "Copy"}
-                </Button>
-              </dd>
-            </div>
-          </dl>
-          <p className="text-sm text-slate-600">They will be required to change this password when they next sign in.</p>
-          <div>
-            <Button type="button" size="sm" tone="secondary" onClick={() => setReset(null)}>
-              Done
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <Button type="button" size="sm" tone="secondary" onClick={handleReset} loading={loading}>
-      Reset password
-    </Button>
+    <>
+      <Button type="button" size="sm" tone="secondary" onClick={handleReset} loading={loading}>
+        Reset password
+      </Button>
+      <Modal
+        open={Boolean(reset)}
+        onClose={() => setReset(null)}
+        title="Password reset"
+        description="Share this temporary password with the account owner. They will be asked to change it at next sign in."
+        className="max-w-md"
+      >
+        {reset ? (
+          <div className="space-y-5">
+            <dl className="grid gap-3 text-sm">
+              <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-b border-slate-100 pb-2">
+                <dt className="text-slate-500">Email</dt>
+                <dd className="break-all text-right font-medium text-slate-900">{reset.email}</dd>
+              </div>
+            </dl>
+            <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-900">Temporary password</p>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                <code className="min-w-0 break-all rounded bg-white px-2.5 py-1.5 text-sm font-semibold text-slate-900">{reset.password}</code>
+                <Button type="button" size="sm" tone="secondary" onClick={copyPassword}>
+                  {copied ? "Copied" : "Copy password"}
+                </Button>
+              </div>
+            </div>
+            <div className="flex justify-end border-t border-slate-100 pt-4">
+              <Button type="button" tone="secondary" onClick={() => setReset(null)}>Done</Button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+    </>
   );
 }

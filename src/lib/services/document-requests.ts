@@ -101,7 +101,7 @@ export async function getRequestEligibility(
     return { eligible: false, reason: "no_record" };
   }
 
-  if (!student.lrn || student.lrn.trim() === "") {
+  if ((!student.lrn || student.lrn.trim() === "") && student.studentType !== "alumni") {
     return { eligible: false, reason: "no_lrn" };
   }
 
@@ -150,6 +150,9 @@ export async function createDocumentRequest(input: unknown, effects: CreateDocum
       .from(documentTypes)
       .where(eq(documentTypes.name, values.documentType))
       .limit(1);
+    if (documentType && !documentType.isActive) {
+      throw new AppError("This document type is no longer available for requests.", 409);
+    }
 
     const [request] = await db
       .insert(documentRequests)
@@ -452,6 +455,16 @@ export async function generateRequestSlipPdf(requestId: string, viewer: { id: st
 
 export async function updateDocumentRequestStatus(requestId: string, input: unknown, actorRole: UserRole = "registrar") {
   const values = updateRequestStatusSchema.parse(input);
+  const database = getDb();
+  const current = await database.query.documentRequests.findFirst({
+    where: eq(documentRequests.id, requestId),
+    columns: { status: true },
+  });
+  if (!current) throw new AppError("Request not found.", 404);
+  if (["processing", "ready_for_pickup", "claimed"].includes(values.status) &&
+      !["approved", "processing", "ready_for_pickup", "claimed"].includes(current.status)) {
+    throw new AppError("Invalid status transition.", 409);
+  }
   let referenceId = requestId;
   let previousStatus: RequestStatus | undefined;
   let actorUserId: string | undefined;

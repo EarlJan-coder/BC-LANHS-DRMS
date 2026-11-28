@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { connection } from "next/server";
 import { AppLogo } from "@/components/layout/app-logo";
 import { MotionReveal } from "@/components/motion-reveal";
 import { ButtonLink } from "@/components/ui/button";
@@ -53,7 +54,9 @@ const steps = [
   { number: "03", title: "Get the next step", copy: "Follow pickup instructions or verify an issued certificate." },
 ];
 
-export default function Home() {
+export default async function Home() {
+  await connection();
+
   return (
     <main className="overflow-hidden bg-[#fbf9f7] text-slate-950">
       <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-[#fffdfa]/90 backdrop-blur-xl">

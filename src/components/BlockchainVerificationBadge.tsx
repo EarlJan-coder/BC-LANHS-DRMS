@@ -2,6 +2,7 @@
 
 import { CheckCircle2, AlertCircle, Clock, ExternalLink } from "lucide-react";
 import type { VerificationResult } from "@/lib/services/blockchain-verification";
+import { formatDateTime } from "@/lib/utils";
 
 interface BlockchainVerificationBadgeProps {
   result: VerificationResult;
@@ -60,7 +61,7 @@ export function BlockchainVerificationBadge({ result }: BlockchainVerificationBa
         )}
         {result.recordedAt && (
           <div>
-            <span className="font-medium">Recorded:</span> {new Date(result.recordedAt).toLocaleString()}
+            <span className="font-medium">Recorded:</span> {formatDateTime(new Date(result.recordedAt))}
           </div>
         )}
         {result.action && (

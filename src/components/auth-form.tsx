@@ -282,19 +282,20 @@ export function AuthForm({ mode, next }: { mode: AuthFormMode; next?: string }) 
             </section>
             <div className="grid gap-2">
               <Label htmlFor="lrn">
-                Learner Reference Number (LRN) <Required />
+                Learner Reference Number (LRN) {studentStatus !== "alumni" ? <Required /> : null}
               </Label>
               <Input
                 id="lrn"
                 name="lrn"
                 autoComplete="off"
                 inputMode="numeric"
-                pattern="[0-9]{12}"
-                minLength={12}
+                pattern={studentStatus === "alumni" ? undefined : "[0-9]{12}"}
+                minLength={studentStatus === "alumni" ? undefined : 12}
                 maxLength={12}
                 placeholder="12-digit LRN"
-                required
+                required={studentStatus !== "alumni"}
               />
+              {studentStatus === "alumni" ? <p className="text-xs leading-5 text-slate-500">Optional for alumni — leave blank if you no longer remember it.</p> : null}
             </div>
           </>
         ) : (

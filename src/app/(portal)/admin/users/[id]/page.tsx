@@ -1,0 +1,74 @@
+import { Download } from "lucide-react";
+import { notFound } from "next/navigation";
+import { DataTable } from "@/components/data-table";
+import { SectionHeading } from "@/components/section-heading";
+import { StatusBadge } from "@/components/status-badge";
+import { ButtonLink } from "@/components/ui/button";
+import { DownloadButton } from "@/components/ui/download-button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getStudentDetailView } from "@/lib/services/live-data";
+import { humanizeStatus } from "@/lib/utils";
+
+export default async function AdminUserStudentRecordPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const data = await getStudentDetailView(id);
+
+  if (!data) notFound();
+
+  return (
+    <div>
+      <SectionHeading
+        title="Student record"
+        description={data.profile.name}
+        actions={<ButtonLink href="/admin/users#student-records" tone="secondary">Back to user management</ButtonLink>}
+      />
+
+      <Card>
+        <CardHeader><CardTitle>Profile</CardTitle></CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Detail label="LRN" value={data.profile.lrn ?? "Not set"} />
+          <Detail label="Status" value={humanizeStatus(data.profile.status)} />
+          <Detail label="Email" value={data.profile.email} />
+          <Detail label="Contact" value={data.profile.contactNumber} />
+          <Detail label="Last school year attended" value={data.profile.lastSchoolYearAttended} />
+          <Detail label="Address" value={data.profile.address} />
+        </CardContent>
+      </Card>
+
+      <div className="mt-6 grid gap-6">
+        <DataTable title="Document requests" rows={data.requests}
+          emptyMessage="No document requests found for this student."
+          columns={[
+            { key: "tracking", label: "Tracking no.", render: (row) => row.trackingNumber },
+            { key: "document", label: "Document", render: (row) => row.documentType },
+            { key: "status", label: "Status", render: (row) => <StatusBadge status={row.status} /> },
+            { key: "updated", label: "Updated", render: (row) => row.updatedAt },
+          ]}
+        />
+
+        <DataTable title="Certificates" rows={data.certificates}
+          emptyMessage="No generated certificates found for this student."
+          columns={[
+            { key: "number", label: "Certificate no.", render: (row) => row.certificateNumber },
+            { key: "type", label: "Type", render: (row) => row.certificateType },
+            { key: "generated", label: "Generated", render: (row) => row.generatedAt },
+            { key: "download", label: "PDF", render: (row) => (
+              <DownloadButton href={`/api/certificates/${row.id}/pdf`} tone="info" size="icon" aria-label="Download PDF">
+                <Download className="h-4 w-4" />
+              </DownloadButton>
+            ) },
+          ]}
+        />
+      </div>
+    </div>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border p-4">
+      <p className="text-sm font-medium text-slate-500">{label}</p>
+      <p className="mt-1 break-words text-sm font-semibold text-slate-950">{value}</p>
+    </div>
+  );
+}

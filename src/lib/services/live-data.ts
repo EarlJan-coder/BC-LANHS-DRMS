@@ -410,9 +410,10 @@ export async function listStudentViews(options: PageOptions | { all?: true } = {
 
   const views = rows.map<StudentView>((row) => ({
     id: row.id,
+    userId: row.userId,
     accountLinked: Boolean(row.userId),
     registrationStatus: row.registrationStatus ?? "pending",
-    lrn: row.lrn,
+    lrn: row.lrn ?? "Not set",
     firstName: row.firstName,
     middleName: row.middleName ?? "",
     lastName: row.lastName,
@@ -427,6 +428,19 @@ export async function listStudentViews(options: PageOptions | { all?: true } = {
   }));
   if ("page" in options) return makePaged(views, total, options.page, options.pageSize);
   return views;
+}
+
+export async function getStudentRecordIdsByUserIds(userIds: string[]): Promise<Map<string, string>> {
+  if (userIds.length === 0) return new Map();
+  const rows = await getDb()
+    .select({ userId: students.userId, studentId: students.id })
+    .from(students)
+    .where(inArray(students.userId, userIds));
+  const result = new Map<string, string>();
+  for (const row of rows) {
+    if (row.userId && !result.has(row.userId)) result.set(row.userId, row.studentId);
+  }
+  return result;
 }
 
 export async function getStudentDetailView(id: string) {
@@ -517,6 +531,8 @@ export async function getCurrentStudentProfile() {
       middleName: students.middleName,
       lastName: students.lastName,
       suffix: students.suffix,
+      birthDate: students.birthDate,
+      gender: students.gender,
       lrn: students.lrn,
       contactNumber: students.contactNumber,
       address: students.address,
@@ -531,6 +547,12 @@ export async function getCurrentStudentProfile() {
   if (!student) {
     return {
       name: `${profile.firstName} ${profile.lastName}`,
+      firstName: profile.firstName,
+      middleName: "",
+      lastName: profile.lastName,
+      suffix: "",
+      birthDate: "",
+      gender: "",
       email: profile.email,
       lrn: "No student profile linked",
       contactNumber: "Not set",
@@ -542,8 +564,14 @@ export async function getCurrentStudentProfile() {
 
   return {
     name: [student.firstName, student.middleName, student.lastName, student.suffix].filter(Boolean).join(" "),
+    firstName: student.firstName,
+    middleName: student.middleName ?? "",
+    lastName: student.lastName,
+    suffix: student.suffix ?? "",
+    birthDate: student.birthDate?.toISOString().slice(0, 10) ?? "",
+    gender: student.gender ?? "",
     email: profile.email,
-    lrn: student.lrn,
+    lrn: student.lrn ?? "Not set",
     contactNumber: student.contactNumber ?? "Not set",
     address: student.address ?? "Not set",
     lastSchoolYearAttended: student.lastSchoolYearAttended ?? "Not set",

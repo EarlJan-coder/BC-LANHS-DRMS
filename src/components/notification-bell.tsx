@@ -26,6 +26,7 @@ function getRedirectPath(role: DashboardRole, detail: NotificationDetail): strin
     const id = detail.record.id as string | undefined;
     if (!id) return null;
     if (role === "registrar") return `/registrar/requests/${id}`;
+    if (role === "admin") return `/admin/requests/${id}`;
     if (role === "student") return `/student/requests`;
     return null;
   }
@@ -39,6 +40,7 @@ function getRedirectPath(role: DashboardRole, detail: NotificationDetail): strin
     const id = detail.record.id as string | undefined;
     if (!id) return null;
     if (role === "registrar") return `/registrar/certificates/${id}`;
+    if (role === "admin") return `/admin/certificates/${id}`;
     return null;
   }
   return null;

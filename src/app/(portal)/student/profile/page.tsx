@@ -1,8 +1,8 @@
-import { GraduationCap, MapPin, Phone } from "lucide-react";
 import { ProfileUpdateForm } from "@/components/profile-update-form";
 import { SectionHeading } from "@/components/section-heading";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentStudentProfile } from "@/lib/services/live-data";
+import { formatDate } from "@/lib/utils";
 
 export default async function StudentProfilePage() {
   const profile = await getCurrentStudentProfile();
@@ -11,42 +11,60 @@ export default async function StudentProfilePage() {
     <div>
       <SectionHeading title="Profile" description="Student information used for registrar validation." />
 
-      {/* Identity banner */}
-      <div className="overflow-hidden rounded-lg bg-gradient-to-br from-brand to-brand-dark">
-        <div className="flex flex-wrap items-center gap-4 px-6 py-6">
+      <div className="rounded-xl border border-slate-200 bg-white px-5 py-5 sm:px-6">
+        <div className="flex flex-wrap items-center gap-4">
           <div className="min-w-0 flex-1">
-            <h2 className="text-2xl font-semibold text-white">{profile.name}</h2>
+            <p className="text-xs font-medium text-slate-500">Student profile</p>
+            <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">{profile.name}</h2>
             {profile.hasStudentRecord ? (
-              <p className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-rose-100">
+              <p className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-slate-500">
                 <span className="font-mono">LRN {profile.lrn}</span>
               </p>
             ) : (
-              <p className="mt-1.5 text-sm text-rose-100">No student profile linked</p>
+              <p className="mt-1.5 text-sm text-slate-500">No student profile linked</p>
             )}
           </div>
           <ProfileUpdateForm
+            firstName={profile.firstName}
+            middleName={profile.middleName}
+            lastName={profile.lastName}
+            suffix={profile.suffix}
+            birthDate={profile.birthDate}
+            gender={profile.gender}
             email={profile.email}
             contactNumber={profile.contactNumber}
             address={profile.address}
             lastSchoolYearAttended={profile.lastSchoolYearAttended}
             hasStudentRecord={profile.hasStudentRecord}
-            triggerClassName="border-transparent bg-white text-brand hover:bg-rose-50"
           />
         </div>
       </div>
 
       {/* Grouped detail cards */}
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <Card className="border-rose-200 lg:col-span-2">
+        <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <SectionIcon tone="brand">
-                <Phone className="h-4 w-4" aria-hidden />
-              </SectionIcon>
+              <CardTitle>Personal details</CardTitle>
+              <span className="ml-auto text-xs font-medium text-slate-500">Editable</span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <Field label="First name" value={profile.firstName} />
+              <Field label="Middle name" value={profile.middleName || "Not set"} />
+              <Field label="Last name" value={profile.lastName} />
+              <Field label="Suffix" value={profile.suffix || "Not set"} />
+              <Field label="Birth date" value={profile.birthDate ? formatDate(new Date(`${profile.birthDate}T00:00:00.000Z`)) : "Not set"} />
+              <Field label="Gender" value={profile.gender || "Not set"} />
+            </dl>
+          </CardContent>
+        </Card>
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <div className="flex items-center gap-3">
               <CardTitle>Contact</CardTitle>
-              <span className="ml-auto rounded-full bg-brand-soft px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-brand">
-                Editable
-              </span>
+              <span className="ml-auto text-xs font-medium text-slate-500">Editable</span>
             </div>
           </CardHeader>
           <CardContent>
@@ -64,17 +82,12 @@ export default async function StudentProfilePage() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-3">
-              <SectionIcon>
-                <GraduationCap className="h-4 w-4" aria-hidden />
-              </SectionIcon>
-              <CardTitle>Academic record</CardTitle>
-            </div>
+            <CardTitle>Academic record</CardTitle>
           </CardHeader>
           <CardContent>
             {profile.hasStudentRecord ? (
               <dl className="grid gap-4 sm:grid-cols-1">
-                <Field label="LRN" value={profile.lrn} />
+                <Field label="LRN" value={profile.lrn || "Not set"} />
                 <Field label="Last school year attended" value={profile.lastSchoolYearAttended} />
               </dl>
             ) : (
@@ -86,13 +99,8 @@ export default async function StudentProfilePage() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <SectionIcon>
-                <MapPin className="h-4 w-4" aria-hidden />
-              </SectionIcon>
               <CardTitle>Address</CardTitle>
-              <span className="ml-auto rounded-full bg-brand-soft px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-brand">
-                Editable
-              </span>
+              <span className="ml-auto text-xs font-medium text-slate-500">Editable</span>
             </div>
           </CardHeader>
           <CardContent>
@@ -101,18 +109,6 @@ export default async function StudentProfilePage() {
         </Card>
       </div>
     </div>
-  );
-}
-
-function SectionIcon({ tone = "muted", children }: { tone?: "brand" | "muted"; children: React.ReactNode }) {
-  return (
-    <span
-      className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${
-        tone === "brand" ? "bg-brand-soft text-brand" : "bg-slate-100 text-slate-600"
-      }`}
-    >
-      {children}
-    </span>
   );
 }
 

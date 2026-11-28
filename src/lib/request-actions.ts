@@ -27,6 +27,7 @@ export interface StatusUpdatePayload {
 export function buildStatusUpdatePayload(
   status: RequestStatus,
   rejectionReason?: string,
+  actorLabel = "Registrar",
 ): StatusUpdatePayload | null {
   const trimmedReason = rejectionReason?.trim();
 
@@ -37,7 +38,7 @@ export function buildStatusUpdatePayload(
     return {
       status,
       remarks: `Status updated to ${status}.`,
-      registrarRemarks: `Registrar rejected this request. Reason: ${trimmedReason}`,
+      registrarRemarks: `${actorLabel} rejected this request. Reason: ${trimmedReason}`,
       rejectionReason: trimmedReason,
     };
   }
@@ -45,7 +46,7 @@ export function buildStatusUpdatePayload(
   return {
     status,
     remarks: `Status updated to ${status}.`,
-    registrarRemarks: `Registrar marked this request as ${status.replaceAll("_", " ")}.`,
+    registrarRemarks: `${actorLabel} marked this request as ${status.replaceAll("_", " ")}.`,
   };
 }
 
@@ -72,4 +73,14 @@ const DISABLED_ACTIONS_BY_STATUS: Record<RequestStatus, readonly RequestStatus[]
 /** The status action buttons that must be disabled while the request sits in `currentStatus`. */
 export function disabledStatusActions(currentStatus?: RequestStatus): readonly RequestStatus[] {
   return currentStatus ? DISABLED_ACTIONS_BY_STATUS[currentStatus] : [];
+}
+
+const APPROVAL_ACTIONS: readonly RequestStatus[] = ["approved", "rejected"];
+const WORKFLOW_ACTIONS: readonly RequestStatus[] = ALL_ACTIONS;
+
+/** Approval is required before staff can advance a request through fulfillment. */
+export function visibleStatusActions(currentStatus?: RequestStatus): readonly RequestStatus[] {
+  return currentStatus === "approved" || currentStatus === "processing" || currentStatus === "ready_for_pickup" || currentStatus === "claimed"
+    ? WORKFLOW_ACTIONS
+    : APPROVAL_ACTIONS;
 }

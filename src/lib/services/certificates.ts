@@ -323,6 +323,7 @@ export async function listCertificateViews(options: number | { page?: number; pa
   const baseQuery = db
     .select({
       id: certificates.id,
+      requestId: certificates.requestId,
       certificateNumber: certificates.certificateNumber,
       certificateType: certificates.certificateType,
       verificationCode: certificates.verificationCode,
@@ -354,6 +355,7 @@ export async function listCertificateViews(options: number | { page?: number; pa
 
   const views = rows.map((row) => ({
     id: row.id,
+    requestId: row.requestId,
     certificateNumber: row.certificateNumber,
     certificateType: row.certificateType,
     studentName: [row.firstName, row.middleName, row.lastName, row.suffix].filter(Boolean).join(" ") || "Unknown student",
@@ -372,6 +374,7 @@ export async function getCertificateView(id: string) {
   const rows = await getDb()
     .select({
       id: certificates.id,
+      requestId: certificates.requestId,
       certificateNumber: certificates.certificateNumber,
       certificateType: certificates.certificateType,
       verificationCode: certificates.verificationCode,
@@ -398,6 +401,7 @@ export async function getCertificateView(id: string) {
   if (!row) return null;
   return {
     id: row.id,
+    requestId: row.requestId,
     certificateNumber: row.certificateNumber,
     certificateType: row.certificateType,
     studentName: [row.firstName, row.middleName, row.lastName, row.suffix].filter(Boolean).join(" ") || "Unknown student",

@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Input, Label, Required, Select, Textarea } from "@/components/ui/input";
-import { DOCUMENT_REQUEST_REASONS, DOCUMENT_TYPES, GRADE_LEVELS, SHS_STRANDS } from "@/lib/constants";
+import { DOCUMENT_REQUEST_REASONS, GRADE_LEVELS, SHS_STRANDS } from "@/lib/constants";
 import { buildRequestReviewRows } from "@/lib/request-review";
 
 /** Sentinel choice appended after the predefined request reasons. */
 const OTHER_REASON = "Other";
 
-export function RequestForm() {
+export function RequestForm({ documentTypes }: { documentTypes: Array<{ id: string; name: string }> }) {
   const [loading, setLoading] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -110,12 +110,17 @@ export function RequestForm() {
                 <option value="" disabled>
                   Select document type
                 </option>
-                {DOCUMENT_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
+                {documentTypes.map((type) => (
+                  <option key={type.id} value={type.name}>
+                    {type.name}
                   </option>
                 ))}
               </Select>
+              {documentTypes.length === 0 ? (
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  No document types are available for requests right now. Please contact the registrar.
+                </p>
+              ) : null}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="requestReason">Reason for requesting <Required /></Label>

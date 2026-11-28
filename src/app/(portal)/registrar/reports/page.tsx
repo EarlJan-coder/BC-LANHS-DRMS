@@ -22,6 +22,7 @@ function reportQuery(range: ReportRange, filters: ReportFilters) {
   if (range.toLabel) params.set("to", range.toLabel);
   if (filters.documentType) params.set("documentType", filters.documentType);
   if (filters.status) params.set("status", filters.status);
+  if (filters.gradeLevel) params.set("gradeLevel", filters.gradeLevel);
   return params.toString();
 }
 
@@ -44,6 +45,7 @@ export default async function ReportsPage({
   const filters = parseReportFilters(
     typeof params.documentType === "string" ? params.documentType : undefined,
     typeof params.status === "string" ? params.status : undefined,
+    typeof params.gradeLevel === "string" ? params.gradeLevel : undefined,
   );
   const documentTypes = (await listDocumentTypeViews())
     .filter((type) => type.isActive)
@@ -86,6 +88,7 @@ export default async function ReportsPage({
             initialTo={range.toLabel}
             initialDocumentType={filters.documentType}
             initialStatus={filters.status}
+            initialGradeLevel={filters.gradeLevel}
             periodLabel={periodLabel}
             documentTypes={documentTypes}
           />
@@ -130,7 +133,7 @@ export default async function ReportsPage({
                 pageSize={pageSize}
                 basePath="/registrar/reports"
                 pageParam={`page-${report.key}`}
-                query={{ from, to, documentType: filters.documentType, status: filters.status, ...pageQuery }}
+                query={{ from, to, documentType: filters.documentType, status: filters.status, gradeLevel: filters.gradeLevel, ...pageQuery }}
               />
             </section>
           );

@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { certificateOverrideSchema, documentRequestSchema, passwordChangeSchema, profileUpdateSchema, refineSchoolYearStatus, registrationDecisionSchema, studentRecordSchema } from "@/lib/validators";
+import { certificateOverrideSchema, documentRequestSchema, passwordChangeSchema, profileUpdateSchema, refineSchoolYearStatus, registrationDecisionSchema, studentRecordSchema, userCreateSchema } from "@/lib/validators";
 
 describe("refineSchoolYearStatus", () => {
   function issues(values: Parameters<typeof refineSchoolYearStatus>[0]) {
@@ -279,6 +279,22 @@ describe("profileUpdateSchema", () => {
     assert.deepEqual(profileUpdateSchema.parse({ contactNumber: "09171234567" }), {
       contactNumber: "09171234567",
     });
+  });
+
+  it("accepts empty optional birth date and validates provided personal fields", () => {
+    assert.equal(profileUpdateSchema.safeParse({ birthDate: "", gender: "Female", middleName: "C" }).success, true);
+    assert.equal(profileUpdateSchema.safeParse({ birthDate: "not-a-date" }).success, false);
+  });
+});
+
+describe("userCreateSchema student LRN rules", () => {
+  const base = { email: "student@example.test", firstName: "Jamie", lastName: "Santos", role: "student" as const };
+  it("requires LRN for student accounts by default", () => {
+    assert.equal(userCreateSchema.safeParse(base).success, false);
+    assert.equal(userCreateSchema.safeParse({ ...base, studentStatus: "student" }).success, false);
+  });
+  it("allows alumni accounts without LRN", () => {
+    assert.equal(userCreateSchema.safeParse({ ...base, studentStatus: "alumni" }).success, true);
   });
 });
 

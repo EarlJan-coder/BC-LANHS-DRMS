@@ -13,6 +13,7 @@ import { dashboardPathForRole, getCurrentDbUser } from "@/lib/auth";
 import { getDb } from "@/db";
 import { certificates } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { formatDateTime } from "@/lib/utils";
 import type { CertificateVerificationView } from "@/lib/types";
 import type { LifecycleEvent } from "@/lib/services/blockchain-verification";
 
@@ -196,7 +197,7 @@ function EventTimelineItem({ event, isLast }: { event: LifecycleEvent; isLast: b
             {label}
           </span>
           <span className="text-xs text-slate-500">
-            {new Date(event.recordedAt).toLocaleString()}
+            {formatDateTime(new Date(event.recordedAt))}
           </span>
         </div>
         <p className="mt-1 break-all text-xs text-slate-600">

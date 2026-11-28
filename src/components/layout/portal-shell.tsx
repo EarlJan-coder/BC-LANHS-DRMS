@@ -24,12 +24,13 @@ import {
   ShieldCheck,
   UploadCloud,
   UserRound,
+  UserRoundCheck,
   Users,
   X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Fragment, Suspense, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ChangePasswordForm } from "@/components/change-password-form";
@@ -67,6 +68,7 @@ const icons = {
   ShieldCheck,
   UploadCloud,
   UserRound,
+  UserRoundCheck,
   Users,
   X,
 };
@@ -86,15 +88,11 @@ function HeaderSearchForm({ role, defaultValue = "" }: { role: DashboardRole; de
     <PendingForm
       role="search"
       action={`/${role}/search`}
-      className="flex min-w-0 flex-1 items-center rounded-md border border-border bg-slate-50 px-3 py-2"
+      className="flex min-w-0 flex-1 items-center rounded-lg px-0 py-0"
     >
       {({ isPending }) => (
         <>
-          {isPending ? (
-            <Spinner className="shrink-0 text-slate-400" />
-          ) : (
-            <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
-          )}
+          {isPending ? <Spinner className="shrink-0 text-slate-400" /> : null}
           <input
             key={defaultValue}
             type="search"
@@ -103,7 +101,7 @@ function HeaderSearchForm({ role, defaultValue = "" }: { role: DashboardRole; de
             autoFocus
             placeholder="Search records, requests, students"
             aria-label="Search records, requests, students"
-            className="ml-2 w-full min-w-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500"
+            className={cn("w-full min-w-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500", isPending && "ml-2")}
           />
         </>
       )}
@@ -126,11 +124,11 @@ function SidebarAccountActions({
   onChangePassword: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-1 border-t border-border px-3 py-4">
+    <div className="flex flex-col gap-1 border-t border-slate-100 px-3 py-4">
       <button
         type="button"
         onClick={onChangePassword}
-        className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-slate-600 transition hover:bg-rose-50 hover:text-brand"
+        className="flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-600 transition hover:bg-rose-50 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         <KeyRound className="h-4 w-4" aria-hidden />
         <span className="truncate">Change password</span>
@@ -140,7 +138,7 @@ function SidebarAccountActions({
         onClick={onSignOut}
         disabled={signingOut}
         aria-busy={signingOut || undefined}
-        className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-slate-600 transition hover:bg-rose-50 hover:text-brand disabled:opacity-60"
+        className="flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-600 transition hover:bg-rose-50 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-60"
       >
         {signingOut ? <Spinner className="h-4 w-4" /> : <LogOut className="h-4 w-4" aria-hidden />}
         <span className="truncate">{signingOut ? "Signing out..." : "Sign out"}</span>
@@ -169,6 +167,7 @@ export function PortalShell({
   const [searchOpen, setSearchOpen] = useState(false);
   const changePasswordRef = useRef<HTMLElement>(null);
   const globalSearchRef = useRef<HTMLDivElement>(null);
+  const searchToggleRef = useRef<HTMLButtonElement>(null);
 
   // While the change-password modal is open: Escape closes it and focus moves
   // to its first field (matching ConfirmDialog's keyboard behavior).
@@ -189,13 +188,14 @@ export function PortalShell({
 
   useEffect(() => {
     if (!searchOpen) return;
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
     const focusTimer = window.setTimeout(() => {
       globalSearchRef.current?.querySelector<HTMLInputElement>('input[type="search"]')?.focus({ preventScroll: true });
     }, 120);
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setSearchOpen(false);
+      if (event.key === "Escape") {
+        setSearchOpen(false);
+        searchToggleRef.current?.focus();
+      }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => {
@@ -218,31 +218,38 @@ export function PortalShell({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#f5f7fb]">
       {/* ── Desktop sidebar ── */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r border-border bg-white lg:flex">
-        <div className="flex h-20 items-center border-b border-border px-5">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r border-slate-200/80 bg-white lg:flex">
+        <div className="flex h-[76px] items-center border-b border-slate-100 px-5">
           <AppLogo />
         </div>
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
-          {nav.map((item) => {
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-5">
+          {nav.map((item, index) => {
             const Icon = icons[item.icon as keyof typeof icons] ?? LayoutDashboard;
             const active = isNavItemActive(pathname, item.href, nav);
+            const showSection = item.section && item.section !== nav[index - 1]?.section;
 
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                prefetch={false}
-                className={cn(
-                  "flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition",
-                  active ? "bg-brand text-white" : "text-slate-600 hover:bg-rose-50 hover:text-brand",
-                )}
-              >
-                <LinkPendingContent icon={<Icon className="h-4 w-4" aria-hidden />} className="gap-3">
-                  <span className="truncate">{item.label}</span>
-                </LinkPendingContent>
-              </Link>
+              <Fragment key={item.href}>
+                {showSection ? (
+                  <p className={cn("px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400", index > 0 && "pt-5")}>
+                    {item.section}
+                  </p>
+                ) : null}
+                <Link
+                  href={item.href}
+                  prefetch={false}
+                  className={cn(
+                    "relative flex h-10 items-center gap-3 rounded-md border-l-2 px-3 text-[13px] font-medium transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
+                    active ? "border-brand bg-rose-50/70 text-brand" : "border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-950",
+                  )}
+                >
+                  <LinkPendingContent icon={<Icon className="h-4 w-4" aria-hidden />} className="gap-3">
+                    <span className="truncate">{item.label}</span>
+                  </LinkPendingContent>
+                </Link>
+              </Fragment>
             );
           })}
         </nav>
@@ -263,42 +270,49 @@ export function PortalShell({
       )}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-border bg-white transform transition-transform duration-200 ease-in-out lg:hidden",
+          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white shadow-2xl shadow-slate-950/10 transform transition-transform duration-200 ease-in-out lg:hidden",
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full",
         )}
         aria-label="Mobile navigation"
       >
-        <div className="flex h-20 items-center justify-between border-b border-border px-5">
+        <div className="flex h-[76px] items-center justify-between border-b border-slate-100 px-5">
           <AppLogo />
           <button
             type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-slate-600"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50"
             onClick={closeMobileMenu}
             aria-label="Close navigation"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
-          {nav.map((item) => {
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-5">
+          {nav.map((item, index) => {
             const Icon = icons[item.icon as keyof typeof icons] ?? LayoutDashboard;
             const active = isNavItemActive(pathname, item.href, nav);
+            const showSection = item.section && item.section !== nav[index - 1]?.section;
 
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                prefetch={false}
-                onClick={closeMobileMenu}
-                className={cn(
-                  "flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition",
-                  active ? "bg-brand text-white" : "text-slate-600 hover:bg-rose-50 hover:text-brand",
-                )}
-              >
-                <LinkPendingContent icon={<Icon className="h-4 w-4" aria-hidden />} className="gap-3">
-                  <span className="truncate">{item.label}</span>
-                </LinkPendingContent>
-              </Link>
+              <Fragment key={item.href}>
+                {showSection ? (
+                  <p className={cn("px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400", index > 0 && "pt-5")}>
+                    {item.section}
+                  </p>
+                ) : null}
+                <Link
+                  href={item.href}
+                  prefetch={false}
+                  onClick={closeMobileMenu}
+                  className={cn(
+                    "relative flex h-10 items-center gap-3 rounded-md border-l-2 px-3 text-[13px] font-medium transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
+                    active ? "border-brand bg-rose-50/70 text-brand" : "border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-950",
+                  )}
+                >
+                  <LinkPendingContent icon={<Icon className="h-4 w-4" aria-hidden />} className="gap-3">
+                    <span className="truncate">{item.label}</span>
+                  </LinkPendingContent>
+                </Link>
+              </Fragment>
             );
           })}
         </nav>
@@ -328,7 +342,7 @@ export function PortalShell({
             role="dialog"
             aria-modal="true"
             aria-labelledby="change-password-title"
-            className="w-full max-w-md rounded-lg border border-border bg-white shadow-xl"
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-xl"
           >
             <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
               <div>
@@ -357,12 +371,12 @@ export function PortalShell({
 
       {/* ── Main content area ── */}
       <div className="lg:pl-72">
-        <header className="sticky top-0 z-20 border-b border-border bg-white/95 backdrop-blur">
+        <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
           {/* Top row: mobile toggle · logo · role label · notification bell */}
-          <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
+          <div className="mx-auto flex h-16 max-w-[1680px] items-center gap-3 px-4 sm:px-6 lg:px-8">
             <button
               type="button"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-slate-600 lg:hidden"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 lg:hidden"
               aria-label={mobileMenuOpen ? "Close navigation" : "Open navigation"}
               onClick={toggleMobileMenu}
             >
@@ -372,24 +386,47 @@ export function PortalShell({
               <AppLogo compact />
             </div>
 
-            {searchOpen ? (
-              <div ref={globalSearchRef} className="flex min-w-0 max-w-lg flex-1 items-center gap-2">
+            <div
+              className={cn(
+                "flex h-10 min-w-0 shrink-0 items-center overflow-hidden transition-[width] duration-300 ease-out motion-reduce:transition-none",
+                searchOpen
+                  ? "w-[calc(100vw-12rem)] rounded-lg border border-slate-200 bg-white px-1 sm:w-[calc(100vw-18rem)] md:w-[calc(100vw-20rem)] lg:w-[min(26rem,calc(100vw-40rem))]"
+                  : "w-10",
+              )}
+            >
+              <button
+                ref={searchToggleRef}
+                type="button"
+                aria-label={searchOpen ? "Close search" : "Search"}
+                aria-expanded={searchOpen}
+                aria-controls="portal-global-search"
+                onClick={() => setSearchOpen((open) => !open)}
+                className={cn(
+                  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-slate-600 transition hover:bg-slate-50 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
+                  !searchOpen && "h-10 w-10 rounded-lg border border-slate-200 bg-white",
+                )}
+              >
+                <Search className="h-5 w-5" aria-hidden />
+              </button>
+              <div
+                ref={globalSearchRef}
+                id="portal-global-search"
+                aria-hidden={!searchOpen}
+                inert={!searchOpen}
+                className={cn(
+                  "min-w-0 overflow-hidden transition-[flex,opacity] duration-300 ease-out motion-reduce:transition-none",
+                  searchOpen ? "ml-2 flex-1 opacity-100" : "w-0 flex-none opacity-0",
+                )}
+              >
                 <Suspense fallback={<HeaderSearchForm role={role} />}>
                   <HeaderSearch role={role} />
                 </Suspense>
-                <button type="button" aria-label="Close search" onClick={() => setSearchOpen(false)} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border text-slate-600 transition hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
-                  <X className="h-5 w-5" />
-                </button>
               </div>
-            ) : (
-              <button type="button" aria-label="Search" onClick={() => setSearchOpen(true)} className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-slate-600 transition hover:bg-slate-50 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
-                <Search className="h-5 w-5" />
-              </button>
-            )}
+            </div>
 
             {/* Right cluster: role pill + bell */}
             <div className="ml-auto flex items-center gap-2">
-              <span className="hidden text-xs font-medium text-black sm:inline-flex">
+              <span className="hidden text-xs font-medium text-slate-500 sm:inline-flex">
                 {role === "student" && studentType === "alumni" ? "Alumni" : ROLE_LABELS[role]}
               </span>
               <NotificationBell
@@ -402,7 +439,7 @@ export function PortalShell({
 
         </header>
 
-        <main className="px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="mx-auto w-full max-w-[1680px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-9">{children}</main>
       </div>
     </div>
   );

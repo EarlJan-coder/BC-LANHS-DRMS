@@ -33,6 +33,7 @@ export default async function CertificateDetailsPage({
             <ButtonLink href="/registrar/certificates" tone="secondary">
               Back
             </ButtonLink>
+            {certificate.requestId ? <ButtonLink href={`/registrar/requests/${certificate.requestId}`} tone="secondary">View originating request</ButtonLink> : null}
             <DownloadButton href={`/api/certificates/${certificate.id}/pdf`} tone="info" loadingLabel="Preparing PDF…">
               <Download className="h-4 w-4" aria-hidden />
               Download PDF

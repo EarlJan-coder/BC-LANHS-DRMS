@@ -2,6 +2,8 @@ import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import type { PDFFont, PDFPage } from "pdf-lib";
 import { getDb } from "@/db";
+import type { AuditTrailView } from "@/lib/types";
+import { listAuditTrailViews } from "@/lib/services/live-data";
 import {
   certificates,
   documentRequests,
@@ -10,7 +12,7 @@ import {
   students,
   type RequestStatus,
 } from "@/db/schema";
-import { SCHOOL_NAME } from "@/lib/constants";
+import { GRADE_LEVELS, SCHOOL_NAME } from "@/lib/constants";
 import {
   BRAND_RED,
   DARK_TEXT,
@@ -23,9 +25,10 @@ import {
   drawWatermark,
   embedSchoolLogo,
   appUrl,
+  wrapText,
 } from "@/lib/services/pdf-brand";
 import { drawTable, type TableColumn } from "@/lib/services/pdf-table";
-import { statusLabel } from "@/lib/utils";
+import { formatDate, formatDateTime, statusLabel } from "@/lib/utils";
 import { paginateRows, PAGE_SIZE } from "@/lib/pagination";
 
 export const REPORT_KEYS = [
@@ -54,6 +57,7 @@ export type ReportRange = {
 export type ReportFilters = {
   documentType?: string;
   status?: RequestStatus;
+  gradeLevel?: string;
 };
 
 export type ReportData = {
@@ -135,36 +139,17 @@ export function parseReportRange(from?: string, to?: string): ReportRange {
   };
 }
 
-const MONTH_ABBREVIATIONS = [
-  "Jan.",
-  "Feb.",
-  "Mar.",
-  "Apr.",
-  "May",
-  "Jun.",
-  "Jul.",
-  "Aug.",
-  "Sep.",
-  "Oct.",
-  "Nov.",
-  "Dec.",
-];
-
-/** Formats an ISO day (`YYYY-MM-DD`) for display, e.g. "Nov. 11, 2026".
+/** Formats an ISO day (`YYYY-MM-DD`) for display, e.g. "November 01 2026".
  * Unparseable values pass through untouched. */
 export function formatReportDate(value: string) {
-  const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!parts) return value;
-  const [, year, month, day] = parts;
-  const label = MONTH_ABBREVIATIONS[Number(month) - 1];
-  if (!label) return value;
-  return `${label} ${Number(day)}, ${year}`;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value ? value : formatDate(date);
 }
 
-/** Formats a timestamp for display, e.g. "Nov. 11, 2026 09:01". */
+/** Formats a timestamp for display using the system date and time style. */
 export function formatReportDateTime(value: Date) {
-  const iso = value.toISOString();
-  return `${formatReportDate(iso.slice(0, 10))} ${iso.slice(11, 16)}`;
+  return formatDateTime(value);
 }
 
 export function formatPeriodLabel(range: ReportRange) {
@@ -182,9 +167,10 @@ export function formatPeriodLabel(range: ReportRange) {
 
 /** Parses `?documentType=&status=` into row filters. Blank values and
  * unknown statuses are ignored so a stale link never breaks the page. */
-export function parseReportFilters(documentType?: string, status?: string): ReportFilters {
+export function parseReportFilters(documentType?: string, status?: string, gradeLevel?: string): ReportFilters {
   const trimmedType = documentType?.trim();
   const trimmedStatus = status?.trim();
+  const trimmedGrade = gradeLevel?.trim();
   const isRequestStatus =
     !!trimmedStatus &&
     (requestStatusEnum.enumValues as readonly string[]).includes(trimmedStatus);
@@ -192,6 +178,7 @@ export function parseReportFilters(documentType?: string, status?: string): Repo
   return {
     documentType: trimmedType || undefined,
     status: isRequestStatus ? (trimmedStatus as RequestStatus) : undefined,
+    gradeLevel: trimmedGrade && GRADE_LEVELS.includes(trimmedGrade) ? trimmedGrade : undefined,
   };
 }
 
@@ -242,12 +229,14 @@ export async function getReportData(
       { header: "Tracking No.", width: 112 },
       { header: "Document Type", width: 104 },
       { header: "Student", width: 120 },
+      { header: "Grade", width: 42 },
       { header: "Status", width: 83 },
       { header: "Requested", width: 76, align: "right" },
     ];
     const conditions = rangeFilters(documentRequests.createdAt, range);
     if (filters.documentType) conditions.push(eq(documentTypes.name, filters.documentType));
     if (filters.status) conditions.push(eq(documentRequests.status, filters.status));
+    if (filters.gradeLevel) conditions.push(eq(documentRequests.gradeLevelNeeded, filters.gradeLevel));
     const records = await db
       .select({
         trackingNumber: documentRequests.trackingNumber,
@@ -256,6 +245,7 @@ export async function getReportData(
         studentMiddleName: students.middleName,
         studentLastName: students.lastName,
         studentSuffix: students.suffix,
+        gradeLevelNeeded: documentRequests.gradeLevelNeeded,
         status: documentRequests.status,
         requestedAt: documentRequests.createdAt,
       })
@@ -269,6 +259,7 @@ export async function getReportData(
       row.trackingNumber,
       row.documentTypeName ?? "\u2014",
       personName(row),
+      row.gradeLevelNeeded ?? "—",
       statusLabel(row.status),
       formatReportDate(row.requestedAt.toISOString().slice(0, 10)),
     ]);
@@ -282,6 +273,7 @@ export async function getReportData(
     const conditions = [eq(documentRequests.status, "claimed"), ...rangeFilters(documentRequests.claimedAt, range)];
     if (filters.documentType) conditions.push(eq(documentTypes.name, filters.documentType));
     if (filters.status) conditions.push(eq(documentRequests.status, filters.status));
+    if (filters.gradeLevel) conditions.push(eq(documentRequests.gradeLevelNeeded, filters.gradeLevel));
     const records = await db
       .select({
         trackingNumber: documentRequests.trackingNumber,
@@ -313,6 +305,7 @@ export async function getReportData(
     ];
     const conditions = rangeFilters(certificates.generatedAt, range);
     if (filters.documentType) conditions.push(eq(certificates.certificateType, filters.documentType));
+    if (filters.gradeLevel) conditions.push(eq(documentRequests.gradeLevelNeeded, filters.gradeLevel));
     const records = await db
       .select({
         certificateNumber: certificates.certificateNumber,
@@ -322,9 +315,11 @@ export async function getReportData(
         studentLastName: students.lastName,
         studentSuffix: students.suffix,
         generatedAt: certificates.generatedAt,
+        gradeLevelNeeded: documentRequests.gradeLevelNeeded,
       })
       .from(certificates)
       .leftJoin(students, eq(certificates.studentId, students.id))
+      .leftJoin(documentRequests, eq(certificates.requestId, documentRequests.id))
       .where(conditions.length ? and(...conditions) : undefined)
       .orderBy(desc(certificates.generatedAt));
 
@@ -357,7 +352,7 @@ export async function getReportData(
       .orderBy(desc(students.createdAt));
 
     rows = records.map((row) => [
-      row.lrn,
+      row.lrn ?? "Not set",
       personName(row),
       humanStatus(row.status),
       formatReportDate(row.createdAt.toISOString().slice(0, 10)),
@@ -577,4 +572,154 @@ export async function renderAllReportsPdf(
   }
 
   return combined.save();
+}
+
+/** Renders the complete blockchain audit trail in the branded report layout.
+ * Full record and transaction hashes are included in a proof-details appendix
+ * so the table remains readable without losing verification data. */
+export async function renderAuditTrailPdf(): Promise<Uint8Array> {
+  const audits = await listAuditTrailViews({ all: true });
+  const pdfDoc = await PDFDocument.create();
+  const [regular, bold] = await Promise.all([
+    pdfDoc.embedFont(StandardFonts.Helvetica),
+    pdfDoc.embedFont(StandardFonts.HelveticaBold),
+  ]);
+  const logo = await embedSchoolLogo(pdfDoc);
+  const reportTitle = "Blockchain Audit Trail Report";
+  const periodLabel = "All time";
+  const page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+
+  drawDocumentHeader(page, logo, regular, bold);
+  drawCenteredText(page, reportTitle, 684, bold, 18, BRAND_RED);
+  drawCenteredText(page, `${SCHOOL_NAME} · Administration`, 666, regular, 9, MUTED_TEXT);
+
+  const metaY = 646;
+  page.drawText(`Coverage period: ${periodLabel}`, {
+    x: CONTENT_LEFT,
+    y: metaY,
+    size: 9,
+    font: regular,
+    color: MUTED_TEXT,
+  });
+  const generatedLabel = `Generated: ${formatReportDateTime(new Date())}`;
+  page.drawText(generatedLabel, {
+    x: 545 - regular.widthOfTextAtSize(generatedLabel, 9),
+    y: metaY,
+    size: 9,
+    font: regular,
+    color: MUTED_TEXT,
+  });
+
+  const boxTop = 630;
+  const boxHeight = 66;
+  page.drawRectangle({
+    x: CONTENT_LEFT,
+    y: boxTop - boxHeight,
+    width: 495,
+    height: boxHeight,
+    color: rgb(1, 1, 1),
+    borderColor: BRAND_RED,
+    borderWidth: 0.8,
+  });
+  page.drawText("TOTAL AUDIT RECORDS", { x: 64, y: boxTop - 22, size: 8, font: regular, color: MUTED_TEXT });
+  page.drawText(String(audits.length), { x: 64, y: boxTop - 54, size: 26, font: bold, color: BRAND_RED });
+  const helperX = 64 + regular.widthOfTextAtSize("TOTAL AUDIT RECORDS", 8) + 24;
+  page.drawText("Blockchain trail events", { x: helperX, y: boxTop - 30, size: 11, font: bold, color: DARK_TEXT });
+  page.drawText("Includes full proof hashes in the appendix", { x: helperX, y: boxTop - 48, size: 9, font: regular, color: MUTED_TEXT });
+
+  const tableColumns: TableColumn[] = [
+    { header: "Created", width: 95 },
+    { header: "Reference", width: 110 },
+    { header: "Action", width: 105 },
+    { header: "Role", width: 65 },
+    { header: "Status", width: 120 },
+  ];
+  const tableRows = audits.map((audit) => [
+    audit.createdAt,
+    audit.referenceId,
+    audit.action,
+    audit.actorRole,
+    humanStatus(audit.status),
+  ]);
+  drawTable({
+    currentPage: page,
+    x: CONTENT_LEFT,
+    top: PAGE1_TABLE_TOP,
+    bottom: TABLE_BOTTOM,
+    columns: tableColumns,
+    rows: tableRows,
+    regular,
+    bold,
+    onNewPage: () => {
+      const next = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+      drawContinuationHeader(next, bold, reportTitle);
+      return { page: next, top: CONT_TABLE_TOP };
+    },
+    emptyLabel: "No blockchain audit records found.",
+  });
+
+  if (audits.length > 0) {
+    let detailPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    drawContinuationHeader(detailPage, bold, `${reportTitle} · Proof Details`);
+    let y = CONT_TABLE_TOP - 18;
+
+    const addDetailPage = () => {
+      detailPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+      drawContinuationHeader(detailPage, bold, `${reportTitle} · Proof Details`);
+      y = CONT_TABLE_TOP - 18;
+    };
+
+    for (let index = 0; index < audits.length; index += 1) {
+      const audit = audits[index] as AuditTrailView;
+      const lines = [
+        { text: `${index + 1}. ${audit.action} · ${audit.referenceId}`, font: bold, size: 9, color: DARK_TEXT },
+        { text: `Created: ${audit.createdAt} · Role: ${audit.actorRole} · Status: ${humanStatus(audit.status)}`, font: regular, size: 8, color: MUTED_TEXT },
+        { text: `Record hash: ${audit.hash}`, font: regular, size: 7.5, color: DARK_TEXT },
+        { text: `Transaction hash: ${audit.transactionHash}`, font: regular, size: 7.5, color: DARK_TEXT },
+      ];
+      const wrapped = lines.flatMap((line) => wrapText(line.font, line.size, 495 - 16, line.text).map((text) => ({ ...line, text })));
+      const blockHeight = wrapped.length * 11 + 9;
+      if (y - blockHeight < TABLE_BOTTOM) addDetailPage();
+
+      for (const line of wrapped) {
+        detailPage.drawText(line.text, { x: CONTENT_LEFT + 8, y, size: line.size, font: line.font, color: line.color });
+        y -= 11;
+      }
+      y -= 9;
+      detailPage.drawLine({ start: { x: CONTENT_LEFT, y }, end: { x: CONTENT_LEFT + 495, y }, thickness: 0.5, color: rgb(0.9, 0.9, 0.9) });
+      y -= 8;
+    }
+  }
+
+  const lastPage = pdfDoc.getPages()[pdfDoc.getPageCount() - 1];
+  drawSignatureLine(
+    lastPage,
+    70,
+    215,
+    "Prepared by",
+    70 + (145 - regular.widthOfTextAtSize("Prepared by", 9)) / 2,
+    regular,
+  );
+  drawSignatureLine(
+    lastPage,
+    300,
+    465,
+    "Administrator",
+    300 + (165 - regular.widthOfTextAtSize("Administrator", 9)) / 2,
+    regular,
+  );
+
+  const pages = pdfDoc.getPages();
+  const footerNote = `Generated by LANHS DRMS · ${reportTitle}`;
+  for (let index = 0; index < pages.length; index += 1) {
+    const current = pages[index];
+    drawWatermark(current, logo);
+    current.drawText(footerNote, { x: CONTENT_LEFT, y: 62, size: 8, font: regular, color: MUTED_TEXT });
+    current.drawText(`Coverage period: ${periodLabel}`, { x: CONTENT_LEFT, y: 46, size: 8, font: regular, color: MUTED_TEXT });
+    const pageLabel = `Page ${index + 1} of ${pages.length}`;
+    current.drawText(pageLabel, { x: 545 - bold.widthOfTextAtSize(pageLabel, 8), y: 46, size: 8, font: bold, color: MUTED_TEXT });
+    current.drawText(appUrl(), { x: CONTENT_LEFT, y: 32, size: 7, font: regular, color: MUTED_TEXT });
+  }
+
+  return pdfDoc.save();
 }

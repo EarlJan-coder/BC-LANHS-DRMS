@@ -3,6 +3,7 @@ import { SectionHeading } from "@/components/section-heading";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
 import { getRequestEligibility } from "@/lib/services/document-requests";
+import { listDocumentTypeViews } from "@/lib/services/live-data";
 
 export default async function SubmitRequestPage() {
   const eligibility = await getRequestEligibility();
@@ -37,13 +38,14 @@ export default async function SubmitRequestPage() {
     );
   }
 
+  const documentTypes = (await listDocumentTypeViews()).filter((type) => type.isActive).map(({ id, name }) => ({ id, name }));
   return (
     <div>
       <SectionHeading
         title="Submit document request"
         description="Choose the school document needed, add the purpose, and receive a tracking number after submission."
       />
-      <RequestForm />
+      <RequestForm documentTypes={documentTypes} />
     </div>
   );
 }

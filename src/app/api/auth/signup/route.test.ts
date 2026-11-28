@@ -88,6 +88,33 @@ describe("student signup (integration, local DB)", { skip: hasDb ? false : "DATA
     }
   });
 
+  it("creates an alumni account without an LRN", async () => {
+    const payload = signupPayload({ studentStatus: "alumni", lastSchoolYearAttended: "2024-2025", currentSchoolYear: "" });
+    delete (payload as Record<string, unknown>).lrn;
+    let createdUserId = "";
+    try {
+      const response = await postSignup(payload);
+      assert.equal(response.status, 201);
+      const user = await getDb().query.users.findFirst({ where: eq(users.email, payload.email) });
+      assert.ok(user);
+      createdUserId = user.id;
+      assert.equal(user.lrn, null);
+      const student = await getDb().query.students.findFirst({ where: eq(students.userId, user.id) });
+      assert.equal(student?.lrn, null);
+      assert.equal(student?.studentType, "alumni");
+    } finally {
+      await cleanup(createdUserId ? [createdUserId] : []);
+    }
+  });
+
+  it("keeps the LRN format requirement for alumni and requires an LRN for students", async () => {
+    const invalidAlumni = await postSignup(signupPayload({ studentStatus: "alumni", lastSchoolYearAttended: "2024-2025", currentSchoolYear: "", lrn: "12" }));
+    assert.equal(invalidAlumni.status, 400);
+    const noStudentLrn = signupPayload();
+    delete (noStudentLrn as Record<string, unknown>).lrn;
+    assert.equal((await postSignup(noStudentLrn)).status, 400);
+  });
+
   it("rejects a weak password that misses the character-class rules", async () => {
     const payload = signupPayload({ password: "weakpass1234" });
     const response = await postSignup(payload);

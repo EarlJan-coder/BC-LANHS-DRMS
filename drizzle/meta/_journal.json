@@ -190,6 +190,13 @@
       "when": 1795632125207,
       "tag": "0026_spooky_black_crow",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1795784264719,
+      "tag": "0027_needy_sphinx",
+      "breakpoints": true
     }
   ]
 }

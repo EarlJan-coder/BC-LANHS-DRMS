@@ -131,8 +131,8 @@ export function StudentRecordModal({ student }: { student: StudentView }) {
 
   return (
     <>
-      <Button type="button" tone="secondary" size="sm" onClick={show} aria-label={`View ${student.name}`}>
-        View
+      <Button type="button" tone="secondary" size="sm" onClick={show} aria-label={`Open record for ${student.name}`}>
+        Edit
       </Button>
 
       {open ? (
